@@ -15,6 +15,7 @@ import {
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { loginUser } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 const { Title, Paragraph } = Typography;
 
@@ -23,6 +24,7 @@ const LoginPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const onFinish = async (values) => {
     setLoading(true);
@@ -30,16 +32,13 @@ const LoginPage = () => {
     
     try {
       const response = await loginUser(values);
-      
-      // Store token and user info
-      localStorage.setItem('access_token', response.access_token);
-      localStorage.setItem('user', JSON.stringify(response.user));
+      login(response.access_token, response.user);
       
       // Redirect to home page
       navigate('/');
       
     } catch (err) {
-      setError(err.response?.data?.detail || 'Login failed. Please check your credentials.');
+      setError(err.message || 'Login failed. Please check your credentials.');
     } finally {
       setLoading(false);
     }

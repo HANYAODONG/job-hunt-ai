@@ -2,11 +2,20 @@ import axios from 'axios';
 import { getMockSearchResults, mockApiDelay } from '../data/mockJobData';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
+const USE_MOCK_DATA = process.env.REACT_APP_USE_MOCK_DATA === 'true';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 30000,
+  timeout: 120000,
 });
+
+const isBackendUnavailable = (error) => {
+  return !error.response ||
+    error.code === 'ECONNREFUSED' ||
+    error.code === 'ETIMEDOUT' ||
+    error.code === 'ECONNABORTED' ||
+    error.message.includes('Network Error');
+};
 
 // Request interceptor
 api.interceptors.request.use(
@@ -28,8 +37,8 @@ api.interceptors.response.use(
     console.error('API Error:', error.response?.data || error.message);
     
     // Check if it's a network error or backend unavailable
-    if (!error.response || error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT' || error.message.includes('Network Error')) {
-      console.warn('⚠️ Backend unavailable, will use mock data for this request');
+    if (isBackendUnavailable(error)) {
+      console.warn('Backend unavailable for this request');
     }
     
     return Promise.reject(error);
@@ -47,8 +56,8 @@ export const searchJobs = async (searchParams) => {
     return response.data;
   } catch (error) {
     // If backend is not responding, use mock data
-    if (!error.response || error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT' || error.message.includes('Network Error')) {
-      console.warn('⚠️ Using mock data - Backend unavailable');
+    if (USE_MOCK_DATA && isBackendUnavailable(error)) {
+      console.warn('Using mock data - Backend unavailable');
       await mockApiDelay();
       return getMockSearchResults(searchParams, false);
     }
@@ -70,8 +79,8 @@ export const searchJobsWithResume = async (searchParams, resumeFile) => {
     return response.data;
   } catch (error) {
     // If backend is not responding, use mock data
-    if (!error.response || error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT' || error.message.includes('Network Error')) {
-      console.warn('⚠️ Using mock data - Backend unavailable');
+    if (USE_MOCK_DATA && isBackendUnavailable(error)) {
+      console.warn('Using mock data - Backend unavailable');
       await mockApiDelay();
       return getMockSearchResults(searchParams, false);
     }
@@ -200,8 +209,8 @@ export const searchJobsWithReranking = async (searchParams, userDescription = nu
     return response.data;
   } catch (error) {
     // If backend is not responding, use mock data
-    if (!error.response || error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT' || error.message.includes('Network Error')) {
-      console.warn('⚠️ Using mock data - Backend unavailable');
+    if (USE_MOCK_DATA && isBackendUnavailable(error)) {
+      console.warn('Using mock data - Backend unavailable');
       await mockApiDelay();
       return getMockSearchResults(searchParams, true);
     }
@@ -241,8 +250,8 @@ export const searchJobsWithRerankingAndResume = async (searchParams, resumeFile,
     return response.data;
   } catch (error) {
     // If backend is not responding, use mock data
-    if (!error.response || error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT' || error.message.includes('Network Error')) {
-      console.warn('⚠️ Using mock data - Backend unavailable');
+    if (USE_MOCK_DATA && isBackendUnavailable(error)) {
+      console.warn('Using mock data - Backend unavailable');
       await mockApiDelay();
       return getMockSearchResults(searchParams, true);
     }

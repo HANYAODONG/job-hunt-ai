@@ -69,6 +69,7 @@ const SearchPage = () => {
   const [aiExplanationData, setAiExplanationData] = useState(null);
   const [loadingAiExplanation, setLoadingAiExplanation] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [searchRequest, setSearchRequest] = useState(null);
   const [sortBy, setSortBy] = useState('last_updated');
   const [extractedKeywords, setExtractedKeywords] = useState(null);
   const [selectedKeywords, setSelectedKeywords] = useState({
@@ -109,8 +110,8 @@ const SearchPage = () => {
     return () => clearInterval(typingInterval);
   }, []);
 
-  const searchParams = {
-    query: searchQuery,
+  const buildSearchParams = (queryText = searchQuery) => ({
+    query: queryText,
     location: (location && location.trim()) || undefined,
     min_salary: minSalary[0] > 0 ? minSalary[0] : undefined,
     max_salary: minSalary[1] > 0 && minSalary[1] < 300000 ? minSalary[1] : undefined,
@@ -120,25 +121,27 @@ const SearchPage = () => {
     visa_sponsorship: visaSponsorship !== null ? visaSponsorship : undefined,
     page: 1,
     page_size: 20
-  };
+  });
 
-  const { data: initialSearchResults, isLoading, error, refetch } = useQuery(
-    ['jobSearch', searchParams, resumeFile],
+  const { data: initialSearchResults, isLoading, error } = useQuery(
+    ['jobSearch', searchRequest, resumeFile],
     () => {
+      const params = searchRequest?.params || buildSearchParams();
       // Initial search - ALWAYS use regular hybrid search (NO reranking yet)
       // Keyword reranking is a separate action triggered by user
       if (useResume && resumeFile) {
-        return searchJobsWithResume(searchParams, resumeFile);
+        return searchJobsWithResume(params, resumeFile);
       }
-      return searchJobs(searchParams);
+      return searchJobs(params);
     },
     {
-      enabled: false, // Only run when manually triggered
+      enabled: !!searchRequest, // Only run when the user submits a query
       retry: 1,
       onSuccess: (data) => {
         // Extract keywords AFTER search completes successfully
-        if (searchQuery.trim()) {
-          handleExtractKeywords(searchQuery.trim());
+        const submittedQuery = searchRequest?.params?.query?.trim();
+        if (submittedQuery) {
+          handleExtractKeywords(submittedQuery);
         }
       }
     }
@@ -169,17 +172,24 @@ const SearchPage = () => {
   // Use reranked results if available, otherwise use initial search results
   const currentSearchResults = rerankedResults || initialSearchResults;
 
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) {
+  const handleSearch = async (queryOverride) => {
+    const effectiveQuery = (queryOverride ?? searchQuery).trim();
+    if (!effectiveQuery) {
       message.warning('Please enter a search query');
       return;
     }
     setHasSearched(true);
     setRerankedResults(null); // Clear previous reranked results
     setExtractedKeywords(null); // Clear previous keywords
-    
-    // Perform regular search (keyword extraction happens AFTER via onSuccess)
-    refetch();
+    setSearchRequest({
+      id: Date.now(),
+      params: buildSearchParams(effectiveQuery)
+    });
+  };
+
+  const handleExampleQuery = (query) => {
+    setSearchQuery(query);
+    handleSearch(query);
   };
 
   const handleKeywordSelect = (value) => {
@@ -496,10 +506,7 @@ const SearchPage = () => {
                 <Text className="query-example-label">Role & Location</Text>
                 <div 
                   className="query-example-text"
-                  onClick={() => {
-                    setSearchQuery('I want to work as a senior software engineer in San Francisco, California');
-                    handleSearch();
-                  }}
+                  onClick={() => handleExampleQuery('I want to work as a senior software engineer in San Francisco, California')}
                 >
                   I want to work as a senior software engineer in San Francisco, California
                 </div>
@@ -512,10 +519,7 @@ const SearchPage = () => {
                 <Text className="query-example-label">Skills & Technologies</Text>
                 <div 
                   className="query-example-text"
-                  onClick={() => {
-                    setSearchQuery('Looking for a backend developer role using Python, Django, and PostgreSQL with experience in microservices architecture');
-                    handleSearch();
-                  }}
+                  onClick={() => handleExampleQuery('Looking for a backend developer role using Python, Django, and PostgreSQL with experience in microservices architecture')}
                 >
                   Looking for a backend developer role using Python, Django, and PostgreSQL with experience in microservices architecture
                 </div>
@@ -528,10 +532,7 @@ const SearchPage = () => {
                 <Text className="query-example-label">Remote Work & Benefits</Text>
                 <div 
                   className="query-example-text"
-                  onClick={() => {
-                    setSearchQuery('Remote product manager position with flexible hours, health insurance, and stock options');
-                    handleSearch();
-                  }}
+                  onClick={() => handleExampleQuery('Remote product manager position with flexible hours, health insurance, and stock options')}
                 >
                   Remote product manager position with flexible hours, health insurance, and stock options
                 </div>
@@ -544,10 +545,7 @@ const SearchPage = () => {
                 <Text className="query-example-label">Visa Sponsorship</Text>
                 <div 
                   className="query-example-text"
-                  onClick={() => {
-                    setSearchQuery('Machine learning engineer position in Seattle, Washington with H1B visa sponsorship and relocation assistance');
-                    handleSearch();
-                  }}
+                  onClick={() => handleExampleQuery('Machine learning engineer position in Seattle, Washington with H1B visa sponsorship and relocation assistance')}
                 >
                   Machine learning engineer position in Seattle, Washington with H1B visa sponsorship and relocation assistance
                 </div>
@@ -560,10 +558,7 @@ const SearchPage = () => {
                 <Text className="query-example-label">Industry & Domain</Text>
                 <div 
                   className="query-example-text"
-                  onClick={() => {
-                    setSearchQuery('Data analyst role in fintech or healthcare industry working with large datasets and SQL');
-                    handleSearch();
-                  }}
+                  onClick={() => handleExampleQuery('Data analyst role in fintech or healthcare industry working with large datasets and SQL')}
                 >
                   Data analyst role in fintech or healthcare industry working with large datasets and SQL
                 </div>
@@ -576,10 +571,7 @@ const SearchPage = () => {
                 <Text className="query-example-label">Salary & Compensation</Text>
                 <div 
                   className="query-example-text"
-                  onClick={() => {
-                    setSearchQuery('Senior full stack developer position paying $150k+ annually with equity and bonus structure');
-                    handleSearch();
-                  }}
+                  onClick={() => handleExampleQuery('Senior full stack developer position paying $150k+ annually with equity and bonus structure')}
                 >
                   Senior full stack developer position paying $150k+ annually with equity and bonus structure
                 </div>

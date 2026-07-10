@@ -45,8 +45,10 @@ services:
       start_period: 60s
 
   backend:
-    # Using pre-built image from Docker Hub
-    image: mvyas7/job-hunt-ai-backend:v1.2.0
+    build:
+      context: ./backend-src
+      dockerfile: Dockerfile
+    image: jobmatch-ai-backend:local
     container_name: jobmatch_backend
     environment:
       - ELASTICSEARCH_URL=http://elasticsearch:9200
@@ -71,19 +73,21 @@ services:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 60s
+      retries: 10
+      start_period: 180s
 
   frontend:
-    # Using pre-built image from Docker Hub
-    image: mvyas7/job-hunt-ai-frontend:v1.3.1
+    build:
+      context: ./frontend-src
+      dockerfile: Dockerfile
+    image: jobmatch-ai-frontend:local
     container_name: jobmatch_frontend
-    entrypoint: ["/bin/sh", "-c"]
-    command: ["npm start"]
     environment:
-      - BACKEND_URL=http://backend:8000
+      - REACT_APP_API_URL=http://localhost:8000/api/v1
+      - REACT_APP_USE_MOCK_DATA=false
+      - HOST=0.0.0.0
     ports:
-      - "3001:3000"
+      - "${FRONTEND_PORT:-3001}:3000"
     depends_on:
       backend:
         condition: service_healthy

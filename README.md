@@ -43,6 +43,12 @@ chmod +x install.sh
 .\install.ps1
 ```
 
+For the current local source build, you can also start directly:
+
+```powershell
+docker compose up -d --build
+```
+
 ### First-Time Setup
 
 When you run the installer for the first time:
@@ -56,21 +62,22 @@ Example `.env`:
 ANTHROPIC_API_KEY=sk-ant-xxx  # Optional - for AI features
 ```
 
-**Note**: Docker images are pre-configured:
-- Backend: `mvyas7/job-hunt-ai-backend:latest`
-- Frontend: `mvyas7/job-hunt-ai-frontend:latest`
-
-No additional configuration needed!
+**Note**: This package now builds backend and frontend from local source so code fixes are reflected after `docker compose up -d --build`.
 
 ### What the Installer Does
 
 The installation script will:
 
 1. Check that Docker is installed and running
-2. Pull pre-built images from Docker Hub
+2. Build backend and frontend from local source
 3. Start all services (Elasticsearch, Neo4j, Backend, Frontend)
-4. Initialize demo data
-5. Display access URLs
+4. Display access URLs
+
+Sample job data can be imported after startup:
+
+```powershell
+.\scripts\import-sample-data.ps1
+```
 
 **Installation takes 2-3 minutes** depending on your internet speed.
 
@@ -80,7 +87,7 @@ After installation, access the application at:
 
 | Service | URL | Description |
 |---------|-----|-------------|
-| **Frontend** | http://localhost:3001 | Main web interface |
+| **Frontend** | http://localhost:18080 | Main web interface |
 | **Backend API** | http://localhost:8000 | REST API endpoints |
 | **API Documentation** | http://localhost:8000/docs | Interactive API docs (Swagger) |
 | **Elasticsearch** | http://localhost:9200 | Search engine |
@@ -214,17 +221,23 @@ NEO4J_USER=neo4j
 NEO4J_PASSWORD=password
 ```
 
-**Note**: Docker images are pre-configured in `docker-compose.yml`:
-- `mvyas7/job-hunt-ai-backend:latest`
-- `mvyas7/job-hunt-ai-frontend:latest`
+**Note**: `docker-compose.yml` builds backend and frontend from local source:
+- Backend: `./backend-src`
+- Frontend: `./frontend-src`
 
 ### Port Configuration
 
-If you have port conflicts, edit `docker-compose.yml`:
+If you have port conflicts, edit `.env`:
+
+```env
+FRONTEND_PORT=18080
+```
+
+The compose mapping is:
 
 ```yaml
 ports:
-  - "3001:8080"  # Change 3001 to another port
+  - "${FRONTEND_PORT:-3001}:3000"  # Set FRONTEND_PORT in .env
   - "8000:8000"  # Change 8000 to another port
 ```
 
@@ -301,24 +314,22 @@ Edit `docker-compose.yml` and change the port numbers:
 ```yaml
 # Change this:
 ports:
-  - "3001:8080"
+  - "${FRONTEND_PORT:-3001}:3000"
 
 # To this (example):
 ports:
-  - "3002:8080"
+  - "18080:3000"
 ```
 
-### Images Won't Pull
+### Images Won't Build
 
-**Verify images exist:**
-1. Check images on Docker Hub:
-   - https://hub.docker.com/r/mvyas7/job-hunt-ai-backend
-   - https://hub.docker.com/r/mvyas7/job-hunt-ai-frontend
-2. Try manual pull:
+**Check the build logs:**
+
    ```bash
-   docker pull mvyas7/job-hunt-ai-backend:latest
-   docker pull mvyas7/job-hunt-ai-frontend:latest
+   docker compose build
    ```
+
+If dependency downloads fail, check network access and retry the build.
 
 ### Backend Health Check Failing
 
@@ -401,7 +412,7 @@ The system architecture consists of three main components:
 ```
 ┌─────────────┐
 │   Frontend  │  React + TypeScript
-│   (Nginx)   │  Port 3001
+│             │  Port 18080 locally
 └──────┬──────┘
        │
        ▼

@@ -15,6 +15,21 @@ This guide will walk you through using JobMatch AI's features with practical exa
 
 ## First Launch
 
+### Step 0: Start Services
+
+From the project root:
+
+```powershell
+cd "D:\Desktop\挑战杯大模型组\job-hunt-ai-main"
+docker compose up -d --build
+```
+
+If this is a fresh environment and search returns no jobs, import the bundled sample data:
+
+```powershell
+.\scripts\import-sample-data.ps1
+```
+
 ### Step 1: Verify Installation
 
 After running the installer, verify all services are running:
@@ -28,7 +43,7 @@ docker compose ps
 
 ### Step 2: Access the Frontend
 
-Open your browser to: **http://localhost:3001**
+Open your browser to: **http://localhost:18080**
 
 You should see the JobMatch AI home page with:
 - Search bar
@@ -558,6 +573,33 @@ ORDER BY demand DESC
 ---
 
 ## Troubleshooting
+
+### Frontend Port
+
+This local package uses `FRONTEND_PORT=18080` in `.env` because some Windows machines reserve ports such as `3001` or `3002`.
+
+If you need to change it:
+
+```powershell
+$env:FRONTEND_PORT=18081
+docker compose up -d --force-recreate frontend
+```
+
+### Demo Mode / Mock Data
+
+Mock search data is disabled by default:
+
+```text
+REACT_APP_USE_MOCK_DATA=false
+```
+
+If the frontend shows "Demo Mode - Using Mock Data", rebuild the frontend and force-refresh the browser:
+
+```powershell
+docker compose up -d --build frontend
+```
+
+Then press `Ctrl + F5`.
 
 ### No Search Results
 
