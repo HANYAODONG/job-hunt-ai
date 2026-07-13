@@ -1,0 +1,25 @@
+.fusion-score-card {
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.fusion-score-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+
+.fusion-score-card.expanded {
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15);
+}
+
+.fusion-score-detail {
+  border-top: 1px solid #f0f0f0;
+  padding-top: 12px;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}

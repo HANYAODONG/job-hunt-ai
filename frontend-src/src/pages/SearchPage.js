@@ -173,7 +173,8 @@ const SearchPage = () => {
   const currentSearchResults = rerankedResults || initialSearchResults;
 
   const handleSearch = async (queryOverride) => {
-    const effectiveQuery = (queryOverride ?? searchQuery).trim();
+    // queryOverride may be a click event from onClick, not a string
+    const effectiveQuery = (typeof queryOverride === 'string' ? queryOverride : searchQuery).trim();
     if (!effectiveQuery) {
       message.warning('Please enter a search query');
       return;
