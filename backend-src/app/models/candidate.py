@@ -51,6 +51,8 @@ class Candidate(BaseModel):
     resume_file_path: Optional[str] = None
     created_at: datetime
     updated_at: datetime
+    target_job_family: Optional[str] = None  # 目标岗位族
+    years_experience: Optional[int] = None   # 工作年限
     
     class Config:
         json_encoders = {
