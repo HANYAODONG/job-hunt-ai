@@ -15,11 +15,11 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Download spaCy model
-RUN python -m spacy download en_core_web_sm
+# Download spaCy model (best effort; do not fail the image build if unavailable)
+RUN python -m spacy download en_core_web_sm || true
 
-# Download TextBlob corpora
-RUN python -m textblob.download_corpora
+# Download TextBlob corpora (best effort; do not fail the image build if unavailable)
+RUN python -m textblob.download_corpora || true
 
 # Copy application code
 COPY . .

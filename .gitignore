@@ -10,10 +10,6 @@ frontend-src/node_modules/
 backend-src/.venv/
 backend-src/**/__pycache__/
 backend-src/**/*.pyc
-scripts/__pycache__/
-
-# Generated workflow artifacts
-artifacts/
 
 # Logs
 *.log

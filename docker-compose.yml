@@ -57,10 +57,13 @@ services:
       - NEO4J_PASSWORD=password
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - PORT=8000
+      - JOBHUNT_REPO_ROOT=/workspace
     ports:
       - "8000:8000"
     volumes:
+      - .:/workspace
       - ./uploads:/app/uploads
+      - ./artifacts:/artifacts
     depends_on:
       elasticsearch:
         condition: service_healthy

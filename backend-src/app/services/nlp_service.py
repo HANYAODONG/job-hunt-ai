@@ -2,6 +2,7 @@ from typing import List, Dict, Any, Optional, Tuple
 import logging
 import re
 from ..core.config import settings
+from .semantic_embedding_service import SemanticEmbeddingService
 
 try:
     import spacy
@@ -29,6 +30,7 @@ class NLPService:
     def __init__(self):
         self.nlp = None
         self.sentence_transformer = None
+        self.semantic_embedding_service = SemanticEmbeddingService()
         self.setup_models()
     
     def setup_models(self):
@@ -768,6 +770,12 @@ class NLPService:
     
     def get_sentence_embeddings(self, texts: List[str]) -> List[List[float]]:
         """Get sentence embeddings for texts"""
+        if self.semantic_embedding_service is not None:
+            try:
+                return self.semantic_embedding_service.encode_texts(texts)
+            except Exception as e:
+                logger.error(f"Error getting sentence embeddings via semantic service: {e}")
+
         if not self.sentence_transformer:
             return []
         
@@ -780,6 +788,12 @@ class NLPService:
     
     def calculate_semantic_similarity(self, text1: str, text2: str) -> float:
         """Calculate semantic similarity between two texts"""
+        try:
+            if self.semantic_embedding_service is not None:
+                return self.semantic_embedding_service.compute_similarity(text1, text2)
+        except Exception as e:
+            logger.error(f"Error calculating semantic similarity via semantic service: {e}")
+
         if not self.sentence_transformer:
             return 0.0
         

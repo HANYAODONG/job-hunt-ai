@@ -10,6 +10,7 @@ from .api.jobs import router as jobs_router
 from .api.job_ingestion import router as job_ingestion_router
 from .api.endpoints.data_ingestion import router as data_ingestion_router
 from .api.endpoints.reranking import router as reranking_router
+from .api.endpoints.semantic_embedding import router as semantic_embedding_router
 from .api.endpoints.csv_ingestion import router as csv_ingestion_router
 from .api.endpoints.auth import router as auth_router
 from .api.endpoints.keyword_extraction import router as keyword_extraction_router
@@ -57,6 +58,7 @@ app.include_router(jobs_router, prefix="/api/v1/jobs", tags=["jobs"])
 app.include_router(job_ingestion_router, prefix="/api/v1/ingestion", tags=["job-ingestion"])
 app.include_router(data_ingestion_router, prefix="/api/v1/ingest", tags=["data-ingestion"])
 app.include_router(reranking_router, prefix="/api/v1/reranking", tags=["reranking"])
+app.include_router(semantic_embedding_router, prefix="/api/v1/semantic", tags=["semantic"])
 app.include_router(csv_ingestion_router, prefix="/api/v1/csv", tags=["csv-ingestion"])
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["authentication"])
 app.include_router(keyword_extraction_router, prefix="/api/v1/keyword-extraction", tags=["keyword-extraction"])
