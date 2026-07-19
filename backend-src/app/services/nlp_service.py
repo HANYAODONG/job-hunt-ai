@@ -1,6 +1,7 @@
 from typing import List, Dict, Any, Optional, Tuple
 import logging
 import re
+import numpy as np
 from ..core.config import settings
 
 try:
@@ -19,6 +20,11 @@ except ImportError:  # pragma: no cover - optional dependency
     SentenceTransformer = None
 
 try:
+    from sklearn.feature_extraction.text import HashingVectorizer
+except ImportError:  # pragma: no cover - optional dependency
+    HashingVectorizer = None
+
+try:
     from textblob import TextBlob
 except ImportError:  # pragma: no cover - optional dependency
     TextBlob = None
@@ -26,9 +32,15 @@ except ImportError:  # pragma: no cover - optional dependency
 logger = logging.getLogger(__name__)
 
 class NLPService:
-    def __init__(self):
+    def __init__(self, sentence_transformer_model: Optional[str] = None):
         self.nlp = None
         self.sentence_transformer = None
+        self.sentence_transformer_model = sentence_transformer_model or settings.SENTENCE_TRANSFORMER_MODEL
+        self.fallback_vectorizer = (
+            HashingVectorizer(analyzer="char", ngram_range=(2, 4), n_features=768, alternate_sign=False, norm=None)
+            if HashingVectorizer
+            else None
+        )
         self.setup_models()
     
     def setup_models(self):
@@ -46,10 +58,10 @@ class NLPService:
             
             if SentenceTransformer:
                 try:
-                    self.sentence_transformer = SentenceTransformer(settings.SENTENCE_TRANSFORMER_MODEL)
-                    logger.info(f"Loaded sentence transformer: {settings.SENTENCE_TRANSFORMER_MODEL}")
+                    self.sentence_transformer = SentenceTransformer(self.sentence_transformer_model)
+                    logger.info(f"Loaded sentence transformer: {self.sentence_transformer_model}")
                 except Exception as exc:  # pragma: no cover - optional
-                    logger.warning(f"Failed to load sentence transformer '{settings.SENTENCE_TRANSFORMER_MODEL}': {exc}")
+                    logger.warning(f"Failed to load sentence transformer '{self.sentence_transformer_model}': {exc}")
                     self.sentence_transformer = None
             else:
                 logger.warning("sentence-transformers is not installed; semantic embeddings disabled.")
@@ -58,12 +70,12 @@ class NLPService:
                 try:
                     nltk.data.find('tokenizers/punkt')
                 except LookupError:
-                    nltk.download('punkt')
+                    logger.warning("NLTK punkt not available; skipping download to avoid blocking startup.")
                 
                 try:
                     nltk.data.find('corpora/stopwords')
                 except LookupError:
-                    nltk.download('stopwords')
+                    logger.warning("NLTK stopwords not available; skipping download to avoid blocking startup.")
             else:
                 logger.warning("NLTK is not installed; skipping tokenizer/stopword downloads.")
                 
@@ -768,23 +780,59 @@ class NLPService:
     
     def get_sentence_embeddings(self, texts: List[str]) -> List[List[float]]:
         """Get sentence embeddings for texts"""
-        if not self.sentence_transformer:
-            return []
-        
         try:
-            embeddings = self.sentence_transformer.encode(texts)
-            return embeddings.tolist()
+            if self.sentence_transformer:
+                embeddings = self.sentence_transformer.encode(texts)
+                return embeddings.tolist()
+
+            if self.fallback_vectorizer is not None:
+                matrix = self.fallback_vectorizer.transform(texts)
+                return matrix.astype(np.float32).toarray().tolist()
+
+            return []
         except Exception as e:
             logger.error(f"Error getting sentence embeddings: {e}")
             return []
+
+    def compare_models(self, pairs: List[Tuple[str, str]], baseline_model_name: str = "all-MiniLM-L6-v2") -> Dict[str, Any]:
+        """Compare the configured embedding model against a smaller baseline model."""
+        baseline_service = NLPService(sentence_transformer_model=baseline_model_name)
+
+        comparisons: List[Dict[str, Any]] = []
+        for left_text, right_text in pairs:
+            current_score = self.calculate_semantic_similarity(left_text, right_text)
+            baseline_score = baseline_service.calculate_semantic_similarity(left_text, right_text)
+            comparisons.append(
+                {
+                    "left_text": left_text,
+                    "right_text": right_text,
+                    "current_model": self.sentence_transformer_model,
+                    "current_similarity": float(current_score),
+                    "baseline_model": baseline_model_name,
+                    "baseline_similarity": float(baseline_score),
+                    "delta": float(current_score - baseline_score),
+                }
+            )
+
+        def mean(values: List[float]) -> float:
+            return float(sum(values) / len(values)) if values else 0.0
+
+        return {
+            "current_model": self.sentence_transformer_model,
+            "baseline_model": baseline_model_name,
+            "pair_count": len(comparisons),
+            "average_current_similarity": mean([item["current_similarity"] for item in comparisons]),
+            "average_baseline_similarity": mean([item["baseline_similarity"] for item in comparisons]),
+            "average_delta": mean([item["delta"] for item in comparisons]),
+            "pairs": comparisons,
+        }
     
     def calculate_semantic_similarity(self, text1: str, text2: str) -> float:
         """Calculate semantic similarity between two texts"""
-        if not self.sentence_transformer:
-            return 0.0
-        
         try:
-            embeddings = self.sentence_transformer.encode([text1, text2])
+            embeddings = self.get_sentence_embeddings([text1, text2])
+            if len(embeddings) != 2:
+                return 0.0
             similarity = self._cosine_similarity(embeddings[0], embeddings[1])
             return float(similarity)
         except Exception as e:

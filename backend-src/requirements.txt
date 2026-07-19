@@ -7,7 +7,7 @@ neo4j>=5.14.1
 spacy>=3.8.0
 # Note: Download spaCy model after installation: python -m spacy download en_core_web_sm
 transformers>=4.35.2
-# torch>=2.2.0
+torch>=2.2.0
 sentence-transformers>=2.2.2
 lightgbm>=4.1.0
 PyPDF2>=3.0.1

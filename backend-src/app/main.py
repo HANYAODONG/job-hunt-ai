@@ -15,6 +15,7 @@ from .api.endpoints.kg_analysis import router as kg_analysis_router  # 新增这
 from .api.endpoints.auth import router as auth_router
 from .api.endpoints.keyword_extraction import router as keyword_extraction_router
 from .api.endpoints.bm25 import router as bm25_router
+from .api.endpoints.semantic import router as semantic_router
 
 # Configure logging
 logging.basicConfig(
@@ -64,6 +65,7 @@ app.include_router(kg_analysis_router, prefix="/api/v1/kg", tags=["knowledge_gra
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["authentication"])
 app.include_router(keyword_extraction_router, prefix="/api/v1/keyword-extraction", tags=["keyword-extraction"])
 app.include_router(bm25_router, prefix="/api/v1/bm25", tags=["chinese-bm25"])
+app.include_router(semantic_router, prefix="/api/v1/semantic", tags=["semantic-reranking"])
 
 # Health check endpoint
 @app.get("/health")

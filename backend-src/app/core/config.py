@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     
     # NLP Models
     SPACY_MODEL: str = "en_core_web_sm"
-    SENTENCE_TRANSFORMER_MODEL: str = "all-MiniLM-L6-v2"
+    SENTENCE_TRANSFORMER_MODEL: str = "BAAI/bge-m3"
     HF_TOKEN: Optional[str] = None
     TOKENIZERS_PARALLELISM: Optional[str] = None
     
