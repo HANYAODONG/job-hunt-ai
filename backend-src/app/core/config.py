@@ -1,6 +1,48 @@
-from pydantic_settings import BaseSettings
-from typing import Optional
+import os
 from pathlib import Path
+from typing import Optional
+
+try:
+    from pydantic_settings import BaseSettings
+except Exception:  # pragma: no cover - fallback for restricted environments
+    class BaseSettings:
+        def __init__(self, **kwargs):
+            for name, default in self.__class__.__dict__.items():
+                if name.startswith("__") or callable(default):
+                    continue
+                if isinstance(default, property):
+                    continue
+                if name in kwargs:
+                    setattr(self, name, kwargs[name])
+                else:
+                    env_key = name.upper()
+                    env_value = os.getenv(env_key)
+                    if env_value is None:
+                        setattr(self, name, default)
+                    else:
+                        setattr(self, name, self._coerce(env_value, default))
+
+            for name in self.__class__.__annotations__:
+                if hasattr(self, name):
+                    continue
+                default = getattr(self.__class__, name, None)
+                env_key = name.upper()
+                env_value = os.getenv(env_key)
+                if env_value is not None:
+                    setattr(self, name, self._coerce(env_value, default))
+                elif default is not None:
+                    setattr(self, name, default)
+
+        @staticmethod
+        def _coerce(value: str, default):
+            if isinstance(default, bool):
+                return value.lower() in {"1", "true", "yes", "on"}
+            if isinstance(default, int):
+                return int(value)
+            if isinstance(default, float):
+                return float(value)
+            return value
+
 
 class Settings(BaseSettings):
     # API Settings
@@ -35,7 +77,13 @@ class Settings(BaseSettings):
     
     # NLP Models
     SPACY_MODEL: str = "en_core_web_sm"
-    SENTENCE_TRANSFORMER_MODEL: str = "all-MiniLM-L6-v2"
+    SENTENCE_TRANSFORMER_MODEL: str = "BAAI/bge-m3"
+    SEMANTIC_EMBEDDING_MODEL: str = "BAAI/bge-m3"
+    SEMANTIC_EMBEDDING_DEVICE: str = "cpu"
+    SEMANTIC_EMBEDDING_BATCH_SIZE: int = 16
+    SEMANTIC_EMBEDDING_NORMALIZE: bool = True
+    SEMANTIC_EMBEDDING_TRUST_REMOTE_CODE: bool = True
+
     HF_TOKEN: Optional[str] = None
     TOKENIZERS_PARALLELISM: Optional[str] = None
     
@@ -54,8 +102,8 @@ class Settings(BaseSettings):
     INGESTION_RATE_LIMIT: int = 100  # requests per hour
 
     # Semantic ANN index
-    SEMANTIC_INDEX_PATH: Optional[str] = None
-    SEMANTIC_INDEX_IDS: Optional[str] = None
+    SEMANTIC_INDEX_PATH: Optional[str] = "artifacts/semantic_index/jobs_embeddings.npy"
+    SEMANTIC_INDEX_IDS: Optional[str] = "artifacts/semantic_index/jobs_embedding_ids.json"
     DISABLE_EXTERNAL_SERVICES: bool = False
     
     class Config:
