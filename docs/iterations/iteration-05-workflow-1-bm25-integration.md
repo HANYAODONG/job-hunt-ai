@@ -5,6 +5,8 @@
 - `dataset/incoming/job_bigcompany_final.csv`
 - `dataset/incoming/standard_job_title_dictionary.csv`
 - `dataset/incoming/synthetic_detailed_resumes.csv`
+- `dataset/incoming/resume_job_silver_30.jsonl`
+- `dataset/incoming/金标30×20.csv`
 
 ## 工作流 1 输出
 
@@ -12,6 +14,12 @@
 
 ```powershell
 python .\scripts\dataset_adapter.py
+```
+
+Label files are required by default to prevent accidental empty evaluation labels. For unlabeled smoke tests only:
+
+```powershell
+python .\scripts\dataset_adapter.py --allow-missing-labels
 ```
 
 生成到 `artifacts/dataset_iteration_05/`：

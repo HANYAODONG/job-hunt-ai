@@ -35,6 +35,8 @@ def search_jobs(request: BM25SearchRequest):
             location=request.location,
             exclude_duplicates=request.exclude_duplicates,
         )
+    except HTTPException:
+        raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
@@ -43,5 +45,7 @@ def search_jobs(request: BM25SearchRequest):
 def index_stats():
     try:
         return get_service().stats()
+    except HTTPException:
+        raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc

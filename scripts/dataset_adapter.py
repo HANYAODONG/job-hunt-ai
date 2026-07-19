@@ -501,6 +501,11 @@ def main() -> None:
     parser.add_argument("--title-dictionary-file", default="standard_job_title_dictionary.csv")
     parser.add_argument("--silver-file", default="resume_job_silver_30.jsonl")
     parser.add_argument("--gold-file", default="金标30×20.csv")
+    parser.add_argument(
+        "--allow-missing-labels",
+        action="store_true",
+        help="Allow missing gold/silver label files for smoke tests only.",
+    )
     args = parser.parse_args()
 
     dataset_dir = args.dataset_dir
@@ -515,6 +520,13 @@ def main() -> None:
     for path in [jobs_path, resumes_path, title_dictionary_path]:
         if not path.exists():
             raise FileNotFoundError(f"Required input not found: {path}")
+
+    for path in [silver_path, gold_path]:
+        if not path.exists() and not args.allow_missing_labels:
+            raise FileNotFoundError(
+                f"Required label input not found: {path}. "
+                "Use --allow-missing-labels only for smoke tests without labels."
+            )
 
     job_rows = read_csv_rows(jobs_path)
     resume_rows = read_csv_rows(resumes_path)
@@ -550,6 +562,7 @@ def main() -> None:
             "silver": str(silver_path) if silver_path.exists() else None,
             "gold": str(gold_path) if gold_path.exists() else None,
         },
+        "allow_missing_labels": args.allow_missing_labels,
         "counts": counts,
         "sample_counts": sample_counts,
         "resume_splits": dict(Counter(profile["split"] for profile in candidate_profiles)),
@@ -562,7 +575,7 @@ def main() -> None:
             "PII fields such as name, phone, and email are not emitted.",
             "jobs.jsonl uses the complete big-company CSV rather than jobs inferred from old silver pairs.",
             "job_family temporarily mirrors standard_job until Workflow 1 publishes a crosswalk aligned with resume target_job_family.",
-            "Gold and silver inputs are optional; missing label files produce empty label manifests.",
+            "Gold and silver inputs are required by default; --allow-missing-labels is only for smoke tests without labels.",
             "sample_pack contains 10 jobs and 5 candidate profiles; labels are included when available.",
         ],
     }

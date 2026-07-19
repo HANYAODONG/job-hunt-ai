@@ -196,6 +196,12 @@ Invoke-RestMethod http://localhost:9200
 python .\scripts\dataset_adapter.py
 ```
 
+Formal evaluation requires gold and silver label files by default. For smoke tests without labels only:
+
+```powershell
+python .\scripts\dataset_adapter.py --allow-missing-labels
+```
+
 重建岗位索引：
 
 ```powershell
