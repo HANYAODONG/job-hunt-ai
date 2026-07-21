@@ -1,7 +1,7 @@
 import json
 import logging
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -91,6 +91,86 @@ class SemanticANNService:
         except Exception as exc:
             logger.error("Semantic ANN query failed: %s", exc)
             return []
+
+    def rank_candidate_ids(self, query_text: str, candidate_ids: List[str]) -> List[Dict[str, Any]]:
+        if not self.is_available() or self.normalized_embeddings is None:
+            return []
+
+        query_embedding_list = self.nlp_service.get_sentence_embeddings([query_text])
+        if not query_embedding_list:
+            return []
+
+        query_embedding = np.asarray(query_embedding_list[0], dtype=np.float32)
+        query_norm = np.linalg.norm(query_embedding)
+        if query_norm == 0:
+            return []
+
+        normalized_query = query_embedding / query_norm
+        id_to_index = {job_id: index for index, job_id in enumerate(self.job_ids)}
+        seen: set[str] = set()
+        candidate_rows: List[Tuple[str, int]] = []
+        for job_id in candidate_ids:
+            if job_id in seen:
+                continue
+            seen.add(job_id)
+            index = id_to_index.get(job_id)
+            if index is not None:
+                candidate_rows.append((job_id, index))
+
+        if not candidate_rows:
+            return []
+
+        candidate_vectors = self.normalized_embeddings[[index for _, index in candidate_rows]]
+        scores = candidate_vectors @ normalized_query
+        order = np.argsort(-scores)
+
+        ranked: List[Dict[str, Any]] = []
+        for rank, position in enumerate(order, start=1):
+            job_id, _ = candidate_rows[int(position)]
+            ranked.append(
+                {
+                    "job_id": job_id,
+                    "semantic_score": float(scores[int(position)]),
+                    "semantic_rank": rank,
+                }
+            )
+        return ranked
+
+    def rank_candidate_texts(self, query_text: str, candidate_texts: Dict[str, str]) -> List[Dict[str, Any]]:
+        if not candidate_texts:
+            return []
+
+        texts = [query_text] + list(candidate_texts.values())
+        embeddings = self.nlp_service.get_sentence_embeddings(texts)
+        if len(embeddings) != len(texts):
+            return []
+
+        query_embedding = np.asarray(embeddings[0], dtype=np.float32)
+        candidate_matrix = np.asarray(embeddings[1:], dtype=np.float32)
+
+        query_norm = np.linalg.norm(query_embedding)
+        if query_norm == 0:
+            return []
+
+        candidate_norms = np.linalg.norm(candidate_matrix, axis=1, keepdims=True)
+        candidate_norms[candidate_norms == 0] = 1.0
+
+        normalized_query = query_embedding / query_norm
+        normalized_candidates = candidate_matrix / candidate_norms
+        scores = normalized_candidates @ normalized_query
+        order = np.argsort(-scores)
+
+        ranked: List[Dict[str, Any]] = []
+        candidate_ids = list(candidate_texts.keys())
+        for rank, position in enumerate(order, start=1):
+            ranked.append(
+                {
+                    "job_id": candidate_ids[int(position)],
+                    "semantic_score": float(scores[int(position)]),
+                    "semantic_rank": rank,
+                }
+            )
+        return ranked
 
     def _normalize(self, matrix: np.ndarray) -> np.ndarray:
         norms = np.linalg.norm(matrix, axis=1, keepdims=True)
