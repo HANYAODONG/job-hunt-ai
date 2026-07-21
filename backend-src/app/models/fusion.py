@@ -17,7 +17,7 @@ class FusionInput(BaseModel):
 
     query_id: str = Field(..., description="查询/简历 ID")
     job_id: str = Field(..., description="岗位 ID")
-    bm25_score: float = Field(default=0.0, ge=0.0, le=1.0, description="工作流2：BM25 关键词得分")
+    bm25_score: float = Field(default=0.0, ge=0.0, description="工作流2：BM25 关键词得分（原始值可>1，融合前宜归一化；若不归一化请直接传原始分数，融合层会做加权平均）")
     semantic_score: float = Field(default=0.0, ge=0.0, le=1.0, description="工作流2：语义向量相似度")
     skill_coverage: float = Field(default=0.0, ge=0.0, le=1.0, description="工作流3：技能覆盖率")
     job_family_match: float = Field(default=0.0, ge=0.0, le=1.0, description="工作流3：岗位大类匹配")
@@ -29,8 +29,8 @@ class FusionInput(BaseModel):
 # ── 单个岗位的融合输出 ──────────────────────────────────────────
 
 class ScoreBreakdown(BaseModel):
-    """各因子得分明细"""
-    bm25: float = Field(..., ge=0.0, le=1.0)
+    """各因子得分明细（推荐归一化到0~1，但原始BM25可>1）"""
+    bm25: float = Field(..., ge=0.0)
     semantic: float = Field(..., ge=0.0, le=1.0)
     skill_coverage: float = Field(..., ge=0.0, le=1.0)
     job_family: float = Field(..., ge=0.0, le=1.0)

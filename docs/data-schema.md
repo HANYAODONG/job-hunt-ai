@@ -11,17 +11,27 @@ python .\scripts\dataset_adapter.py
 默认输出目录：
 
 ```text
-artifacts/dataset_iteration_04/
+artifacts/dataset_iteration_05/
 ```
 
 注意：`artifacts/` 已加入 `.gitignore`，输出文件用于本地开发和组内传递，不默认提交到 Git。
+
+当前 iteration 05 默认读取：
+
+```text
+dataset/incoming/job_bigcompany_final.csv
+dataset/incoming/standard_job_title_dictionary.csv
+dataset/incoming/synthetic_detailed_resumes.csv
+```
+
+金标和银标文件为可选输入；缺失时仍生成岗位、简历、样例包和质量报告，但不能进行正式排序评估。
 
 ## 1. 标准岗位文件
 
 文件：
 
 ```text
-artifacts/dataset_iteration_04/jobs.jsonl
+artifacts/dataset_iteration_05/jobs.jsonl
 ```
 
 一行一个岗位对象。
@@ -62,12 +72,22 @@ artifacts/dataset_iteration_04/jobs.jsonl
 - `location_text`：与 `location` 基本一致。
 - `search_metadata`：保留数据来源、银标方法、岗位族投票等附加信息。
 
+大公司岗位扩展字段：
+
+- `standard_job`、`standard_category`：标准岗位名称和词典类别。
+- `responsibilities`、`requirements`、`detailed`：用于 BM25 分字段加权的岗位文本。
+- `traditional_skills`、`new_skills`、`domain_context`：技能和行业上下文数组。
+- `publish_time`、`publish_time_raw`：统一日期和原始时间值，异常占位日期转为空。
+- `source_type`、`content_hash`：来源类型和内容版本追踪。
+
+当前 `job_family` 暂时沿用 `standard_job`；正式评测前需要补充到简历 10 类 `target_job_family` 的团队统一映射。
+
 ## 2. 标准简历文件
 
 文件：
 
 ```text
-artifacts/dataset_iteration_04/candidate_profiles.jsonl
+artifacts/dataset_iteration_05/candidate_profiles.jsonl
 ```
 
 一行一个简历/候选人对象。
@@ -112,13 +132,13 @@ artifacts/dataset_iteration_04/candidate_profiles.jsonl
 金标文件：
 
 ```text
-artifacts/dataset_iteration_04/label_pairs_gold.jsonl
+artifacts/dataset_iteration_05/label_pairs_gold.jsonl
 ```
 
 银标文件：
 
 ```text
-artifacts/dataset_iteration_04/label_pairs_silver.jsonl
+artifacts/dataset_iteration_05/label_pairs_silver.jsonl
 ```
 
 统一字段：
@@ -194,7 +214,7 @@ positive_grade >= 2
 文件夹：
 
 ```text
-artifacts/dataset_iteration_04/sample_pack/
+artifacts/dataset_iteration_05/sample_pack/
 ```
 
 包含：
@@ -220,7 +240,7 @@ sample_manifest.json
 文件：
 
 ```text
-artifacts/dataset_iteration_04/data_quality_report.json
+artifacts/dataset_iteration_05/data_quality_report.json
 ```
 
 包含：
@@ -234,38 +254,7 @@ artifacts/dataset_iteration_04/data_quality_report.json
 
 ## 6. 评估脚本
 
-### 6.1 原始 CSV 排序评估
-
-脚本：
-
-```text
-scripts/evaluate_label_rankings.py
-```
-
-示例命令：
-
-```powershell
-python .\scripts\evaluate_label_rankings.py `
-  --ranking-csv "..\database\resume_job_rankings_30.csv" `
-  --label-csv "..\database\金标30×20.csv" `
-  --label-kind gold `
-  --ranking-mode semantic `
-  --positive-grade 2 `
-  --ks 5,10,20 `
-  --output ".\artifacts\dataset_iteration_04\baseline_eval_report.json"
-```
-
-输出指标：
-
-- `mrr`
-- `ndcg@5`
-- `ndcg@10`
-- `ndcg@20`
-- `recall@5`
-- `recall@10`
-- `recall@20`
-
-### 6.2 通用 JSON/JSONL 排序评估
+### 6.1 通用 JSON/JSONL 排序评估
 
 脚本：
 
@@ -309,23 +298,16 @@ Batch JSONL：
 
 ```powershell
 python .\scripts\evaluate_candidate_rankings.py `
-  --ranking ".\artifacts\dataset_iteration_04\label_pairs_silver.jsonl" `
-  --labels ".\artifacts\dataset_iteration_04\label_pairs_gold.jsonl" `
-  --score-field score `
-  --positive-grade 2 `
-  --ks 5,10,20 `
-  --output ".\artifacts\dataset_iteration_04\jsonl_eval_report.json"
-```
-
-如果排序结果有显式 rank 字段，可以使用：
-
-```powershell
-python .\scripts\evaluate_candidate_rankings.py `
-  --ranking ".\path\to\ranking.jsonl" `
-  --labels ".\artifacts\dataset_iteration_04\label_pairs_gold.jsonl" `
+  --ranking ".\artifacts\bm25\bm25_top200.jsonl" `
+  --labels ".\artifacts\dataset_iteration_05\label_pairs_gold.jsonl" `
   --score-field bm25_score `
-  --rank-field bm25_rank
+  --rank-field bm25_rank `
+  --positive-grade 2 `
+  --ks 10,100,200 `
+  --output ".\artifacts\dataset_iteration_05\bm25_baseline_eval_report.json"
 ```
+
+当前 iteration 05 的金标文件为空；收到工作流 1 的真实标签后才能运行并解释这份报告。
 
 ## 7. 下游工作流对接建议
 

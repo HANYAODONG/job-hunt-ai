@@ -16,8 +16,8 @@ from pathlib import Path
 from typing import Any, Iterable
 
 
-DEFAULT_LABELS = Path(__file__).resolve().parents[1] / "artifacts" / "dataset_iteration_04" / "label_pairs_gold.jsonl"
-DEFAULT_OUTPUT = Path(__file__).resolve().parents[1] / "artifacts" / "dataset_iteration_04" / "jsonl_eval_report.json"
+DEFAULT_LABELS = Path(__file__).resolve().parents[1] / "artifacts" / "dataset_iteration_05" / "label_pairs_gold.jsonl"
+DEFAULT_OUTPUT = Path(__file__).resolve().parents[1] / "artifacts" / "dataset_iteration_05" / "jsonl_eval_report.json"
 
 
 def read_json_records(path: Path) -> Iterable[dict[str, Any]]:
@@ -133,18 +133,22 @@ def dcg(grades: list[int], k: int) -> float:
     return score
 
 
-def ndcg(grades: list[int], k: int) -> float:
-    ideal_dcg = dcg(sorted(grades, reverse=True), k)
+def ndcg(ranked_grades: list[int], ideal_grades: list[int], k: int) -> float:
+    ideal_dcg = dcg(sorted(ideal_grades, reverse=True), k)
     if ideal_dcg == 0:
         return 0.0
-    return dcg(grades, k) / ideal_dcg
+    return dcg(ranked_grades, k) / ideal_dcg
 
 
-def recall_at_k(grades: list[int], k: int, positive_grade: int) -> float:
-    total_positive = sum(1 for grade in grades if grade >= positive_grade)
+def recall_at_k(
+    ranked_grades: list[int],
+    k: int,
+    positive_grade: int,
+    total_positive: int,
+) -> float:
     if total_positive == 0:
         return 0.0
-    hit_positive = sum(1 for grade in grades[:k] if grade >= positive_grade)
+    hit_positive = sum(1 for grade in ranked_grades[:k] if grade >= positive_grade)
     return hit_positive / total_positive
 
 
@@ -165,25 +169,40 @@ def evaluate(
     ks: list[int],
     positive_grade: int,
 ) -> dict[str, Any]:
+    labels_by_query: dict[str, dict[str, int]] = defaultdict(dict)
+    for (query_id, job_id), grade in labels.items():
+        labels_by_query[query_id][job_id] = grade
+
     per_query: list[dict[str, Any]] = []
     for query_id, items in sorted(ranking.items()):
-        labeled = []
-        for item in items:
-            job_id = str(item.get("job_id") or "")
-            if (query_id, job_id) in labels:
-                labeled.append(labels[(query_id, job_id)])
-        if not labeled:
+        query_labels = labels_by_query.get(query_id, {})
+        if not query_labels:
             continue
 
+        ranked_grades: list[int] = []
+        labeled_candidates = 0
+        for item in items:
+            job_id = str(item.get("job_id") or "")
+            if job_id in query_labels:
+                labeled_candidates += 1
+            ranked_grades.append(query_labels.get(job_id, 0))
+
+        ideal_grades = list(query_labels.values())
+        total_positive = sum(1 for grade in ideal_grades if grade >= positive_grade)
         row: dict[str, Any] = {
             "query_id": query_id,
-            "labeled_candidates": len(labeled),
-            "positive_candidates": sum(1 for grade in labeled if grade >= positive_grade),
-            "mrr": mrr(labeled, positive_grade),
+            "labeled_candidates": labeled_candidates,
+            "positive_candidates": total_positive,
+            "mrr": mrr(ranked_grades, positive_grade),
         }
         for k in ks:
-            row[f"ndcg@{k}"] = ndcg(labeled, k)
-            row[f"recall@{k}"] = recall_at_k(labeled, k, positive_grade)
+            row[f"ndcg@{k}"] = ndcg(ranked_grades, ideal_grades, k)
+            row[f"recall@{k}"] = recall_at_k(
+                ranked_grades,
+                k,
+                positive_grade,
+                total_positive,
+            )
         per_query.append(row)
 
     aggregate: dict[str, Any] = {

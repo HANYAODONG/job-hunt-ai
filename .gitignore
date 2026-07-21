@@ -11,9 +11,19 @@ backend-src/.venv/
 backend-src/**/__pycache__/
 backend-src/**/*.pyc
 scripts/__pycache__/
+*.whl
 
 # Generated workflow artifacts
-artifacts/
+artifacts/*
+!artifacts/README.md
+!artifacts/*/
+!artifacts/*/README.md
+
+# Local dataset files
+dataset/incoming/*.csv
+dataset/incoming/*.jsonl
+dataset/incoming/*.md
+!dataset/incoming/README.md
 
 # Logs
 *.log

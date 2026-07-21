@@ -13,14 +13,17 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
 from collections import Counter, defaultdict
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
 
-DEFAULT_DATASET_DIR = Path(__file__).resolve().parents[2] / "database"
-DEFAULT_OUTPUT_DIR = Path(__file__).resolve().parents[1] / "artifacts" / "dataset_iteration_04"
+REPO_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_DATASET_DIR = REPO_ROOT / "dataset" / "incoming"
+DEFAULT_OUTPUT_DIR = REPO_ROOT / "artifacts" / "dataset_iteration_05"
 
 
 def read_csv_rows(path: Path, encodings: tuple[str, ...] = ("utf-8-sig", "utf-8", "gb18030")) -> list[dict[str, str]]:
@@ -76,6 +79,52 @@ def split_semicolon(value: str) -> list[str]:
     return [item.strip() for item in value.split(";") if item.strip()]
 
 
+def unique_strings(*groups: Iterable[Any]) -> list[str]:
+    values: list[str] = []
+    seen: set[str] = set()
+    for group in groups:
+        for value in group:
+            item = str(value).strip()
+            key = item.casefold()
+            if item and key not in seen:
+                values.append(item)
+                seen.add(key)
+    return values
+
+
+def normalize_date(value: str) -> str | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    try:
+        timestamp = float(text)
+        if timestamp >= 10**11:
+            return datetime.fromtimestamp(timestamp / 1000, tz=timezone.utc).date().isoformat()
+    except (ValueError, OverflowError, OSError):
+        pass
+
+    for pattern in (
+        "%Y/%m/%d",
+        "%Y/%m/%d %H:%M",
+        "%Y/%m/%d %H:%M:%S",
+        "%Y-%m-%d",
+        "%Y-%m-%dT%H:%M:%S",
+        "%Y-%m-%d %H:%M:%S",
+        "%Y.%m.%d",
+    ):
+        try:
+            parsed = datetime.strptime(text, pattern)
+            return parsed.date().isoformat() if parsed.year >= 1970 else None
+        except ValueError:
+            continue
+    return None
+
+
+def content_hash(payload: dict[str, Any]) -> str:
+    rendered = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(rendered.encode("utf-8")).hexdigest()
+
+
 def safe_int(value: Any, default: int | None = None) -> int | None:
     try:
         if value == "" or value is None:
@@ -127,6 +176,89 @@ def adapt_candidate_profiles(resume_rows: list[dict[str, str]]) -> list[dict[str
             }
         )
     return profiles
+
+
+def adapt_jobs_from_bigcompany(
+    job_rows: list[dict[str, str]],
+    title_dictionary_rows: list[dict[str, str]],
+) -> list[dict[str, Any]]:
+    category_by_title = {
+        str(row.get("standard_job_title", "")).strip(): str(row.get("standard_category", "")).strip()
+        for row in title_dictionary_rows
+        if str(row.get("standard_job_title", "")).strip()
+    }
+    jobs: list[dict[str, Any]] = []
+    seen_job_ids: set[str] = set()
+
+    for row_number, row in enumerate(job_rows, start=2):
+        job_id = str(row.get("job_id", "")).strip()
+        if not job_id:
+            raise ValueError(f"Missing job_id at big-company CSV row {row_number}")
+        if job_id in seen_job_ids:
+            raise ValueError(f"Duplicate job_id {job_id!r} at big-company CSV row {row_number}")
+        seen_job_ids.add(job_id)
+
+        title = str(row.get("job_title", "")).strip()
+        standard_job = str(row.get("standard_job", "")).strip()
+        responsibilities = str(row.get("job_responsibility", "")).strip()
+        requirements = str(row.get("job_requirement", "")).strip()
+        detailed = str(row.get("detailed", "")).strip()
+        traditional_skills = unique_strings(split_semicolon(row.get("traditional_skills", "")))
+        new_skills = unique_strings(split_semicolon(row.get("new_skills", "")))
+        extracted_skills = split_semicolon(row.get("skills", ""))
+        skills = unique_strings(extracted_skills, traditional_skills, new_skills)
+        domain_context = unique_strings(split_semicolon(row.get("domain_context", "")))
+        description_parts = [
+            f"岗位职责：{responsibilities}" if responsibilities else "",
+            f"任职要求：{requirements}" if requirements else "",
+            f"能力摘要：{detailed}" if detailed else "",
+        ]
+        description = "\n".join(part for part in description_parts if part)
+
+        stable_content = {
+            "title": title,
+            "standard_job": standard_job,
+            "responsibilities": responsibilities,
+            "requirements": requirements,
+            "skills": skills,
+            "domain_context": domain_context,
+        }
+        publish_time_raw = str(row.get("publish_time", "")).strip()
+        jobs.append(
+            {
+                "job_id": job_id,
+                "id": job_id,
+                "title": title,
+                "description": description,
+                "skills": skills,
+                "job_family": standard_job,
+                "company": "",
+                "location": "",
+                "source": "bigcompany_final",
+                "standard_job": standard_job,
+                "standard_category": category_by_title.get(standard_job, ""),
+                "responsibilities": responsibilities,
+                "requirements": requirements,
+                "detailed": detailed,
+                "traditional_skills": traditional_skills,
+                "new_skills": new_skills,
+                "domain_context": domain_context,
+                "publish_time": normalize_date(publish_time_raw),
+                "publish_time_raw": publish_time_raw,
+                "source_type": "enterprise",
+                "content_hash": content_hash(stable_content),
+                "required_skills": skills,
+                "company_name": "",
+                "location_text": "",
+                "tags": skills,
+                "search_metadata": {
+                    "source": "dataset/incoming/job_bigcompany_final.csv",
+                    "source_job_id": job_id,
+                    "job_family_source": "standard_job_pending_team_crosswalk",
+                },
+            }
+        )
+    return jobs
 
 
 def adapt_jobs_from_silver(silver_records: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -351,6 +483,12 @@ def build_data_quality_report(
             "silver_grade_counts": grade_counts(silver_pairs),
             "gold_grade_counts": grade_counts(gold_pairs),
         },
+        "identifier_checks": {
+            "unique_candidate_ids": len(candidate_ids),
+            "unique_job_ids": len(job_ids),
+            "duplicate_candidate_ids": len(candidate_profiles) - len(candidate_ids),
+            "duplicate_job_ids": len(jobs) - len(job_ids),
+        },
     }
 
 
@@ -358,32 +496,52 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Adapt dataset-group artifacts for JobMatch AI.")
     parser.add_argument("--dataset-dir", type=Path, default=DEFAULT_DATASET_DIR)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
+    parser.add_argument("--jobs-file", default="job_bigcompany_final.csv")
+    parser.add_argument("--resumes-file", default="synthetic_detailed_resumes.csv")
+    parser.add_argument("--title-dictionary-file", default="standard_job_title_dictionary.csv")
+    parser.add_argument("--silver-file", default="resume_job_silver_30.jsonl")
+    parser.add_argument("--gold-file", default="金标30×20.csv")
+    parser.add_argument(
+        "--allow-missing-labels",
+        action="store_true",
+        help="Allow missing gold/silver label files for smoke tests only.",
+    )
     args = parser.parse_args()
 
     dataset_dir = args.dataset_dir
     output_dir = args.output_dir
 
-    resumes_path = dataset_dir / "synthetic_detailed_resumes.csv"
-    silver_path = dataset_dir / "resume_job_silver_30.jsonl"
-    gold_path = dataset_dir / "金标30×20.csv"
+    jobs_path = dataset_dir / args.jobs_file
+    resumes_path = dataset_dir / args.resumes_file
+    title_dictionary_path = dataset_dir / args.title_dictionary_file
+    silver_path = dataset_dir / args.silver_file
+    gold_path = dataset_dir / args.gold_file
 
-    for path in [resumes_path, silver_path, gold_path]:
+    for path in [jobs_path, resumes_path, title_dictionary_path]:
         if not path.exists():
             raise FileNotFoundError(f"Required input not found: {path}")
 
+    for path in [silver_path, gold_path]:
+        if not path.exists() and not args.allow_missing_labels:
+            raise FileNotFoundError(
+                f"Required label input not found: {path}. "
+                "Use --allow-missing-labels only for smoke tests without labels."
+            )
+
+    job_rows = read_csv_rows(jobs_path)
     resume_rows = read_csv_rows(resumes_path)
-    silver_records = list(read_jsonl(silver_path))
-    gold_rows = read_csv_rows(gold_path)
+    title_dictionary_rows = read_csv_rows(title_dictionary_path)
+    silver_records = list(read_jsonl(silver_path)) if silver_path.exists() else []
+    gold_rows = read_csv_rows(gold_path) if gold_path.exists() else []
 
     candidate_profiles = adapt_candidate_profiles(resume_rows)
-    jobs = adapt_jobs_from_silver(silver_records)
+    jobs = adapt_jobs_from_bigcompany(job_rows, title_dictionary_rows)
     silver_pairs = adapt_silver_pairs(silver_records)
     gold_pairs = adapt_gold_pairs(gold_rows)
 
     counts = {
         "candidate_profiles": write_jsonl(output_dir / "candidate_profiles.jsonl", candidate_profiles),
         "jobs": write_jsonl(output_dir / "jobs.jsonl", jobs),
-        "jobs_from_silver": write_jsonl(output_dir / "jobs_from_silver.jsonl", jobs),
         "label_pairs_silver": write_jsonl(output_dir / "label_pairs_silver.jsonl", silver_pairs),
         "label_pairs_gold": write_jsonl(output_dir / "label_pairs_gold.jsonl", gold_pairs),
     }
@@ -392,16 +550,19 @@ def main() -> None:
     write_json(output_dir / "data_quality_report.json", quality_report)
 
     manifest = {
-        "iteration": "04",
+        "iteration": "05",
         "workflow": "workflow_1_data_foundation_and_label_evaluation",
         "purpose": "dataset_adapter_schema_samples_quality_no_training",
         "dataset_dir": str(dataset_dir),
         "output_dir": str(output_dir),
         "inputs": {
+            "jobs": str(jobs_path),
             "resumes": str(resumes_path),
-            "silver": str(silver_path),
-            "gold": str(gold_path),
+            "title_dictionary": str(title_dictionary_path),
+            "silver": str(silver_path) if silver_path.exists() else None,
+            "gold": str(gold_path) if gold_path.exists() else None,
         },
+        "allow_missing_labels": args.allow_missing_labels,
         "counts": counts,
         "sample_counts": sample_counts,
         "resume_splits": dict(Counter(profile["split"] for profile in candidate_profiles)),
@@ -412,8 +573,10 @@ def main() -> None:
         "notes": [
             "No model training is performed.",
             "PII fields such as name, phone, and email are not emitted.",
-            "jobs.jsonl and jobs_from_silver.jsonl currently use unique jobs observed in silver pairs, not the full 23714-job corpus.",
-            "sample_pack contains 10 jobs, 5 candidate profiles, and matching labels for downstream parallel development.",
+            "jobs.jsonl uses the complete big-company CSV rather than jobs inferred from old silver pairs.",
+            "job_family temporarily mirrors standard_job until Workflow 1 publishes a crosswalk aligned with resume target_job_family.",
+            "Gold and silver inputs are required by default; --allow-missing-labels is only for smoke tests without labels.",
+            "sample_pack contains 10 jobs and 5 candidate profiles; labels are included when available.",
         ],
     }
     write_json(output_dir / "dataset_manifest.json", manifest)

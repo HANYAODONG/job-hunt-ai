@@ -55,6 +55,8 @@ class Job(BaseModel):
     rerank_score: Optional[float] = None  # Reranking score for personalized results
     search_metadata: Optional[Dict[str, Any]] = None
     feature_vector: Optional[Dict[str, float]] = None
+    job_family: Optional[str] = None  # 岗位族
+    source: Optional[str] = None  # 数据来源
     
     class Config:
         json_encoders = {

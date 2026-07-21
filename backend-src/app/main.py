@@ -11,8 +11,11 @@ from .api.job_ingestion import router as job_ingestion_router
 from .api.endpoints.data_ingestion import router as data_ingestion_router
 from .api.endpoints.reranking import router as reranking_router
 from .api.endpoints.csv_ingestion import router as csv_ingestion_router
+from .api.endpoints.kg_analysis import router as kg_analysis_router  # 新增这一行
 from .api.endpoints.auth import router as auth_router
 from .api.endpoints.keyword_extraction import router as keyword_extraction_router
+from .api.endpoints.bm25 import router as bm25_router
+from .api.endpoints.semantic import router as semantic_router
 from .api.endpoints.fusion import router as fusion_router
 
 # Configure logging
@@ -59,8 +62,11 @@ app.include_router(job_ingestion_router, prefix="/api/v1/ingestion", tags=["job-
 app.include_router(data_ingestion_router, prefix="/api/v1/ingest", tags=["data-ingestion"])
 app.include_router(reranking_router, prefix="/api/v1/reranking", tags=["reranking"])
 app.include_router(csv_ingestion_router, prefix="/api/v1/csv", tags=["csv-ingestion"])
+app.include_router(kg_analysis_router, prefix="/api/v1/kg", tags=["knowledge_graph"])  # 新增这一行
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["authentication"])
 app.include_router(keyword_extraction_router, prefix="/api/v1/keyword-extraction", tags=["keyword-extraction"])
+app.include_router(bm25_router, prefix="/api/v1/bm25", tags=["chinese-bm25"])
+app.include_router(semantic_router, prefix="/api/v1/semantic", tags=["semantic-reranking"])
 app.include_router(fusion_router, prefix="/api/v1/fusion", tags=["fusion"])
 
 # Health check endpoint
