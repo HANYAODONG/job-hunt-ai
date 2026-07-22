@@ -657,6 +657,9 @@ def extract_salary_flexible(row: pd.Series) -> Optional[Salary]:
         if salary_str:
             min_salary, max_salary = parse_salary_range(salary_str)
     
+    min_salary = min_salary if min_salary and min_salary > 0 else None
+    max_salary = max_salary if max_salary and max_salary > 0 else None
+
     if min_salary or max_salary:
         return Salary(
             min_salary=min_salary,
@@ -742,18 +745,24 @@ def parse_salary_range(salary_str: str) -> tuple:
     try:
         # Remove currency symbols and clean up
         salary_str = salary_str.replace('$', '').replace(',', '').strip()
+        if not salary_str or salary_str.lower() in {"0", "0.0", "none", "nan", "n/a", "na", "not specified"}:
+            return None, None
         
         # Look for range pattern (e.g., "74000-138000 /yr")
         range_match = re.search(r'(\d+)-(\d+)', salary_str)
         if range_match:
             min_salary = int(range_match.group(1))
             max_salary = int(range_match.group(2))
+            if min_salary <= 0 and max_salary <= 0:
+                return None, None
             return min_salary, max_salary
         
         # Look for single number
         single_match = re.search(r'(\d+)', salary_str)
         if single_match:
             salary = int(single_match.group(1))
+            if salary <= 0:
+                return None, None
             return salary, salary
         
     except Exception as e:
