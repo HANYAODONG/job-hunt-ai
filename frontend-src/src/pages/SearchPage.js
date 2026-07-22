@@ -336,13 +336,19 @@ const SearchPage = () => {
 
   const formatSalaryShort = (salary) => {
     if (!salary) return 'Not specified';
-    if (salary.min_salary && salary.max_salary) {
-      const minK = (salary.min_salary / 1000).toFixed(0);
-      const maxK = (salary.max_salary / 1000).toFixed(0);
+    const minSalary = Number(salary.min_salary) || 0;
+    const maxSalary = Number(salary.max_salary) || 0;
+    if (minSalary <= 0 && maxSalary <= 0) return 'Not specified';
+    if (minSalary > 0 && maxSalary > 0) {
+      const minK = (minSalary / 1000).toFixed(0);
+      const maxK = (maxSalary / 1000).toFixed(0);
       return `$${minK}k - $${maxK}k`;
     }
-    if (salary.min_salary) {
-      return `$${(salary.min_salary / 1000).toFixed(0)}k+`;
+    if (minSalary > 0) {
+      return `$${(minSalary / 1000).toFixed(0)}k+`;
+    }
+    if (maxSalary > 0) {
+      return `Up to $${(maxSalary / 1000).toFixed(0)}k`;
     }
     return 'Not specified';
   };
