@@ -78,11 +78,17 @@ const PersonalizedRecommendationsPage = () => {
 
   const formatSalary = (salary) => {
     if (!salary) return 'Not specified';
-    if (salary.min_salary && salary.max_salary) {
-      return `$${salary.min_salary.toLocaleString()} - $${salary.max_salary.toLocaleString()}`;
+    const minSalary = Number(salary.min_salary) || 0;
+    const maxSalary = Number(salary.max_salary) || 0;
+    if (minSalary <= 0 && maxSalary <= 0) return 'Not specified';
+    if (minSalary > 0 && maxSalary > 0) {
+      return `$${minSalary.toLocaleString()} - $${maxSalary.toLocaleString()}`;
     }
-    if (salary.min_salary) {
-      return `$${salary.min_salary.toLocaleString()}+`;
+    if (minSalary > 0) {
+      return `$${minSalary.toLocaleString()}+`;
+    }
+    if (maxSalary > 0) {
+      return `Up to $${maxSalary.toLocaleString()}`;
     }
     return 'Not specified';
   };
