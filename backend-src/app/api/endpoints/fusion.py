@@ -6,7 +6,7 @@ Fusion API Endpoints — 工作流4：融合排序 API
 """
 
 import logging
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException
 
 from app.models.fusion import (
     FusionInput,
