@@ -13,7 +13,6 @@ import {
   Divider,
   message,
   InputNumber,
-  Descriptions,
   Statistic,
   Switch,
 } from 'antd';
@@ -51,7 +50,6 @@ export default function FusionDemoPage() {
   const [numJobs, setNumJobs] = useState(20);
   const [seed, setSeed] = useState(null);
   const [useServerWeights, setUseServerWeights] = useState(false);
-  const [showWeightsPanel, setShowWeightsPanel] = useState(true);
   const [queryId] = useState(`fusion_demo_${Date.now()}`);
 
   // ── 加载权重 ───────────────────────────────────────────────
