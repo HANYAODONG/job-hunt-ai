@@ -13,6 +13,7 @@ import JobDetailsPage from './pages/JobDetailsPage';
 import ResumeUploadPage from './pages/ResumeUploadPage';
 import RecommendationsPage from './pages/RecommendationsPage';
 import PersonalizedRecommendationsPage from './pages/PersonalizedRecommendationsPage';
+import FusionDemoPage from './pages/FusionDemoPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 
@@ -54,6 +55,7 @@ function App() {
                     <Route path="/upload-resume" element={<ResumeUploadPage />} />
                     <Route path="/recommendations" element={<RecommendationsPage />} />
                     <Route path="/personalized-recommendations" element={<PersonalizedRecommendationsPage />} />
+                    <Route path="/fusion-demo" element={<FusionDemoPage />} />
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/register" element={<RegisterPage />} />
                   </Routes>
