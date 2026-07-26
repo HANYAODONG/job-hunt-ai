@@ -70,6 +70,7 @@ class KnowledgeGraphService:
                     j.remote_allowed = $remote_allowed,
                     j.visa_sponsorship = $visa_sponsorship,
                     j.posted_date = $posted_date,
+                    j.required_skills = $required_skills,
                     j.job_family = $job_family,
                     j.source = $source
                 """
@@ -83,6 +84,7 @@ class KnowledgeGraphService:
                     "remote_allowed": job.remote_allowed,
                     "visa_sponsorship": job.visa_sponsorship,
                     "posted_date": job.posted_date.isoformat(),
+                    "required_skills": job.required_skills,
                     "job_family": getattr(job, 'job_family', None),
                     "source": getattr(job, 'source', None)
                 })
