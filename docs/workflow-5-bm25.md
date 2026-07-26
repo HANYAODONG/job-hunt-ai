@@ -95,16 +95,19 @@ Elasticsearch 岗位索引
 | --- | --- | --- |
 | `scripts/dataset_adapter.py` | 将工作流 1 的三份 CSV 转为标准岗位和简历 JSONL | 已接入当前 `incoming` 数据 |
 | `backend-src/app/services/chinese_bm25_service.py` | 创建索引、批量写入、字段加权检索 | 已切换到工作流 1 标准字段 |
-| `backend-src/app/api/endpoints/bm25.py` | BM25 搜索和索引统计 API | 已注册 |
+| `backend-src/app/api/endpoints/bm25.py` | 完整搜索、精简候选集和索引统计 API | 已注册 |
 | `backend-src/scripts/index_chinese_jobs.py` | 标准岗位 JSONL 批量导入 Elasticsearch | 已指向 iteration 05 |
 | `backend-src/scripts/search_chinese_jobs.py` | 命令行搜索测试 | 已验证 |
 | `backend-src/scripts/retrieve_bm25_candidates.py` | 标准简历批量召回并输出候选集 | 已支持 Top1-Top200 |
 | `scripts/evaluate_candidate_rankings.py` | 读取候选集和金标计算指标 | 已接入，等待金标 |
+| `backend-src/scripts/run_bm25_workflow.py` | 一键执行适配、建索引、召回、评测并生成报告 | 已完成 |
+| `backend-src/tests/test_bm25_workflow.py` | BM25字段、查询、接口和评测回归测试 | 已完成 |
 | `backend-src/app/main.py` | 注册 `/api/v1/bm25` 路由 | 已完成 |
 
 当前 API：
 
 - `POST /api/v1/bm25/search`
+- `POST /api/v1/bm25/candidates`
 - `GET /api/v1/bm25/stats`
 
 搜索请求示例：
@@ -118,7 +121,8 @@ Elasticsearch 岗位索引
 }
 ```
 
-注意：现有 API 返回完整岗位 `hits`，还需要增加面向队友的精简候选集输出。
+`/search` 返回完整岗位信息；`/candidates` 只返回下游统一需要的
+`job_id`、`bm25_score` 和 `bm25_rank`。
 
 ## 6. BM25 基线配置
 
@@ -190,31 +194,36 @@ docker compose up -d elasticsearch
 Invoke-RestMethod http://localhost:9200
 ```
 
-生成工作流 1 标准文件：
+完整运行工作流：
 
 ```powershell
-python .\scripts\dataset_adapter.py
+python .\backend-src\scripts\run_bm25_workflow.py --start-elasticsearch
 ```
 
-Formal evaluation requires gold and silver label files by default. For smoke tests without labels only:
+调试时只处理 10 份简历：
 
 ```powershell
-python .\scripts\dataset_adapter.py --allow-missing-labels
+python .\backend-src\scripts\run_bm25_workflow.py `
+  --start-elasticsearch `
+  --limit 10
 ```
 
-重建岗位索引：
+2026-07-26 全量实测：
 
-```powershell
-python .\backend-src\scripts\index_chinese_jobs.py --recreate
-```
+- `bigcompany_jobs_v1` 写入岗位 12,675 条，失败 0 条。
+- 处理简历 5,500 份，每份返回 Top200。
+- 生成候选 1,100,000 条，JSONL 大小约 64.7 MB。
+- query ID 唯一、排名连续、分数降序、候选岗位无重复，校验错误 0。
+- Elasticsearch 平均 `took_ms` 为 90.34 ms，最小 35 ms，最大 190 ms。
+- 金标数量仍为 0，因此正式 Recall/MRR/NDCG 状态为
+  `blocked_missing_gold_labels`，不使用伪标签冒充正式指标。
+- `dataset/database1.zip` 内历史金标包含 600 对、30 份简历和 203 个岗位，
+  但历史岗位 ID 与当前 12,675 个 `JOBxxxxx` 岗位交集为 0；600 条记录的
+  `annotator_id`、`resume_evidence` 和 `job_evidence` 也均为空，因此不能
+  作为当前索引的正式金标。
 
-批量召回 Top200：
-
-```powershell
-python .\backend-src\scripts\retrieve_bm25_candidates.py --size 200
-```
-
-2026-07-19 实测写入 `bigcompany_jobs_v1` 共 12,675 条，失败 0 条；单份简历 Top200 输出完整。生成物位于 `artifacts/`，默认不提交 Git。
+运行报告位于 `artifacts/bm25/workflow5_run_report.json`，候选集位于
+`artifacts/bm25/bm25_top200.jsonl`。生成物默认不提交 Git。
 
 ## 10. 实施顺序
 
@@ -227,6 +236,10 @@ python .\backend-src\scripts\retrieve_bm25_candidates.py --size 200
 - [x] 构造结构化 `query_text_bm25`。
 - [x] 增加批量 Top100/Top200 候选集脚本。
 - [x] 输出统一候选集 JSONL。
+- [x] 增加面向下游工作流的精简候选 API。
+- [x] 增加一键可复现流水线和结构化运行报告。
+- [x] 增加 BM25 自动化回归测试。
+- [x] 完成 5,500 份简历全量 Top200 召回和完整性校验。
 - [ ] 接入工作流 1 金标并完成 baseline 评估。
 - [ ] 获取岗位 `standard_job` 到简历 `target_job_family` 的团队统一映射。
 - [ ] 根据 dev 集结果优化岗位族加权和中文分词。
