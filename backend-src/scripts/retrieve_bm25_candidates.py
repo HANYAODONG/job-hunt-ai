@@ -71,6 +71,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--size", type=int, default=200, choices=range(1, 201), metavar="1..200")
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--max-skills", type=int, default=30)
+    parser.add_argument("--source-type", default="enterprise")
     return parser.parse_args()
 
 
@@ -92,7 +93,11 @@ def main() -> None:
             if not query_id:
                 raise ValueError(f"Candidate profile #{query_count + 1} has no candidate_id")
             query_text = build_query_text(profile, max_skills=args.max_skills)
-            result = service.search(query_text=query_text, size=args.size, source_type="enterprise")
+            result = service.search(
+                query_text=query_text,
+                size=args.size,
+                source_type=args.source_type or None,
+            )
             candidates = [
                 {
                     "job_id": hit["job_id"],

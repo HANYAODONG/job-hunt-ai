@@ -18,6 +18,13 @@ class BM25SearchRequest(BaseModel):
     exclude_duplicates: bool = True
 
 
+class BM25CandidateRequest(BM25SearchRequest):
+    query_id: Optional[str] = Field(
+        default=None,
+        description="简历或查询ID；缺省时使用查询文本",
+    )
+
+
 def get_service() -> ChineseBM25Service:
     client = get_elasticsearch()
     if client is None:
@@ -25,16 +32,49 @@ def get_service() -> ChineseBM25Service:
     return ChineseBM25Service(client)
 
 
+def execute_search(request: BM25SearchRequest):
+    return get_service().search(
+        query_text=request.query,
+        size=request.size,
+        source_type=request.source_type,
+        location=request.location,
+        exclude_duplicates=request.exclude_duplicates,
+    )
+
+
 @router.post("/search")
 def search_jobs(request: BM25SearchRequest):
     try:
-        return get_service().search(
-            query_text=request.query,
-            size=request.size,
-            source_type=request.source_type,
-            location=request.location,
-            exclude_duplicates=request.exclude_duplicates,
-        )
+        return execute_search(request)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.post("/candidates")
+def retrieve_candidates(request: BM25CandidateRequest):
+    """Return the stable, compact contract consumed by downstream workflows."""
+
+    try:
+        result = execute_search(request)
+        candidates = [
+            {
+                "job_id": hit["job_id"],
+                "bm25_score": hit["score"],
+                "bm25_rank": hit["rank"],
+            }
+            for hit in result["hits"]
+        ]
+        return {
+            "index_name": result["index_name"],
+            "query_id": request.query_id or request.query,
+            "query_text": request.query,
+            "took_ms": result["took_ms"],
+            "total": result["total"],
+            "retrieved_count": len(candidates),
+            "candidates": candidates,
+        }
     except HTTPException:
         raise
     except Exception as exc:
