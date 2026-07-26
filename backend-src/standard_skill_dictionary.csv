@@ -1,0 +1,111 @@
+skill_id,canonical_name,aliases,skill_category,parent_skill,match_pattern,source,version
+SK001,AI,Artificial Intelligence,人工智能,,,data_collection,v1
+SK002,AI Agent,智能体;Agent,大模型应用,生成式AI,,data_collection,v1
+SK003,AI-native,AI原生,大模型应用,生成式AI,,data_collection,v1
+SK004,AIBot,AI机器人;聊天机器人,大模型应用,生成式AI,,data_collection,v1
+SK005,AIGC,人工智能生成内容;生成式AI,大模型应用,生成式AI,,data_collection,v1
+SK006,AIOps,智能运维,运维,DevOps,,data_collection,v1
+SK007,ARM,ARM架构,编程语言,系统编程,,data_collection,v1
+SK008,AWS,亚马逊云,云平台,云基础设施,,data_collection,v1
+SK009,Agent,智能体;代理,大模型应用,生成式AI,,data_collection,v1
+SK010,AgentBench,智能体评测,大模型应用,生成式AI,,data_collection,v1
+SK011,AgentRuntime,智能体运行时,大模型应用,生成式AI,,data_collection,v1
+SK012,Agentic,智能体能力,大模型应用,生成式AI,,data_collection,v1
+SK013,Agentlightning,智能体框架,大模型应用,生成式AI,,data_collection,v1
+SK014,Android,安卓,移动开发,前端开发,,data_collection,v1
+SK015,Ansible,自动化运维工具,运维,DevOps,,data_collection,v1
+SK016,Ascend,昇腾,AI框架,人工智能,,data_collection,v1
+SK017,Automated Testing,自动化测试,测试,软件工程,,data_collection,v1
+SK018,Azure,微软云,云平台,云基础设施,,data_collection,v1
+SK019,C#,C Sharp,编程语言,后端开发,,data_collection,v1
+SK020,C++,C Plus Plus,编程语言,系统编程,,data_collection,v1
+SK021,CI/CD,持续集成/持续交付,运维,DevOps,,data_collection,v1
+SK022,CPU/GPU,处理器/图形处理器,硬件,计算机体系结构,,data_collection,v1
+SK023,CSS,层叠样式表,前端开发,前端开发,,data_collection,v1
+SK024,CTR/CVR,点击率/转化率,数据分析,数据科学,,data_collection,v1
+SK025,CUDA,统一计算设备架构,AI框架,人工智能,,data_collection,v1
+SK026,CUDA/NPU,GPU/NPU编程,AI框架,人工智能,,data_collection,v1
+SK027,CUDA/Triton,GPU推理服务,AI框架,人工智能,,data_collection,v1
+SK028,CV/NLP,计算机视觉/自然语言处理,AI领域,人工智能,,data_collection,v1
+SK029,CXL,计算快速连接,硬件,计算机体系结构,,data_collection,v1
+SK030,Computer Vision,计算机视觉,AI领域,人工智能,,data_collection,v1
+SK031,DATA+AI,数据与人工智能,数据科学,人工智能,,data_collection,v1
+SK032,DPDK,数据平面开发套件,网络,系统编程,,data_collection,v1
+SK033,Data Warehouse,数据仓库,数据工程,数据工程,,data_collection,v1
+SK034,Deep Learning,深度学习,AI领域,人工智能,,data_collection,v1
+SK035,DevOps,开发运维一体化,运维,软件工程,,data_collection,v1
+SK036,Distributed Inference,分布式推理,AI工程,人工智能,,data_collection,v1
+SK037,Distributed Training,分布式训练,AI工程,人工智能,,data_collection,v1
+SK038,Django,Django框架,后端开发,后端开发,,data_collection,v1
+SK039,Docker,容器,容器编排,云基础设施,,data_collection,v1
+SK040,ETL,数据抽取转换加载,数据工程,数据工程,,data_collection,v1
+SK041,Embedding,嵌入向量,AI技术,人工智能,,data_collection,v1
+SK042,Flask,Flask框架,后端开发,后端开发,,data_collection,v1
+SK043,Go,Go语言,编程语言,后端开发,,data_collection,v1
+SK044,HDFS,分布式文件系统,数据工程,数据工程,,data_collection,v1
+SK045,Hadoop,Hadoop生态,数据工程,数据工程,,data_collection,v1
+SK046,Java,Java语言,编程语言,后端开发,,data_collection,v1
+SK047,JavaScript,JS,前端开发,前端开发,,data_collection,v1
+SK048,Jenkins,持续集成工具,运维,DevOps,,data_collection,v1
+SK049,Kafka,消息队列,数据工程,数据工程,,data_collection,v1
+SK050,Kubernetes,K8s,容器编排,云基础设施,,data_collection,v1
+SK051,LangChain,LangChain框架,大模型应用,生成式AI,,data_collection,v1
+SK052,Linux,Linux操作系统,操作系统,系统编程,,data_collection,v1
+SK053,Machine Learning,ML,AI领域,人工智能,,data_collection,v1
+SK054,Microservices,微服务,后端开发,后端开发,,data_collection,v1
+SK055,MongoDB,MongoDB数据库,数据库,数据存储,,data_collection,v1
+SK056,MySQL,MySQL数据库,数据库,数据存储,,data_collection,v1
+SK057,NLP,自然语言处理,AI领域,人工智能,,data_collection,v1
+SK058,Node.js,NodeJS,后端开发,后端开发,,data_collection,v1
+SK059,PostgreSQL,PG数据库,数据库,数据存储,,data_collection,v1
+SK060,Prometheus,监控工具,运维,DevOps,,data_collection,v1
+SK061,Python,Python语言,编程语言,后端开发,,data_collection,v1
+SK062,PyTorch,PyTorch框架,AI框架,人工智能,,data_collection,v1
+SK063,R,R语言,编程语言,数据科学,,data_collection,v1
+SK064,React,React框架,前端开发,前端开发,,data_collection,v1
+SK065,Redis,Redis缓存,数据库,数据存储,,data_collection,v1
+SK066,Rest API,RESTful接口,后端开发,后端开发,,data_collection,v1
+SK067,Rust,Rust语言,编程语言,系统编程,,data_collection,v1
+SK068,SQL,结构化查询语言,数据库,数据存储,,data_collection,v1
+SK069,Spring,Spring框架,后端开发,后端开发,,data_collection,v1
+SK070,Swift,Swift语言,编程语言,移动开发,,data_collection,v1
+SK071,TensorFlow,TensorFlow框架,AI框架,人工智能,,data_collection,v1
+SK072,Terraform,基础设施即代码,运维,云基础设施,,data_collection,v1
+SK073,TypeScript,TS,前端开发,前端开发,,data_collection,v1
+SK074,Vector Database,向量数据库,数据库,大模型应用,,data_collection,v1
+SK075,Vue,Vue框架,前端开发,前端开发,,data_collection,v1
+SK076,Web,Web开发,前端开发,前端开发,,data_collection,v1
+SK077,自然语言处理,NLP,AI领域,人工智能,,data_collection,v1
+SK078,机器学习,ML,AI领域,人工智能,,data_collection,v1
+SK079,深度学习,Deep Learning,AI领域,人工智能,,data_collection,v1
+SK080,人工智能,AI,人工智能,,,data_collection,v1
+SK081,推荐算法,推荐系统,AI领域,人工智能,,data_collection,v1
+SK082,风控模型,风控,AI领域,人工智能,,data_collection,v1
+SK083,智能体,Agent,大模型应用,生成式AI,,data_collection,v1
+SK084,提示词工程,Prompt Engineering,大模型应用,生成式AI,,data_collection,v1
+SK085,Agent开发,智能体开发,大模型应用,生成式AI,,data_collection,v1
+SK086,大模型,LLM,大模型应用,生成式AI,,data_collection,v1
+SK087,多模态,多模态AI,AI领域,人工智能,,data_collection,v1
+SK088,数据分析,数据分析,数据科学,数据科学,,data_collection,v1
+SK089,数据挖掘,数据挖掘,数据科学,数据科学,,data_collection,v1
+SK090,数据可视化,可视化,数据科学,数据科学,,data_collection,v1
+SK091,数据治理,数据治理,数据工程,数据工程,,data_collection,v1
+SK092,数据质量,数据质量,数据工程,数据工程,,data_collection,v1
+SK093,数据建模,数据建模,数据科学,数据科学,,data_collection,v1
+SK094,数据工程,数据工程,数据工程,数据工程,,data_collection,v1
+SK095,数据科学,数据科学,数据科学,数据科学,,data_collection,v1
+SK096,数据仓库,数据仓库,数据工程,数据工程,,data_collection,v1
+SK097,数据湖,数据湖,数据工程,数据工程,,data_collection,v1
+SK098,特征工程,特征工程,数据科学,数据科学,,data_collection,v1
+SK099,模型评估,模型评估,AI工程,人工智能,,data_collection,v1
+SK100,模型部署,模型部署,AI工程,人工智能,,data_collection,v1
+SK101,模型训练,模型训练,AI工程,人工智能,,data_collection,v1
+SK102,模型推理,模型推理,AI工程,人工智能,,data_collection,v1
+SK103,模型微调,微调,AI工程,人工智能,,data_collection,v1
+SK104,模型压缩,模型压缩,AI工程,人工智能,,data_collection,v1
+SK105,模型量化,量化,AI工程,人工智能,,data_collection,v1
+SK106,分布式系统,分布式,后端开发,后端开发,,data_collection,v1
+SK107,分布式训练,分布式训练,AI工程,人工智能,,data_collection,v1
+SK108,分布式推理,分布式推理,AI工程,人工智能,,data_collection,v1
+SK109,分布式存储,分布式存储,数据工程,数据工程,,data_collection,v1
+SK110,分布式计算,分布式计算,数据工程,数据工程,,data_collection,v1

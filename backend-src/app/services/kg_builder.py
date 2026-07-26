@@ -4,6 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from app.services.knowledge_graph_service import KnowledgeGraphService
 from app.models.job import Job, JobType, ExperienceLevel, Location, Salary
+from app.services.skill_extractor import SkillExtractor
 
 logger = logging.getLogger(__name__)
 kg_service = KnowledgeGraphService()
@@ -24,18 +25,9 @@ def clear_graph():
 def create_job_with_skills(job_data):
     """
     创建一个岗位及其关联的技能
-    job_data = {
-        "job_id": "job_001",
-        "title": "后端开发工程师",
-        "description": "负责推荐算法、模型训练",
-        "skills": ["Python", "SQL", "Machine Learning"],
-        "company": "示例科技",
-        "location": {"city": "北京", "state": "北京", "country": "中国"},
-        "job_family": "算法工程师",
-        "source": "jobs.jsonl"
-    }
     """
     try:
+        skills = job_data.get("skills", [])
         job = Job(
             id=job_data["job_id"],
             title=job_data["title"],
@@ -50,7 +42,7 @@ def create_job_with_skills(job_data):
             experience_level=ExperienceLevel.ENTRY,
             salary=None,
             benefits=[],
-            required_skills=job_data.get("skills", []),
+            required_skills=skills,
             preferred_skills=[],
             responsibilities=[],
             requirements=[],
@@ -74,17 +66,23 @@ def create_job_with_skills(job_data):
 def load_jobs_from_jsonl(file_path):
     """从 JSONL 文件读取岗位数据，返回岗位字典列表"""
     jobs = []
+    extractor = SkillExtractor()
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
             for line in f:
                 if line.strip():
                     job = json.loads(line)
-                    # 兼容不同字段名
+                    skills = job.get("skills") or job.get("required_skills", [])
+                    if not skills:
+                        text = job.get("title", "") + " " + job.get("description", "")
+                        skills = extractor.extract(text)
+                        if skills:
+                            logger.info(f"从文本中抽取到 {len(skills)} 个技能: {skills[:5]}...")
                     jobs.append({
                         "job_id": job.get("job_id") or job.get("id", ""),
                         "title": job.get("title", ""),
                         "description": job.get("description", ""),
-                        "skills": job.get("skills") or job.get("required_skills", []),
+                        "skills": skills,
                         "company": job.get("company") or job.get("company_name", "未知公司"),
                         "location": job.get("location", {}) if isinstance(job.get("location"), dict) else {"city": "北京", "state": "北京", "country": "中国"},
                         "job_family": job.get("job_family", ""),
@@ -158,8 +156,7 @@ def build_sample_graph(file_path=None):
     jobs = []
     
     if file_path is None:
-        # 尝试默认路径
-        default_path = Path("artifacts/dataset_iteration_05/jobs.jsonl")
+        default_path = Path("artifacts/dataset_iteration_04/jobs.jsonl")
         if default_path.exists():
             file_path = str(default_path)
         else:
