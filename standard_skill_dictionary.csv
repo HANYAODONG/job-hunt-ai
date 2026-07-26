@@ -7,95 +7,169 @@ SK005,计算机视觉,"CV;Computer Vision",人工智能,人工智能,,team_revie
 SK006,推荐算法,推荐系统,人工智能,人工智能,,team_review,v1
 SK007,风控模型,风控,人工智能,人工智能,,team_review,v1
 SK008,多模态,多模态AI,人工智能,人工智能,,team_review,v1
-SK009,大模型,"LLM;Large Language Model",大模型应用,生成式AI,,team_review,v1
-SK010,提示词工程,"Prompt;Prompt Engineering",大模型应用,生成式AI,,team_review,v1
+SK009,大模型,"LLM;大语言模型",大模型应用,生成式AI,,team_review,v1
+SK010,提示词工程,"Prompt;Prompt Engineering;提示工程",大模型应用,生成式AI,,team_review,v1
 SK011,检索增强生成,"RAG;Retrieval-Augmented Generation",大模型应用,生成式AI,,team_review,v1
-SK012,智能体,"Agent;AI Agent",大模型应用,生成式AI,,team_review,v1
-SK013,智能体开发,"Agent开发;Agentic",大模型应用,生成式AI,,team_review,v1
-SK014,智能体框架,"Agentlightning;AgentRuntime;AgentBench",大模型应用,生成式AI,,team_review,v1
+SK012,智能体,"AI Agent;Agent;智能体",大模型应用,生成式AI,,team_review,v1
+SK013,智能体开发,"Agent开发;Agentic;智能体开发",大模型应用,生成式AI,,team_review,v1
+SK014,智能体框架,"Agentlightning;AgentRuntime;AgentBench;智能体框架",大模型应用,生成式AI,,team_review,v1
 SK015,AIGC,AI原生;AI-native,大模型应用,生成式AI,,team_review,v1
-SK016,AI Agent,智能体,大模型应用,生成式AI,,team_review,v1
-SK017,AIBot,AI机器人;聊天机器人,大模型应用,生成式AI,,team_review,v1
-SK018,AIOps,智能运维,运维,DevOps,,team_review,v1
-SK019,Python,Python语言,编程语言,后端开发,,team_review,v1
-SK020,Java,Java语言,编程语言,后端开发,,team_review,v1
-SK021,C++,C Plus Plus,编程语言,系统编程,,team_review,v1
-SK022,C#,C Sharp,编程语言,后端开发,,team_review,v1
-SK023,Go,Go语言,编程语言,后端开发,,team_review,v1
-SK024,Rust,Rust语言,编程语言,系统编程,,team_review,v1
-SK025,Swift,Swift语言,编程语言,移动开发,,team_review,v1
-SK026,JavaScript,JS,前端开发,前端开发,,team_review,v1
-SK027,TypeScript,TS,前端开发,前端开发,,team_review,v1
-SK028,CSS,层叠样式表,前端开发,前端开发,,team_review,v1
-SK029,React,React框架,前端开发,前端开发,,team_review,v1
-SK030,Vue,Vue框架,前端开发,前端开发,,team_review,v1
-SK031,Angular,Angular框架,前端开发,前端开发,,team_review,v1
-SK032,Spring,Spring框架,后端开发,后端开发,,team_review,v1
-SK033,Django,Django框架,后端开发,后端开发,,team_review,v1
-SK034,Flask,Flask框架,后端开发,后端开发,,team_review,v1
-SK035,Node.js,NodeJS,后端开发,后端开发,,team_review,v1
-SK036,SQL,结构化查询语言,数据库,数据存储,,team_review,v1
-SK037,MySQL,MySQL数据库,数据库,数据存储,,team_review,v1
-SK038,PostgreSQL,PG数据库,数据库,数据存储,,team_review,v1
-SK039,MongoDB,MongoDB数据库,数据库,数据存储,,team_review,v1
-SK040,Redis,Redis缓存,数据库,数据存储,,team_review,v1
-SK041,向量数据库,"Vector Database;VectorDB",数据库,大模型应用,,team_review,v1
-SK042,HDFS,分布式文件系统,数据工程,数据工程,,team_review,v1
-SK043,Hadoop,Hadoop生态,数据工程,数据工程,,team_review,v1
-SK044,Spark,Spark计算引擎,数据工程,数据工程,,team_review,v1
-SK045,Kafka,消息队列,数据工程,数据工程,,team_review,v1
-SK046,ETL,数据抽取转换加载,数据工程,数据工程,,team_review,v1
-SK047,Data Warehouse,数据仓库,数据工程,数据工程,,team_review,v1
-SK048,数据湖,Data Lake,数据工程,数据工程,,team_review,v1
-SK049,数据治理,数据治理,数据工程,数据工程,,team_review,v1
-SK050,数据质量,数据质量,数据工程,数据工程,,team_review,v1
-SK051,数据分析,数据分析,数据科学,数据科学,,team_review,v1
-SK052,数据挖掘,数据挖掘,数据科学,数据科学,,team_review,v1
-SK053,数据可视化,可视化,数据科学,数据科学,,team_review,v1
-SK054,数据建模,数据建模,数据科学,数据科学,,team_review,v1
-SK055,特征工程,特征工程,数据科学,数据科学,,team_review,v1
-SK056,数据科学,Data Science,数据科学,数据科学,,team_review,v1
-SK057,AWS,亚马逊云,云平台,云基础设施,,team_review,v1
-SK058,Azure,微软云,云平台,云基础设施,,team_review,v1
-SK059,GCP,谷歌云,云平台,云基础设施,,team_review,v1
-SK060,Docker,容器,容器编排,云基础设施,,team_review,v1
-SK061,Kubernetes,K8s,容器编排,云基础设施,,team_review,v1
-SK062,Terraform,基础设施即代码,运维,云基础设施,,team_review,v1
-SK063,Ascend,昇腾,AI框架,人工智能,,team_review,v1
-SK064,CUDA,统一计算设备架构,AI框架,人工智能,,team_review,v1
-SK065,CUDA/NPU,GPU/NPU编程,AI框架,人工智能,,team_review,v1
-SK066,CUDA/Triton,GPU推理服务,AI框架,人工智能,,team_review,v1
-SK067,PyTorch,PyTorch框架,AI框架,人工智能,,team_review,v1
-SK068,TensorFlow,TensorFlow框架,AI框架,人工智能,,team_review,v1
-SK069,Embedding,嵌入向量,AI技术,人工智能,,team_review,v1
-SK070,分布式训练,Distributed Training,AI工程,人工智能,,team_review,v1
-SK071,分布式推理,Distributed Inference,AI工程,人工智能,,team_review,v1
-SK072,模型训练,模型训练,AI工程,人工智能,,team_review,v1
-SK073,模型评估,模型评估,AI工程,人工智能,,team_review,v1
-SK074,模型部署,模型部署,AI工程,人工智能,,team_review,v1
-SK075,模型推理,模型推理,AI工程,人工智能,,team_review,v1
-SK076,模型微调,微调,AI工程,人工智能,,team_review,v1
-SK077,模型压缩,模型压缩,AI工程,人工智能,,team_review,v1
-SK078,模型量化,量化,AI工程,人工智能,,team_review,v1
-SK079,CI/CD,持续集成/持续交付,运维,DevOps,,team_review,v1
-SK080,Jenkins,持续集成工具,运维,DevOps,,team_review,v1
-SK081,Ansible,自动化运维工具,运维,DevOps,,team_review,v1
-SK082,Prometheus,监控工具,运维,DevOps,,team_review,v1
-SK083,Linux,Linux操作系统,操作系统,系统编程,,team_review,v1
-SK084,ARM,ARM架构,编程语言,系统编程,,team_review,v1
-SK085,Web,Web开发,前端开发,前端开发,,team_review,v1
-SK086,REST API,RESTful接口,后端开发,后端开发,,team_review,v1
-SK087,微服务,Microservices,后端开发,后端开发,,team_review,v1
-SK088,分布式系统,分布式,后端开发,后端开发,,team_review,v1
-SK089,CPU/GPU,处理器/图形处理器,硬件,计算机体系结构,,team_review,v1
-SK090,CTR/CVR,点击率/转化率,数据分析,数据科学,,team_review,v1
-SK091,DPDK,数据平面开发套件,网络,系统编程,,team_review,v1
-SK092,CXL,计算快速连接,硬件,计算机体系结构,,team_review,v1
-SK093,Automated Testing,自动化测试,测试,软件工程,,team_review,v1
-SK094,Android,安卓,移动开发,前端开发,,team_review,v1
-SK095,LangChain,LangChain框架,大模型应用,生成式AI,,team_review,v1
-SK096,模型优化,模型优化,AI工程,人工智能,,team_review,v1
-SK097,推理优化,推理优化,AI工程,人工智能,,team_review,v1
-SK098,高性能计算,"HPC;High Performance Computing",AI工程,人工智能,,team_review,v1
-SK099,并行计算,并行计算,AI工程,人工智能,,team_review,v1
-SK100,图计算,图计算,AI工程,人工智能,,team_review,v1
+SK016,AIBot,AI机器人;聊天机器人,大模型应用,生成式AI,,team_review,v1
+SK017,AIOps,智能运维,运维,DevOps,,team_review,v1
+SK018,Python,Python语言,编程语言,后端开发,,team_review,v1
+SK019,Java,Java语言,编程语言,后端开发,,team_review,v1
+SK020,C++,C Plus Plus,编程语言,系统编程,,team_review,v1
+SK021,C#,C Sharp,编程语言,后端开发,,team_review,v1
+SK022,Go,Go语言,编程语言,后端开发,,team_review,v1
+SK023,Rust,Rust语言,编程语言,系统编程,,team_review,v1
+SK024,Swift,Swift语言,编程语言,移动开发,,team_review,v1
+SK025,JavaScript,JS,前端开发,前端开发,,team_review,v1
+SK026,TypeScript,TS,前端开发,前端开发,,team_review,v1
+SK027,CSS,层叠样式表,前端开发,前端开发,,team_review,v1
+SK028,React,"React.js;React",前端开发,前端开发,,team_review,v1
+SK029,Vue,"Vue.js;Vue",前端开发,前端开发,,team_review,v1
+SK030,Angular,Angular框架,前端开发,前端开发,,team_review,v1
+SK031,Spring,Spring框架,后端开发,后端开发,,team_review,v1
+SK032,Django,Django框架,后端开发,后端开发,,team_review,v1
+SK033,Flask,Flask框架,后端开发,后端开发,,team_review,v1
+SK034,Node.js,NodeJS,后端开发,后端开发,,team_review,v1
+SK035,SQL,结构化查询语言,数据库,数据存储,,team_review,v1
+SK036,MySQL,MySQL数据库,数据库,数据存储,,team_review,v1
+SK037,PostgreSQL,PG数据库,数据库,数据存储,,team_review,v1
+SK038,MongoDB,MongoDB数据库,数据库,数据存储,,team_review,v1
+SK039,Redis,Redis缓存,数据库,数据存储,,team_review,v1
+SK040,向量数据库,"Vector Database;VectorDB",数据库,大模型应用,,team_review,v1
+SK041,HDFS,分布式文件系统,数据工程,数据工程,,team_review,v1
+SK042,Hadoop,Hadoop生态,数据工程,数据工程,,team_review,v1
+SK043,Spark,Spark计算引擎,数据工程,数据工程,,team_review,v1
+SK044,Kafka,消息队列,数据工程,数据工程,,team_review,v1
+SK045,ETL,数据抽取转换加载,数据工程,数据工程,,team_review,v1
+SK046,Data Warehouse,数据仓库,数据工程,数据工程,,team_review,v1
+SK047,数据湖,Data Lake,数据工程,数据工程,,team_review,v1
+SK048,数据治理,数据治理,数据工程,数据工程,,team_review,v1
+SK049,数据质量,数据质量,数据工程,数据工程,,team_review,v1
+SK050,数据分析,数据分析,数据科学,数据科学,,team_review,v1
+SK051,数据挖掘,数据挖掘,数据科学,数据科学,,team_review,v1
+SK052,数据可视化,可视化,数据科学,数据科学,,team_review,v1
+SK053,数据建模,数据建模,数据科学,数据科学,,team_review,v1
+SK054,特征工程,特征工程,数据科学,数据科学,,team_review,v1
+SK055,数据科学,Data Science,数据科学,数据科学,,team_review,v1
+SK056,AWS,亚马逊云,云平台,云基础设施,,team_review,v1
+SK057,Azure,微软云,云平台,云基础设施,,team_review,v1
+SK058,GCP,谷歌云,云平台,云基础设施,,team_review,v1
+SK059,Docker,容器,容器编排,云基础设施,,team_review,v1
+SK060,Kubernetes,K8s,容器编排,云基础设施,,team_review,v1
+SK061,Terraform,基础设施即代码,运维,云基础设施,,team_review,v1
+SK062,Ascend,昇腾,AI框架,人工智能,,team_review,v1
+SK063,CUDA,统一计算设备架构,AI框架,人工智能,,team_review,v1
+SK064,CUDA/NPU,GPU/NPU编程,AI框架,人工智能,,team_review,v1
+SK065,CUDA/Triton,GPU推理服务,AI框架,人工智能,,team_review,v1
+SK066,PyTorch,PyTorch框架,AI框架,人工智能,,team_review,v1
+SK067,TensorFlow,TensorFlow框架,AI框架,人工智能,,team_review,v1
+SK068,Embedding,嵌入向量,AI技术,人工智能,,team_review,v1
+SK069,分布式训练,Distributed Training,AI工程,人工智能,,team_review,v1
+SK070,分布式推理,Distributed Inference,AI工程,人工智能,,team_review,v1
+SK071,模型训练,模型训练,AI工程,人工智能,,team_review,v1
+SK072,模型评估,模型评估,AI工程,人工智能,,team_review,v1
+SK073,模型部署,模型部署,AI工程,人工智能,,team_review,v1
+SK074,模型推理,模型推理,AI工程,人工智能,,team_review,v1
+SK075,模型微调,微调,AI工程,人工智能,,team_review,v1
+SK076,模型压缩,模型压缩,AI工程,人工智能,,team_review,v1
+SK077,模型量化,量化,AI工程,人工智能,,team_review,v1
+SK078,CI/CD,持续集成/持续交付,运维,DevOps,,team_review,v1
+SK079,Jenkins,持续集成工具,运维,DevOps,,team_review,v1
+SK080,Ansible,自动化运维工具,运维,DevOps,,team_review,v1
+SK081,Prometheus,监控工具,运维,DevOps,,team_review,v1
+SK082,Linux,Linux操作系统,操作系统,系统编程,,team_review,v1
+SK083,ARM,ARM架构,编程语言,系统编程,,team_review,v1
+SK084,Web,Web开发,前端开发,前端开发,,team_review,v1
+SK085,REST API,RESTful接口,后端开发,后端开发,,team_review,v1
+SK086,微服务,Microservices,后端开发,后端开发,,team_review,v1
+SK087,分布式系统,分布式,后端开发,后端开发,,team_review,v1
+SK088,CPU/GPU,处理器/图形处理器,硬件,计算机体系结构,,team_review,v1
+SK089,CTR/CVR,点击率/转化率,数据分析,数据科学,,team_review,v1
+SK090,DPDK,数据平面开发套件,网络,系统编程,,team_review,v1
+SK091,CXL,计算快速连接,硬件,计算机体系结构,,team_review,v1
+SK092,Automated Testing,自动化测试,测试,软件工程,,team_review,v1
+SK093,Android,安卓,移动开发,前端开发,,team_review,v1
+SK094,LangChain,LangChain框架,大模型应用,生成式AI,,team_review,v1
+SK095,模型优化,模型优化,AI工程,人工智能,,team_review,v1
+SK096,推理优化,推理优化,AI工程,人工智能,,team_review,v1
+SK097,高性能计算,"HPC;High Performance Computing",AI工程,人工智能,,team_review,v1
+SK098,并行计算,并行计算,AI工程,人工智能,,team_review,v1
+SK099,图计算,图计算,AI工程,人工智能,,team_review,v1
+SK100,引擎开发,"游戏引擎;引擎",游戏开发,游戏开发,,team_review,v1
+SK101,图形渲染,"渲染;图形学",游戏开发,游戏开发,,team_review,v1
+SK102,技术美术,"TA;Tech Art",美术设计,游戏开发,,team_review,v1
+SK103,全栈,全栈开发,后端开发,后端开发,,team_review,v1
+SK104,数据中心,IDC,基础设施,运维,,team_review,v1
+SK105,项目管理,"项目管理;项目经理",通用技能,管理,,team_review,v1
+SK106,版本管理,版本控制,通用技能,管理,,team_review,v1
+SK107,供应链,供应链管理,通用技能,管理,,team_review,v1
+SK108,运营管理,运营管理,通用技能,运营,,team_review,v1
+SK109,品牌,品牌管理,通用技能,品牌,,team_review,v1
+SK110,游戏客户端,"客户端开发;Gameplay",游戏开发,游戏开发,,team_review,v1
+SK111,游戏服务器,"服务器开发;后台",游戏开发,游戏开发,,team_review,v1
+SK112,游戏策划,"策划;系统策划",游戏开发,游戏开发,,team_review,v1
+SK113,关卡策划,关卡设计,游戏开发,游戏开发,,team_review,v1
+SK114,角色设计,"角色美术;原画",美术设计,游戏开发,,team_review,v1
+SK115,场景设计,"场景美术;场景",美术设计,游戏开发,,team_review,v1
+SK116,特效设计,"特效;VFX",美术设计,游戏开发,,team_review,v1
+SK117,动画设计,"动画;动作",美术设计,游戏开发,,team_review,v1
+SK118,UI设计,"用户界面;界面设计",美术设计,前端开发,,team_review,v1
+SK119,UX设计,"用户体验;交互设计",美术设计,前端开发,,team_review,v1
+SK120,测试开发,"测试工程;质量保障",测试,软件工程,,team_review,v1
+SK121,性能优化,性能调优,后端开发,后端开发,,team_review,v1
+SK122,系统架构,"架构设计;系统设计",后端开发,后端开发,,team_review,v1
+SK123,网络安全,"信息安全;信息安保",网络安全,运维,,team_review,v1
+SK124,云原生,Cloud Native,云平台,云基础设施,,team_review,v1
+SK125,大数据开发,"Big Data;大数据开发",数据工程,数据工程,,team_review,v1
+SK126,实时计算,"流计算;Flink",数据工程,数据工程,,team_review,v1
+SK127,数据平台,数据中台,数据工程,数据工程,,team_review,v1
+SK128,商业分析,"商业智能;BI",数据分析,数据科学,,team_review,v1
+SK129,经营分析,经营分析,数据分析,数据科学,,team_review,v1
+SK130,用户增长,"增长;UG",通用技能,运营,,team_review,v1
+SK131,社区运营,"社区;社群",通用技能,运营,,team_review,v1
+SK132,内容运营,"内容;文案",通用技能,运营,,team_review,v1
+SK133,产品经理,"产品经理;产品",产品,产品,,team_review,v1
+SK134,产品策划,产品设计,产品,产品,,team_review,v1
+SK135,渠道运营,"渠道;推广",通用技能,运营,,team_review,v1
+SK136,游戏运营,游戏运营,通用技能,运营,,team_review,v1
+SK137,市场宣发,"市场;营销",通用技能,品牌,,team_review,v1
+SK138,数据标注,"标注;数据标注",数据工程,数据工程,,team_review,v1
+SK139,指令微调,"指令微调;Instruction Tuning",大模型应用,生成式AI,,team_review,v1
+SK140,人类反馈强化学习,"RLHF;人类反馈",大模型应用,生成式AI,,team_review,v1
+SK141,思维链,"CoT;Chain of Thought",大模型应用,生成式AI,,team_review,v1
+SK142,工具调用,"Tool Calling;Function Calling",大模型应用,生成式AI,,team_review,v1
+SK143,多智能体,"Multi-Agent;多智能体系统",大模型应用,生成式AI,,team_review,v1
+SK144,知识蒸馏,"知识蒸馏;Knowledge Distillation",AI工程,人工智能,,team_review,v1
+SK145,模型剪枝,"模型剪枝;剪枝",AI工程,人工智能,,team_review,v1
+SK146,可解释AI,"XAI;可解释性",AI工程,人工智能,,team_review,v1
+SK147,模型安全,"模型安全;模型鲁棒性",网络安全,运维,,team_review,v1
+SK148,向量索引,"向量索引;Vector Index",数据库,大模型应用,,team_review,v1
+SK149,实时数仓,"实时数仓;实时数据仓库",数据工程,数据工程,,team_review,v1
+SK150,数据质量监控,"数据质量监控;数据监控",数据工程,数据工程,,team_review,v1
+SK151,数据资产,"数据资产;数据资产化",数据工程,数据工程,,team_review,v1
+SK152,机器学习平台,"ML平台;MLOps",数据平台,数据工程,,team_review,v1
+SK153,AI平台,"AI平台;AI中台",数据平台,数据工程,,team_review,v1
+SK154,强化学习,"强化学习;Reinforcement Learning",人工智能,人工智能,,team_review,v1
+SK155,迁移学习,"迁移学习;Transfer Learning",人工智能,人工智能,,team_review,v1
+SK156,联邦学习,"联邦学习;Federated Learning",人工智能,人工智能,,team_review,v1
+SK157,元学习,"元学习;Meta Learning",人工智能,人工智能,,team_review,v1
+SK158,少样本学习,"少样本学习;Few-shot Learning",人工智能,人工智能,,team_review,v1
+SK159,零样本学习,"零样本学习;Zero-shot Learning",人工智能,人工智能,,team_review,v1
+SK160,图数据库,"图数据库;Graph Database",数据库,数据存储,,team_review,v1
+SK161,时序数据库,"时序数据库;Time Series DB",数据库,数据存储,,team_review,v1
+SK162,数据管道,"数据管道;Data Pipeline",数据工程,数据工程,,team_review,v1
+SK163,数据血缘,"数据血缘;数据溯源",数据工程,数据工程,,team_review,v1
+SK164,数据安全,"数据安全;数据保护",网络安全,运维,,team_review,v1
+SK165,隐私计算,"隐私计算;隐私保护",网络安全,运维,,team_review,v1
+SK166,神经网络架构搜索,"NAS;神经架构搜索",AI工程,人工智能,,team_review,v1
+SK167,芯片设计,"芯片设计;IC设计;集成电路",硬件,硬件,,team_review,v1
+SK168,运维,"运维;系统运维",运维,运维,,team_review,v1
+SK169,电气工程,"电气;电气工程;电力",硬件,硬件,,team_review,v1
+SK170,业务拓展,"业务拓展;BD;商务拓展",通用技能,市场,,team_review,v1
+SK171,技术支持,"技术支持;技术支撑",通用技能,运维,,team_review,v1
+SK172,资源管理,"资源管理;资源调度",通用技能,管理,,team_review,v1
+SK173,解决方案,"解决方案;方案架构",通用技能,产品,,team_review,v1
+SK174,概念设计,"概念设计;概念美术",美术设计,游戏开发,,team_review,v1

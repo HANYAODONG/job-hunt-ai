@@ -27,6 +27,9 @@ class SkillExtractor:
         # 把所有别名加入 jieba 词典，避免被切分
         for alias in self.alias_map.keys():
             jieba.add_word(alias)
+        # 把所有技能名加入 jieba 词典
+        for skill in self.skills:
+            jieba.add_word(skill['canonical_name'])
 
     def _load_dictionary(self):
         """加载技能词典"""
@@ -81,6 +84,9 @@ class SkillExtractor:
         # 1. 先用 jieba 分词，对每个词进行匹配
         words = jieba.lcut(text)
         for word in words:
+            # 跳过单字符词（如 "R"），避免误抽
+            if len(word) < 2:
+                continue
             word_lower = word.lower().strip()
             if word_lower in self.alias_map:
                 canonical = self.alias_map[word_lower]
