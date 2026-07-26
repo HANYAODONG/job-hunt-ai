@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Card,
   Button,
@@ -7,7 +7,7 @@ import {
   Col,
   Typography,
   Space,
-  Spin,
+  Skeleton,
   Alert,
   Tag,
   Divider,
@@ -18,6 +18,7 @@ import {
   Switch,
   Input,
   Segmented,
+  Empty,
 } from 'antd';
 import {
   ReloadOutlined,
@@ -45,6 +46,13 @@ const FACTORS = [
 
 const DEFAULT_WEIGHTS = { bm25: 0.15, semantic: 0.25, skill_coverage: 0.30, job_family: 0.15, graph: 0.15 };
 
+const EXAMPLE_QUERIES = [
+  { label: 'Python 数据分析', text: '熟悉 Python、SQL、数据分析，有3年经验，期望数据工程师岗位' },
+  { label: 'Java 后端开发', text: 'Java、Spring Boot、微服务架构，5年后端开发经验，期望后端开发工程师' },
+  { label: '前端 React', text: 'React、TypeScript、Node.js，2年前端开发经验，期望前端开发工程师' },
+  { label: 'AI 算法', text: 'Python、TensorFlow、PyTorch，深度学习模型训练经验，期望算法工程师' },
+];
+
 export default function FusionDemoPage() {
   // ── State ──────────────────────────────────────────────────
   const [results, setResults] = useState(null);
@@ -62,6 +70,9 @@ export default function FusionDemoPage() {
   const [mode, setMode] = useState('bm25');  // 'mock' | 'bm25'
   const [queryText, setQueryText] = useState('');
   const [bm25Size, setBm25Size] = useState(20);
+  const [searched, setSearched] = useState(false);  // 是否已搜索过
+
+  const resultsRef = useRef(null);  // 结果区域 ref，用于自动滚动
 
   // ── 数据来源标注 ───────────────────────────────────────────
   // 真实BM25模式下：只有bm25是真实的，其余因子待接入
@@ -95,9 +106,13 @@ export default function FusionDemoPage() {
 
       const data = await getMockRankedResults(queryId, numJobs, seed, activeWeights);
       setResults(data);
+      setSearched(true);
 
       if (data.results.length > 0) {
         message.success(`成功生成 ${data.results.length} 条 Mock 融合结果`);
+        setTimeout(() => {
+          resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
       }
     } catch (err) {
       setError(err.message);
@@ -123,9 +138,14 @@ export default function FusionDemoPage() {
         weights: activeWeights,
       });
       setResults(data);
+      setSearched(true);
 
       if (data.results.length > 0) {
         message.success(`BM25 召回 ${data.results.length} 条结果，已融合排序`);
+        // 自动滚动到结果区域
+        setTimeout(() => {
+          resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
         // 如果有真实BM25原始分数，展示在控制台
         const rawScores = data.results
           .filter(r => r.meta?.bm25_score_raw)
@@ -210,6 +230,7 @@ export default function FusionDemoPage() {
             setMode(val);
             setResults(null);
             setError(null);
+            setSearched(false);
             // 切换到BM25模式时自动应用BM25-only权重
             if (val === 'bm25') {
               setWeights({ ...bm25OnlyWeights });
@@ -308,6 +329,19 @@ export default function FusionDemoPage() {
         {mode === 'bm25' ? (
           /* ── BM25 真实模式：查询输入 ── */
           <>
+            <div style={{ marginBottom: 12 }}>
+              <Text type="secondary" style={{ fontSize: 12, marginRight: 8 }}>💡 试试：</Text>
+              {EXAMPLE_QUERIES.map((eq) => (
+                <Tag
+                  key={eq.label}
+                  color="blue"
+                  style={{ cursor: 'pointer', marginBottom: 4 }}
+                  onClick={() => setQueryText(eq.text)}
+                >
+                  {eq.label}
+                </Tag>
+              ))}
+            </div>
             <Row gutter={16} align="middle">
               <Col flex="auto">
                 <Input.TextArea
@@ -406,10 +440,21 @@ export default function FusionDemoPage() {
         <Alert message="融合排序失败" description={error} type="error" showIcon style={{ marginBottom: 20 }} />
       )}
 
-      {/* ── Loading ── */}
+      {/* ── Loading 骨架屏 ── */}
       {loading && (
-        <div style={{ textAlign: 'center', padding: 60 }}>
-          <Spin size="large" tip="正在融合排序..." />
+        <div style={{ padding: '0 4px' }}>
+          <Row gutter={16} style={{ marginBottom: 20 }}>
+            {[1, 2, 3, 4].map((i) => (
+              <Col span={6} key={i}>
+                <Card><Skeleton active paragraph={{ rows: 1 }} title={{ width: '60%' }} /></Card>
+              </Col>
+            ))}
+          </Row>
+          {[1, 2, 3].map((i) => (
+            <Card key={i} style={{ marginBottom: 16 }}>
+              <Skeleton active avatar paragraph={{ rows: 2 }} />
+            </Card>
+          ))}
         </div>
       )}
 
@@ -460,6 +505,7 @@ export default function FusionDemoPage() {
       )}
 
       {/* ── 融合结果列表 ── */}
+      <div ref={resultsRef}>
       {results && results.results.length > 0 && (
         <>
           <Divider orientation="left">
@@ -489,8 +535,23 @@ export default function FusionDemoPage() {
         </>
       )}
 
-      {/* ── 空状态 ── */}
-      {!loading && !results && !error && (
+      {/* ── 搜索后无结果 ── */}
+      {!loading && results && results.results.length === 0 && !error && (
+        <Card style={{ textAlign: 'center', padding: 40 }}>
+          <Empty
+            description={
+              <span>
+                未找到匹配的岗位<br />
+                <Text type="secondary" style={{ fontSize: 12 }}>请尝试更换查询词或调整搜索条件</Text>
+              </span>
+            }
+          />
+        </Card>
+      )}
+      </div>
+
+      {/* ── 空状态（未搜索过） ── */}
+      {!loading && !results && !error && !searched && (
         <Card style={{ textAlign: 'center', padding: 60 }}>
           <ExperimentOutlined style={{ fontSize: 48, color: '#bbb' }} />
           <Title level={4} type="secondary" style={{ marginTop: 16 }}>
