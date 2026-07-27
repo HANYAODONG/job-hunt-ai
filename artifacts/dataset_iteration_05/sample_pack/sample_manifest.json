@@ -1,0 +1,32 @@
+{
+  "purpose": "small fixed sample pack for parallel workflow development",
+  "counts": {
+    "candidate_profiles_sample": 5,
+    "jobs_sample": 0,
+    "label_pairs_gold_sample": 11,
+    "label_pairs_silver_sample": 26
+  },
+  "candidate_ids": [
+    "resume_000001",
+    "resume_000002",
+    "resume_000003",
+    "resume_000004",
+    "resume_000005"
+  ],
+  "job_ids": [
+    "job_0630a41398e43b433019",
+    "job_0eff8408d4ec29bc7fd3",
+    "job_2cb2c54f06f65ea051b0",
+    "job_2fdf67e8f11d63c9ba5b",
+    "job_596f63eff2d2e4de522d",
+    "job_59f604bc4cfadb39cc5e",
+    "job_7173fcc51842d0a2cf04",
+    "job_9fb1c24dc4dc81838fb5",
+    "job_bf15662565713214ed7c",
+    "job_fbe9c467080f96760b93"
+  ],
+  "notes": [
+    "Use this sample pack when downstream workflows need stable local input before full data integration.",
+    "Sample files intentionally stay under artifacts/ and are not committed by default."
+  ]
+}
