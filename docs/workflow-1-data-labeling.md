@@ -1,0 +1,200 @@
+# Workflow 1: Data Foundation and Labeling Evaluation
+
+## Scope
+
+Workflow 1 owns the shared data contract for the whole recommendation pipeline. It does not train models. Its responsibility is to turn raw dataset-group files into stable intermediate files, prepare a small but useful LLM labeling pool, and provide evaluation scripts for downstream rankings.
+
+Main pipeline:
+
+```text
+raw jobs / resumes / labels
+  -> normalized jobs.jsonl and candidate_profiles.jsonl
+  -> BM25-based LLM labeling candidate pool
+  -> LLM label JSONL
+  -> quality check and manual review
+  -> gold/silver labels for evaluation
+```
+
+## Required Local Inputs
+
+Place raw files under `dataset/incoming/`:
+
+- `job_bigcompany_final.csv`
+- `synthetic_detailed_resumes.csv`
+- `standard_job_title_dictionary.csv`
+
+Optional but recommended:
+
+- `resume_job_silver_30.jsonl`
+- `金标30×20.csv`
+- `金银标区别.md`
+
+Large raw files are not committed to Git. Keep them local or share them through the dataset group channel.
+
+## Step 1: Normalize Data
+
+```powershell
+python .\scripts\dataset_adapter.py
+```
+
+Default output:
+
+```text
+artifacts/dataset_iteration_05/
+```
+
+Key outputs:
+
+- `jobs.jsonl`
+- `candidate_profiles.jsonl`
+- `label_pairs_gold.jsonl`
+- `label_pairs_silver.jsonl`
+- `data_quality_report.json`
+- `sample_pack/`
+
+If label files are temporarily unavailable:
+
+```powershell
+python .\scripts\dataset_adapter.py --allow-missing-labels
+```
+
+## Step 2: Build LLM Labeling Candidate Pool
+
+Use BM25 locally to select only a small number of candidate job pairs per resume. This avoids labeling every resume against every job.
+
+```powershell
+python .\scripts\build_llm_label_candidates.py `
+  --jobs .\artifacts\dataset_iteration_05\jobs.jsonl `
+  --candidates .\artifacts\dataset_iteration_05\candidate_profiles.jsonl `
+  --output .\artifacts\dataset_iteration_05\llm_label_candidates.jsonl `
+  --report .\artifacts\dataset_iteration_05\llm_label_candidate_report.json
+```
+
+Default sampling per resume:
+
+- 8 jobs from BM25 top results
+- 8 jobs from BM25 middle ranks
+- 4 random jobs from other job families when possible
+
+For a small smoke test:
+
+```powershell
+python .\scripts\build_llm_label_candidates.py --max-profiles 5
+```
+
+Output format:
+
+```json
+{
+  "query_id": "resume_001",
+  "candidate_id": "resume_001",
+  "candidate_snapshot": {
+    "summary": "...",
+    "skills": ["Python", "SQL"],
+    "target_job_family": "AI",
+    "preferred_location": ""
+  },
+  "query_text": "...",
+  "candidates": [
+    {
+      "job_id": "job_001",
+      "selection_bucket": "bm25_top",
+      "bm25_score": 12.34,
+      "bm25_rank": 1,
+      "job_family": "AI",
+      "job_snapshot": {
+        "title": "...",
+        "company": "...",
+        "skills": []
+      }
+    }
+  ]
+}
+```
+
+This file is a candidate pool, not a gold label file.
+
+## Step 3: LLM Label Output Contract
+
+LLM or human review should output one JSONL record per `(candidate_id, job_id)` pair:
+
+```json
+{
+  "candidate_id": "resume_001",
+  "job_id": "job_001",
+  "grade": 2,
+  "hard_constraint_pass": true,
+  "matched_skills": ["Python", "SQL"],
+  "missing_required_skills": ["PyTorch"],
+  "resume_evidence": ["熟悉 Python 数据分析"],
+  "job_evidence": ["要求 Python 和深度学习框架"],
+  "confidence": 0.86,
+  "label_source": "llm",
+  "annotator_id": "model_or_person",
+  "notes": ""
+}
+```
+
+Grade definition:
+
+- `0`: irrelevant
+- `1`: weakly relevant
+- `2`: relevant
+- `3`: strongly relevant
+
+Recommended file:
+
+```text
+artifacts/dataset_iteration_05/label_pairs_llm.jsonl
+```
+
+LLM-generated labels should be called candidate gold labels or high-quality silver labels until manually reviewed.
+
+## Step 4: Validate LLM Labels
+
+```powershell
+python .\scripts\validate_llm_labels.py `
+  --labels .\artifacts\dataset_iteration_05\label_pairs_llm.jsonl `
+  --candidate-pool .\artifacts\dataset_iteration_05\llm_label_candidates.jsonl `
+  --output .\artifacts\dataset_iteration_05\llm_label_quality_report.json
+```
+
+The report checks:
+
+- missing required fields
+- invalid grades or confidence values
+- duplicate candidate/job pairs
+- pairs not in the candidate pool
+- low-confidence labels needing manual review
+- positive labels without evidence
+
+## Step 5: Evaluate Downstream Rankings
+
+Use the existing evaluator:
+
+```powershell
+python .\scripts\evaluate_candidate_rankings.py `
+  --ranking .\artifacts\bm25\bm25_top200.jsonl `
+  --labels .\artifacts\dataset_iteration_05\label_pairs_gold.jsonl `
+  --score-field bm25_score `
+  --rank-field bm25_rank `
+  --output .\artifacts\dataset_iteration_05\bm25_eval_report.json
+```
+
+The same evaluator can compare:
+
+- BM25
+- BM25 + text2vec
+- BM25 + BGE-M3
+- BM25 + semantic + KG features
+- fusion ranking
+
+## Acceptance Criteria
+
+- The normalized schema is documented in `docs/data-schema.md`.
+- `jobs.jsonl` and `candidate_profiles.jsonl` can be regenerated.
+- LLM candidate pairs are generated by a deterministic script.
+- LLM labels have a documented JSONL schema.
+- Label quality report flags obvious format and consistency issues.
+- Downstream ranking outputs can be evaluated with Recall@K, MRR, and NDCG@K.
+

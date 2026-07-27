@@ -419,3 +419,89 @@ candidate_profiles.jsonl
   "explanation": "该岗位与简历在 Python、SQL 上匹配度较高，但仍缺少 Machine Learning 相关能力。"
 }
 ```
+## Workflow 1 LLM Labeling Extension
+
+This extension belongs to workflow 1 second-stage labeling. It prepares a small candidate pool for LLM or human labeling and keeps generated labels separate from formal gold labels.
+
+### `llm_label_candidates.jsonl`
+
+Recommended path:
+
+```text
+artifacts/dataset_iteration_05/llm_label_candidates.jsonl
+```
+
+One line contains one resume/candidate and a list of selected job candidates:
+
+```json
+{
+  "query_id": "resume_001",
+  "candidate_id": "resume_001",
+  "candidate_snapshot": {
+    "summary": "...",
+    "skills": ["Python", "SQL"],
+    "target_job_family": "AI",
+    "preferred_location": ""
+  },
+  "query_text": "...",
+  "candidates": [
+    {
+      "job_id": "job_001",
+      "selection_bucket": "bm25_top",
+      "bm25_score": 12.34,
+      "bm25_rank": 1,
+      "job_family": "AI",
+      "job_snapshot": {
+        "title": "...",
+        "company": "...",
+        "skills": [],
+        "description_preview": "..."
+      }
+    }
+  ],
+  "labeling_instruction": "Use docs/llm-labeling-guidelines.md to assign grade 0-3 and evidence fields."
+}
+```
+
+`selection_bucket` values:
+
+- `bm25_top`: likely positive candidates from top BM25 results
+- `bm25_middle`: boundary or hard-negative candidates from middle ranks
+- `cross_family_random`: likely negative candidates from other job families
+- `backfill_ranked` / `backfill_any`: deterministic fallback when the candidate pool is too small
+
+### `label_pairs_llm.jsonl`
+
+Recommended path:
+
+```text
+artifacts/dataset_iteration_05/label_pairs_llm.jsonl
+```
+
+One line contains one LLM or human-reviewed label:
+
+```json
+{
+  "candidate_id": "resume_001",
+  "job_id": "job_001",
+  "grade": 2,
+  "hard_constraint_pass": true,
+  "matched_skills": ["Python", "SQL"],
+  "missing_required_skills": ["PyTorch"],
+  "resume_evidence": ["熟悉 Python 数据分析"],
+  "job_evidence": ["岗位要求 Python 和深度学习框架"],
+  "confidence": 0.86,
+  "label_source": "llm",
+  "annotator_id": "model_or_person",
+  "notes": ""
+}
+```
+
+Grade definition:
+
+- `0`: irrelevant
+- `1`: weakly relevant
+- `2`: relevant
+- `3`: strongly relevant
+
+Important rule: `label_pairs_llm.jsonl` is not formal gold by default. It becomes `label_pairs_gold.jsonl` only after manual review and version confirmation.

@@ -10,7 +10,7 @@ Fusion API Endpoints — 工作流4：融合排序 API
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from app.models.fusion import (
