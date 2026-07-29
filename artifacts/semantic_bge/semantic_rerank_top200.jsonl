@@ -1,3 +1,0 @@
-{"query_id":"resume_000001","model":"BAAI/bge-m3","job_text_mode":"title+duty+requirements+skills","encode_time_ms":0,"candidates":[]}
-{"query_id":"resume_000002","model":"BAAI/bge-m3","job_text_mode":"title+duty+requirements+skills","encode_time_ms":0,"candidates":[]}
-{"query_id":"resume_000003","model":"BAAI/bge-m3","job_text_mode":"title+duty+requirements+skills","encode_time_ms":284.76,"candidates":[{"job_id":"JOB00056","bm25_score":427.17932,"bm25_rank":1,"semantic_score":0.708829,"semantic_rank":1},{"job_id":"JOB00319","bm25_score":406.17392,"bm25_rank":4,"semantic_score":0.659935,"semantic_rank":2}]}
