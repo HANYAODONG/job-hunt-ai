@@ -1,6 +1,6 @@
 # 工作流 1：标准数据集生成说明
 
-本文档说明组员如何使用工作流 1 脚本，把 `database/` 中的数据统一转换为各工作流可直接读取的标准 JSONL。
+本文档说明如何使用格式转化脚本，把 `database/` 中的数据统一转换为各工作流可直接读取的标准 JSONL。
 
 ## 1. 目的
 
@@ -45,6 +45,12 @@ cd "D:\Desktop\挑战杯大模型组\job-hunt-ai-main"
 
 ```powershell
 python .\scripts\dataset_adapter.py
+```
+
+生成后建议立刻执行一次验收：
+
+```powershell
+python .\scripts\validate_workflow1_dataset.py --output .\artifacts\dataset_iteration_05\validation_report.json
 ```
 
 如果暂时没有金标/银标文件：
@@ -153,3 +159,19 @@ artifacts/dataset_iteration_05/sample_pack/
 - 标准输出不会包含姓名、电话、邮箱等直接个人信息。
 - 当前 legacy 映射是为了兼容旧金银标，不是最终方案。
 - 正式评估阶段最好重新生成与 `dataset_iteration_05` 完全对齐的金标/银标。
+
+## 8. 给其他工作流的最低交付
+
+在第三轮联调前，工作流 1 至少交付：
+
+```text
+artifacts/dataset_iteration_05/jobs.jsonl
+artifacts/dataset_iteration_05/candidate_profiles.jsonl
+artifacts/dataset_iteration_05/label_pairs_gold.jsonl
+artifacts/dataset_iteration_05/label_pairs_silver.jsonl
+artifacts/dataset_iteration_05/sample_pack/
+artifacts/dataset_iteration_05/data_quality_report.json
+artifacts/dataset_iteration_05/validation_report.json
+```
+
+下游同学优先读取 `sample_pack/` 做快速联调；小样本跑通后，再切换到完整 `jobs.jsonl` 和 `candidate_profiles.jsonl`。
