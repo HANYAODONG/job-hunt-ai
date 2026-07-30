@@ -36,6 +36,22 @@ export async function getMockRankedResults(queryId, numJobs = 20, seed = null, w
 }
 
 /**
+ * 查询驱动融合排序（真实 BM25）
+ * 输入查询文本，后端自动调 BM25 → 归一化 → 融合
+ */
+export async function rankFromQuery(queryText, options = {}) {
+  const { queryId = null, size = 20, weights = null, sourceType = null } = options;
+  const response = await api.post('/fusion/rank-from-query', {
+    query_text: queryText,
+    query_id: queryId,
+    size,
+    weights,
+    source_type: sourceType,
+  });
+  return response.data;
+}
+
+/**
  * 批量融合排序（传真实数据）
  */
 export async function rankJobs(queryId, fusionInputs) {

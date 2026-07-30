@@ -1,29 +1,54 @@
-"""Adapt dataset-group artifacts into JobMatch AI intermediate files.
+"""Adapt dataset-group artifacts into JobMatch AI standard JSONL files.
 
 Workflow 1 scope:
-- Convert external CSV/JSONL files into stable JSONL manifests.
-- Emit team-wide schema fields used by downstream workflows.
-- Emit a small sample pack for parallel development.
-- Keep this offline and deterministic.
+- Convert the shared raw CSV/JSONL files into stable downstream contracts.
+- Emit jobs, candidate profiles, optional labels, quality reports, and samples.
+- Keep the process offline and deterministic.
 - Do not train models.
-- Do not emit phone/email/name fields.
+- Do not emit name, phone, email, or other direct PII fields.
 """
 
 from __future__ import annotations
 
 import argparse
 import csv
-import hashlib
 import json
-from collections import Counter, defaultdict
-from datetime import datetime, timezone
+import re
+from collections import Counter
 from pathlib import Path
 from typing import Any, Iterable
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_DATASET_DIR = REPO_ROOT / "dataset" / "incoming"
+DEFAULT_DATASET_DIR = REPO_ROOT.parent / "database"
 DEFAULT_OUTPUT_DIR = REPO_ROOT / "artifacts" / "dataset_iteration_05"
+
+ENTERPRISE_JOB_CANDIDATES = (
+    "job_bigcompany_final.csv",
+    "job_bigcompany_final(1).csv",
+)
+GOVERNMENT_JOB_CANDIDATES = (
+    "government_jobs_2026_tech_filtered.csv",
+)
+RESUME_CANDIDATES = (
+    "synthetic_detailed_resumes_experience_30k.csv",
+    "synthetic_detailed_resumes.csv",
+)
+JOB_TITLE_DICTIONARY = "standard_job_title_dictionary.csv"
+SILVER_LABEL_CANDIDATES = ("resume_job_silver_30.jsonl",)
+GOLD_LABEL_CANDIDATES = ("金标30×20.csv", "金标30x20.csv")
+
+
+def first_existing(dataset_dir: Path, filenames: Iterable[str], required: bool = False) -> Path | None:
+    for filename in filenames:
+        path = dataset_dir / filename
+        if path.exists():
+            return path
+    if required:
+        raise FileNotFoundError(
+            f"Required input not found in {dataset_dir}: {', '.join(filenames)}"
+        )
+    return None
 
 
 def read_csv_rows(path: Path, encodings: tuple[str, ...] = ("utf-8-sig", "utf-8", "gb18030")) -> list[dict[str, str]]:
@@ -37,15 +62,17 @@ def read_csv_rows(path: Path, encodings: tuple[str, ...] = ("utf-8-sig", "utf-8"
     raise UnicodeDecodeError("unknown", b"", 0, 1, f"Cannot decode {path}: {last_error}")
 
 
-def read_jsonl(path: Path) -> Iterable[dict[str, Any]]:
+def read_jsonl(path: Path) -> list[dict[str, Any]]:
+    records: list[dict[str, Any]] = []
     with path.open("r", encoding="utf-8") as handle:
         for line_number, line in enumerate(handle, start=1):
             if not line.strip():
                 continue
             try:
-                yield json.loads(line)
+                records.append(json.loads(line))
             except json.JSONDecodeError as exc:
                 raise ValueError(f"Invalid JSONL at {path}:{line_number}: {exc}") from exc
+    return records
 
 
 def write_jsonl(path: Path, records: Iterable[dict[str, Any]]) -> int:
@@ -64,70 +91,52 @@ def write_json(path: Path, payload: dict[str, Any]) -> None:
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def parse_json_field(value: str, fallback: Any) -> Any:
-    if not value:
+def parse_json_field(value: Any, fallback: Any) -> Any:
+    if value in (None, ""):
         return fallback
+    if not isinstance(value, str):
+        return value
     try:
         return json.loads(value)
     except json.JSONDecodeError:
         return fallback
 
 
-def split_semicolon(value: str) -> list[str]:
-    if not value:
+def split_items(value: Any) -> list[str]:
+    if value in (None, ""):
         return []
-    return [item.strip() for item in value.split(";") if item.strip()]
+    if isinstance(value, list):
+        return unique_strings(value)
+    if not isinstance(value, str):
+        return []
+
+    stripped = value.strip()
+    parsed = parse_json_field(stripped, None)
+    if isinstance(parsed, list):
+        return unique_strings(parsed)
+
+    parts = re.split(r"[;；,，、\n\r\t]+", stripped)
+    return unique_strings(parts)
 
 
-def unique_strings(*groups: Iterable[Any]) -> list[str]:
-    values: list[str] = []
+def unique_strings(values: Iterable[Any]) -> list[str]:
     seen: set[str] = set()
-    for group in groups:
-        for value in group:
-            item = str(value).strip()
-            key = item.casefold()
-            if item and key not in seen:
-                values.append(item)
-                seen.add(key)
-    return values
-
-
-def normalize_date(value: str) -> str | None:
-    text = str(value or "").strip()
-    if not text:
-        return None
-    try:
-        timestamp = float(text)
-        if timestamp >= 10**11:
-            return datetime.fromtimestamp(timestamp / 1000, tz=timezone.utc).date().isoformat()
-    except (ValueError, OverflowError, OSError):
-        pass
-
-    for pattern in (
-        "%Y/%m/%d",
-        "%Y/%m/%d %H:%M",
-        "%Y/%m/%d %H:%M:%S",
-        "%Y-%m-%d",
-        "%Y-%m-%dT%H:%M:%S",
-        "%Y-%m-%d %H:%M:%S",
-        "%Y.%m.%d",
-    ):
-        try:
-            parsed = datetime.strptime(text, pattern)
-            return parsed.date().isoformat() if parsed.year >= 1970 else None
-        except ValueError:
+    result: list[str] = []
+    for value in values:
+        text = str(value).strip()
+        if not text:
             continue
-    return None
-
-
-def content_hash(payload: dict[str, Any]) -> str:
-    rendered = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
-    return hashlib.sha256(rendered.encode("utf-8")).hexdigest()
+        key = text.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        result.append(text)
+    return result
 
 
 def safe_int(value: Any, default: int | None = None) -> int | None:
     try:
-        if value == "" or value is None:
+        if value in ("", None):
             return default
         return int(float(value))
     except (TypeError, ValueError):
@@ -136,94 +145,76 @@ def safe_int(value: Any, default: int | None = None) -> int | None:
 
 def safe_float(value: Any, default: float | None = None) -> float | None:
     try:
-        if value == "" or value is None:
+        if value in ("", None):
             return default
         return float(value)
     except (TypeError, ValueError):
         return default
 
 
-def adapt_candidate_profiles(resume_rows: list[dict[str, str]]) -> list[dict[str, Any]]:
-    profiles: list[dict[str, Any]] = []
-    for row in resume_rows:
-        skills = parse_json_field(row.get("skills_normalized", ""), [])
-        skill_levels = parse_json_field(row.get("skill_levels", ""), {})
-        experience = parse_json_field(row.get("experience", ""), [])
-        projects = parse_json_field(row.get("projects", ""), [])
-        profiles.append(
+def join_text(*parts: Any) -> str:
+    return "\n".join(str(part).strip() for part in parts if str(part or "").strip())
+
+
+def load_job_title_rules(path: Path | None) -> list[dict[str, str]]:
+    if path is None or not path.exists():
+        return []
+    rules: list[dict[str, str]] = []
+    for row in read_csv_rows(path):
+        title = row.get("standard_job_title", "").strip()
+        if not title:
+            continue
+        rules.append(
             {
-                "candidate_id": row.get("resume_id", ""),
-                "resume_id": row.get("resume_id", ""),
-                "source_resume_id": row.get("resume_id", ""),
-                "split": row.get("split", ""),
-                "summary": row.get("profile_text", ""),
-                "target_job_family": row.get("target_job_family", ""),
-                "preferred_location": row.get("preferred_location", ""),
-                "skills": skills,
-                "education": {
-                    "education": row.get("education", ""),
-                    "degree": row.get("degree", ""),
-                    "school_category": row.get("school_category", ""),
-                    "major": row.get("major", ""),
-                    "english_level": row.get("english_level", ""),
-                },
-                "years_experience": safe_int(row.get("years_experience"), 0),
-                "skills_normalized": skills,
-                "skill_levels": skill_levels,
-                "experience": experience,
-                "projects": projects,
-                "profile_text": row.get("profile_text", ""),
+                "standard_job_title": title,
+                "standard_category": row.get("standard_category", "").strip(),
+                "match_keywords": row.get("match_keywords", "").strip(),
             }
         )
-    return profiles
+    return rules
 
 
-def adapt_jobs_from_bigcompany(
-    job_rows: list[dict[str, str]],
-    title_dictionary_rows: list[dict[str, str]],
-) -> list[dict[str, Any]]:
-    category_by_title = {
-        str(row.get("standard_job_title", "")).strip(): str(row.get("standard_category", "")).strip()
-        for row in title_dictionary_rows
-        if str(row.get("standard_job_title", "")).strip()
-    }
+def normalize_job_family(text: str, rules: list[dict[str, str]], fallback: str = "") -> tuple[str, str, str]:
+    if fallback:
+        for rule in rules:
+            if rule["standard_job_title"] == fallback:
+                return fallback, rule.get("standard_category", ""), "source_field"
+        return fallback, "", "source_field"
+
+    for rule in rules:
+        pattern = rule.get("match_keywords", "")
+        if not pattern:
+            continue
+        try:
+            if re.search(pattern, text, flags=re.IGNORECASE):
+                return rule["standard_job_title"], rule.get("standard_category", ""), "dictionary_regex"
+        except re.error:
+            if pattern.lower() in text.lower():
+                return rule["standard_job_title"], rule.get("standard_category", ""), "dictionary_text"
+    return "", "", "unmatched"
+
+
+def adapt_enterprise_jobs(rows: list[dict[str, str]], rules: list[dict[str, str]]) -> list[dict[str, Any]]:
     jobs: list[dict[str, Any]] = []
-    seen_job_ids: set[str] = set()
-
-    for row_number, row in enumerate(job_rows, start=2):
-        job_id = str(row.get("job_id", "")).strip()
-        if not job_id:
-            raise ValueError(f"Missing job_id at big-company CSV row {row_number}")
-        if job_id in seen_job_ids:
-            raise ValueError(f"Duplicate job_id {job_id!r} at big-company CSV row {row_number}")
-        seen_job_ids.add(job_id)
-
-        title = str(row.get("job_title", "")).strip()
-        standard_job = str(row.get("standard_job", "")).strip()
-        responsibilities = str(row.get("job_responsibility", "")).strip()
-        requirements = str(row.get("job_requirement", "")).strip()
-        detailed = str(row.get("detailed", "")).strip()
-        traditional_skills = unique_strings(split_semicolon(row.get("traditional_skills", "")))
-        new_skills = unique_strings(split_semicolon(row.get("new_skills", "")))
-        extracted_skills = split_semicolon(row.get("skills", ""))
-        skills = unique_strings(extracted_skills, traditional_skills, new_skills)
-        domain_context = unique_strings(split_semicolon(row.get("domain_context", "")))
-        description_parts = [
-            f"岗位职责：{responsibilities}" if responsibilities else "",
-            f"任职要求：{requirements}" if requirements else "",
-            f"能力摘要：{detailed}" if detailed else "",
-        ]
-        description = "\n".join(part for part in description_parts if part)
-
-        stable_content = {
-            "title": title,
-            "standard_job": standard_job,
-            "responsibilities": responsibilities,
-            "requirements": requirements,
-            "skills": skills,
-            "domain_context": domain_context,
-        }
-        publish_time_raw = str(row.get("publish_time", "")).strip()
+    for index, row in enumerate(rows, start=1):
+        job_id = row.get("job_id", "").strip() or f"JOB{index:05d}"
+        title = row.get("job_title", "").strip()
+        description = join_text(
+            row.get("job_responsibility", ""),
+            row.get("job_requirement", ""),
+            row.get("detailed", ""),
+            row.get("domain_context", ""),
+        )
+        skills = unique_strings(
+            split_items(row.get("skills", ""))
+            + split_items(row.get("traditional_skills", ""))
+            + split_items(row.get("new_skills", ""))
+        )
+        family, category, method = normalize_job_family(
+            join_text(title, description, row.get("standard_job", "")),
+            rules,
+            row.get("standard_job", "").strip(),
+        )
         jobs.append(
             {
                 "job_id": job_id,
@@ -231,87 +222,117 @@ def adapt_jobs_from_bigcompany(
                 "title": title,
                 "description": description,
                 "skills": skills,
-                "job_family": standard_job,
-                "company": "",
-                "location": "",
-                "source": "bigcompany_final",
-                "standard_job": standard_job,
-                "standard_category": category_by_title.get(standard_job, ""),
-                "responsibilities": responsibilities,
-                "requirements": requirements,
-                "detailed": detailed,
-                "traditional_skills": traditional_skills,
-                "new_skills": new_skills,
-                "domain_context": domain_context,
-                "publish_time": normalize_date(publish_time_raw),
-                "publish_time_raw": publish_time_raw,
-                "source_type": "enterprise",
-                "content_hash": content_hash(stable_content),
                 "required_skills": skills,
+                "job_family": family,
+                "standard_job": family,
+                "standard_category": category,
+                "company": "",
                 "company_name": "",
+                "location": "",
                 "location_text": "",
-                "tags": skills,
+                "source": "bigcompany_processed",
+                "source_type": "enterprise",
+                "publish_time": row.get("publish_time", "").strip(),
+                "domain_context": row.get("domain_context", "").strip(),
+                "traditional_skills": split_items(row.get("traditional_skills", "")),
+                "new_skills": split_items(row.get("new_skills", "")),
                 "search_metadata": {
-                    "source": "dataset/incoming/job_bigcompany_final.csv",
+                    "source_file": "job_bigcompany_final",
                     "source_job_id": job_id,
-                    "job_family_source": "standard_job_pending_team_crosswalk",
+                    "job_family_alignment_method": method,
                 },
             }
         )
     return jobs
 
 
-def adapt_jobs_from_silver(silver_records: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    jobs: dict[str, dict[str, Any]] = {}
-    family_votes: dict[str, Counter[str]] = defaultdict(Counter)
-    skill_votes: dict[str, Counter[str]] = defaultdict(Counter)
-
-    for record in silver_records:
-        job_id = str(record.get("job_id", "")).strip()
-        if not job_id:
-            continue
-        family = str(record.get("target_job_family", "")).strip()
-        if family:
-            family_votes[job_id][family] += 1
-        for skill in record.get("matched_skills") or []:
-            if skill:
-                skill_votes[job_id][str(skill)] += 1
-        if job_id not in jobs:
-            jobs[job_id] = {
+def adapt_government_jobs(rows: list[dict[str, str]], rules: list[dict[str, str]], start_index: int = 1) -> list[dict[str, Any]]:
+    jobs: list[dict[str, Any]] = []
+    for index, row in enumerate(rows, start=start_index):
+        job_id = row.get("job_id", "").strip() or f"GOV{index:05d}"
+        title = row.get("job_title", "").strip()
+        description = row.get("job_description", "").strip()
+        tags = split_items(row.get("tags", ""))
+        family, category, method = normalize_job_family(join_text(title, description, row.get("tags", "")), rules)
+        jobs.append(
+            {
                 "job_id": job_id,
                 "id": job_id,
-                "title": record.get("job_title", ""),
-                "description": record.get("job_description", ""),
-                "company": record.get("company_name", ""),
-                "company_name": record.get("company_name", ""),
-                "location": record.get("location", ""),
-                "location_text": record.get("location", ""),
-                "source_url": record.get("source_url", ""),
-                "source": record.get("source_type", "") or "dataset_group_silver_jsonl",
-                "source_type": record.get("source_type", ""),
-                "tags": record.get("tags", []),
+                "title": title,
+                "description": description,
                 "skills": [],
-                "job_family": "",
                 "required_skills": [],
+                "job_family": family,
+                "standard_job": family,
+                "standard_category": category,
+                "company": row.get("company_name", "").strip(),
+                "company_name": row.get("company_name", "").strip(),
+                "location": row.get("location", "").strip() or row.get("city", "").strip(),
+                "location_text": row.get("location", "").strip() or row.get("city", "").strip(),
+                "source": row.get("source", "").strip() or "government_jobs",
+                "source_type": "government",
+                "source_name": row.get("source_name", "").strip(),
+                "salary_text": row.get("salary_text", "").strip(),
+                "tags": tags,
+                "publish_time": row.get("publish_time", "").strip(),
+                "source_url": row.get("source_url", "").strip(),
                 "search_metadata": {
-                    "source": "dataset_group_silver_jsonl",
+                    "source_file": "government_jobs_2026_tech_filtered",
                     "source_job_id": job_id,
-                    "silver_method": record.get("silver_method", ""),
+                    "job_family_alignment_method": method,
+                    "keyword": row.get("keyword", "").strip(),
                 },
             }
+        )
+    return jobs
 
-    adapted: list[dict[str, Any]] = []
-    for job_id, job in jobs.items():
-        top_family = family_votes[job_id].most_common(1)
-        top_skills = [skill for skill, _ in skill_votes[job_id].most_common()]
-        job["skills"] = top_skills
-        job["job_family"] = top_family[0][0] if top_family else ""
-        job["required_skills"] = top_skills
-        job["search_metadata"]["candidate_target_job_families"] = dict(family_votes[job_id])
-        job["search_metadata"]["dominant_target_job_family"] = top_family[0][0] if top_family else ""
-        job["search_metadata"]["matched_skill_counts"] = dict(skill_votes[job_id])
-        adapted.append(job)
-    return sorted(adapted, key=lambda item: item["id"])
+
+def adapt_candidate_profiles(resume_rows: list[dict[str, str]]) -> list[dict[str, Any]]:
+    profiles: list[dict[str, Any]] = []
+    for row in resume_rows:
+        resume_id = row.get("resume_id", "").strip()
+        skills = split_items(row.get("skills_normalized", ""))
+        skill_levels = parse_json_field(row.get("skill_levels", ""), {})
+        experience = parse_json_field(row.get("experience", ""), [])
+        projects = parse_json_field(row.get("projects", ""), [])
+        target_family = (
+            row.get("standard_job_title", "").strip()
+            or row.get("standard_job", "").strip()
+            or row.get("target_job_family", "").strip()
+        )
+        profiles.append(
+            {
+                "candidate_id": resume_id,
+                "resume_id": resume_id,
+                "source_resume_id": resume_id,
+                "split": row.get("split", "").strip(),
+                "summary": row.get("profile_text", "").strip(),
+                "target_job_family": target_family,
+                "original_target_job_family": row.get("original_target_job_family", "").strip()
+                or row.get("target_job_family", "").strip(),
+                "preferred_location": row.get("preferred_location", "").strip(),
+                "skills": skills,
+                "education": {
+                    "education": row.get("education", "").strip(),
+                    "degree": row.get("degree", "").strip(),
+                    "school_category": row.get("school_category", "").strip(),
+                    "major": row.get("major", "").strip(),
+                    "english_level": row.get("english_level", "").strip(),
+                },
+                "years_experience": safe_int(row.get("years_experience"), 0),
+                "skills_normalized": skills,
+                "skill_levels": skill_levels,
+                "experience": experience,
+                "projects": projects,
+                "profile_text": row.get("profile_text", "").strip(),
+                "standard_category": row.get("standard_category", "").strip(),
+                "alignment_method": row.get("alignment_method", "").strip(),
+                "job_profile_skills": split_items(row.get("job_profile_skills", "")),
+                "kg_display_skills": split_items(row.get("kg_display_skills", "")),
+                "resume_skill_overlap_count": safe_int(row.get("resume_skill_overlap_count")),
+            }
+        )
+    return profiles
 
 
 def adapt_silver_pairs(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -353,10 +374,10 @@ def adapt_gold_pairs(rows: list[dict[str, str]]) -> list[dict[str, Any]]:
                 "label_source": "gold",
                 "grade": safe_int(row.get("relevance_grade"), 0),
                 "hard_constraint_pass": row.get("hard_constraint_pass", ""),
-                "matched_skills": split_semicolon(row.get("matched_skills", "")),
-                "missing_required_skills": split_semicolon(row.get("missing_required_skills", "")),
-                "missing_optional_skills": split_semicolon(row.get("missing_optional_skills", "")),
-                "transferable_skills": split_semicolon(row.get("transferable_skills", "")),
+                "matched_skills": split_items(row.get("matched_skills", "")),
+                "missing_required_skills": split_items(row.get("missing_required_skills", "")),
+                "missing_optional_skills": split_items(row.get("missing_optional_skills", "")),
+                "transferable_skills": split_items(row.get("transferable_skills", "")),
                 "resume_evidence": row.get("resume_evidence", ""),
                 "job_evidence": row.get("job_evidence", ""),
                 "annotator_id": row.get("annotator_id", ""),
@@ -366,16 +387,141 @@ def adapt_gold_pairs(rows: list[dict[str, str]]) -> list[dict[str, Any]]:
     return pairs
 
 
+def base_resume_id(candidate_id: Any) -> str:
+    text = str(candidate_id or "").strip()
+    match = re.match(r"(resume_\d+)", text)
+    return match.group(1) if match else text
+
+
+def build_candidate_id_map(candidate_profiles: list[dict[str, Any]]) -> dict[str, str]:
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for profile in candidate_profiles:
+        candidate_id = str(profile.get("candidate_id", "")).strip()
+        if not candidate_id:
+            continue
+        grouped.setdefault(base_resume_id(candidate_id), []).append(profile)
+
+    mapping: dict[str, str] = {}
+    for source_id, profiles in grouped.items():
+        def candidate_sort_key(item: dict[str, Any]) -> tuple[int, str]:
+            years = safe_int(item.get("years_experience"))
+            return (
+                years if years is not None else 999,
+                str(item.get("candidate_id", "")),
+            )
+
+        ordered = sorted(
+            profiles,
+            key=candidate_sort_key,
+        )
+        mapping[source_id] = str(ordered[0].get("candidate_id", ""))
+    return mapping
+
+
+def normalize_label_pairs(
+    pairs: list[dict[str, Any]],
+    candidate_id_map: dict[str, str],
+) -> tuple[list[dict[str, Any]], dict[str, int]]:
+    mapped_candidate_refs = 0
+    unchanged_candidate_refs = 0
+    for pair in pairs:
+        source_candidate_id = str(pair.get("candidate_id", "")).strip()
+        source_job_id = str(pair.get("job_id", "")).strip()
+        mapped_candidate_id = candidate_id_map.get(source_candidate_id, source_candidate_id)
+        if mapped_candidate_id != source_candidate_id:
+            mapped_candidate_refs += 1
+        else:
+            unchanged_candidate_refs += 1
+        pair["source_candidate_id"] = source_candidate_id
+        pair["candidate_id"] = mapped_candidate_id
+        pair["resume_id"] = mapped_candidate_id
+        pair["source_job_id"] = source_job_id
+        pair["pair_key"] = f"{mapped_candidate_id}::{source_job_id}"
+        pair["id_mapping"] = {
+            "candidate_id": "base_resume_id_to_experience_variant"
+            if mapped_candidate_id != source_candidate_id
+            else "unchanged",
+            "job_id": "legacy_label_job" if source_job_id.startswith("job_") else "unchanged",
+        }
+    return pairs, {
+        "mapped_candidate_refs": mapped_candidate_refs,
+        "unchanged_candidate_refs": unchanged_candidate_refs,
+    }
+
+
+def legacy_job_from_label_record(
+    record: dict[str, Any],
+    label_source: str,
+    rules: list[dict[str, str]],
+) -> dict[str, Any] | None:
+    job_id = str(record.get("job_id", "")).strip()
+    if not job_id:
+        return None
+    title = str(record.get("job_title", "")).strip()
+    description = str(record.get("job_description", "")).strip()
+    tags = split_items(record.get("tags", "") or record.get("job_tags", ""))
+    matched_skills = split_items(record.get("matched_skills", ""))
+    family, category, method = normalize_job_family(
+        join_text(title, description, record.get("target_job_family", "")),
+        rules,
+        str(record.get("target_job_family", "")).strip(),
+    )
+    return {
+        "job_id": job_id,
+        "id": job_id,
+        "title": title,
+        "description": description,
+        "skills": matched_skills,
+        "required_skills": matched_skills,
+        "job_family": family,
+        "standard_job": family,
+        "standard_category": category,
+        "company": str(record.get("company_name", "")).strip(),
+        "company_name": str(record.get("company_name", "")).strip(),
+        "location": str(record.get("location", "")).strip(),
+        "location_text": str(record.get("location", "")).strip(),
+        "source": f"{label_source}_label_legacy_job",
+        "source_type": "legacy_label",
+        "original_source_type": str(record.get("source_type", "")).strip(),
+        "tags": tags,
+        "source_url": str(record.get("source_url", "")).strip(),
+        "search_metadata": {
+            "source_file": label_source,
+            "source_job_id": job_id,
+            "job_family_alignment_method": method,
+            "note": "Job reconstructed from legacy gold/silver labels because label job_id does not exist in the new normalized job corpus.",
+        },
+    }
+
+
+def build_legacy_label_jobs(
+    silver_records: list[dict[str, Any]],
+    gold_rows: list[dict[str, str]],
+    rules: list[dict[str, str]],
+    existing_job_ids: set[str],
+) -> list[dict[str, Any]]:
+    jobs: dict[str, dict[str, Any]] = {}
+    for record in silver_records:
+        job = legacy_job_from_label_record(record, "silver", rules)
+        if job and job["job_id"] not in existing_job_ids:
+            jobs.setdefault(job["job_id"], job)
+    for row in gold_rows:
+        job = legacy_job_from_label_record(row, "gold", rules)
+        if job and job["job_id"] not in existing_job_ids:
+            jobs.setdefault(job["job_id"], job)
+    return sorted(jobs.values(), key=lambda item: item["job_id"])
+
+
 def grade_counts(records: Iterable[dict[str, Any]], key: str = "grade") -> dict[str, int]:
     counts = Counter(str(record.get(key, "")) for record in records)
     return dict(sorted(counts.items()))
 
 
 def missing_field_count(records: list[dict[str, Any]], fields: list[str]) -> dict[str, int]:
-    missing: dict[str, int] = {}
-    for field in fields:
-        missing[field] = sum(1 for record in records if record.get(field) in (None, "", []))
-    return missing
+    return {
+        field: sum(1 for record in records if record.get(field) in (None, "", []))
+        for field in fields
+    }
 
 
 def write_sample_pack(
@@ -428,7 +574,7 @@ def write_sample_pack(
             "job_ids": sorted(selected_job_ids),
             "notes": [
                 "Use this sample pack when downstream workflows need stable local input before full data integration.",
-                "Sample files intentionally stay under artifacts/ and are not committed by default.",
+                "Full generated data stays under artifacts/ and is not committed by default.",
             ],
         },
     )
@@ -457,6 +603,8 @@ def build_data_quality_report(
             "label_pairs_silver": len(silver_pairs),
             "label_pairs_gold": len(gold_pairs),
         },
+        "job_source_type_counts": dict(Counter(job.get("source_type", "") for job in jobs)),
+        "resume_split_counts": dict(Counter(profile.get("split", "") for profile in candidate_profiles)),
         "missing_fields": {
             "candidate_profiles": missing_field_count(
                 candidate_profiles,
@@ -464,7 +612,7 @@ def build_data_quality_report(
             ),
             "jobs": missing_field_count(
                 jobs,
-                ["job_id", "title", "description", "skills", "job_family", "company", "location", "source"],
+                ["job_id", "title", "description", "job_family", "source_type"],
             ),
             "label_pairs_silver": missing_field_count(
                 silver_pairs,
@@ -483,12 +631,6 @@ def build_data_quality_report(
             "silver_grade_counts": grade_counts(silver_pairs),
             "gold_grade_counts": grade_counts(gold_pairs),
         },
-        "identifier_checks": {
-            "unique_candidate_ids": len(candidate_ids),
-            "unique_job_ids": len(job_ids),
-            "duplicate_candidate_ids": len(candidate_profiles) - len(candidate_ids),
-            "duplicate_job_ids": len(jobs) - len(job_ids),
-        },
     }
 
 
@@ -496,52 +638,57 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Adapt dataset-group artifacts for JobMatch AI.")
     parser.add_argument("--dataset-dir", type=Path, default=DEFAULT_DATASET_DIR)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
-    parser.add_argument("--jobs-file", default="job_bigcompany_final.csv")
-    parser.add_argument("--resumes-file", default="synthetic_detailed_resumes.csv")
-    parser.add_argument("--title-dictionary-file", default="standard_job_title_dictionary.csv")
-    parser.add_argument("--silver-file", default="resume_job_silver_30.jsonl")
-    parser.add_argument("--gold-file", default="金标30×20.csv")
-    parser.add_argument(
-        "--allow-missing-labels",
-        action="store_true",
-        help="Allow missing gold/silver label files for smoke tests only.",
-    )
+    parser.add_argument("--skip-government", action="store_true")
+    parser.add_argument("--allow-missing-labels", action="store_true")
     args = parser.parse_args()
 
     dataset_dir = args.dataset_dir
     output_dir = args.output_dir
 
-    jobs_path = dataset_dir / args.jobs_file
-    resumes_path = dataset_dir / args.resumes_file
-    title_dictionary_path = dataset_dir / args.title_dictionary_file
-    silver_path = dataset_dir / args.silver_file
-    gold_path = dataset_dir / args.gold_file
+    enterprise_path = first_existing(dataset_dir, ENTERPRISE_JOB_CANDIDATES, required=True)
+    resume_path = first_existing(dataset_dir, RESUME_CANDIDATES, required=True)
+    government_path = first_existing(dataset_dir, GOVERNMENT_JOB_CANDIDATES)
+    dictionary_path = first_existing(dataset_dir, (JOB_TITLE_DICTIONARY,))
+    silver_path = first_existing(dataset_dir, SILVER_LABEL_CANDIDATES)
+    gold_path = first_existing(dataset_dir, GOLD_LABEL_CANDIDATES)
 
-    for path in [jobs_path, resumes_path, title_dictionary_path]:
-        if not path.exists():
-            raise FileNotFoundError(f"Required input not found: {path}")
-
-    for path in [silver_path, gold_path]:
-        if not path.exists() and not args.allow_missing_labels:
-            raise FileNotFoundError(
-                f"Required label input not found: {path}. "
-                "Use --allow-missing-labels only for smoke tests without labels."
-            )
-
-    job_rows = read_csv_rows(jobs_path)
-    resume_rows = read_csv_rows(resumes_path)
-    title_dictionary_rows = read_csv_rows(title_dictionary_path)
-    silver_records = list(read_jsonl(silver_path)) if silver_path.exists() else []
-    gold_rows = read_csv_rows(gold_path) if gold_path.exists() else []
-
-    candidate_profiles = adapt_candidate_profiles(resume_rows)
-    jobs = adapt_jobs_from_bigcompany(job_rows, title_dictionary_rows)
+    rules = load_job_title_rules(dictionary_path)
+    enterprise_jobs = adapt_enterprise_jobs(read_csv_rows(enterprise_path), rules)
+    government_jobs: list[dict[str, Any]] = []
+    if government_path is not None and not args.skip_government:
+        government_jobs = adapt_government_jobs(
+            read_csv_rows(government_path),
+            rules,
+            start_index=len(enterprise_jobs) + 1,
+        )
+    candidate_profiles = adapt_candidate_profiles(read_csv_rows(resume_path))
+    silver_records = read_jsonl(silver_path) if silver_path else []
+    gold_rows = read_csv_rows(gold_path) if gold_path else []
     silver_pairs = adapt_silver_pairs(silver_records)
     gold_pairs = adapt_gold_pairs(gold_rows)
+    candidate_id_map = build_candidate_id_map(candidate_profiles)
+    silver_pairs, silver_mapping_counts = normalize_label_pairs(silver_pairs, candidate_id_map)
+    gold_pairs, gold_mapping_counts = normalize_label_pairs(gold_pairs, candidate_id_map)
+    legacy_label_jobs = build_legacy_label_jobs(
+        silver_records,
+        gold_rows,
+        rules,
+        {job["job_id"] for job in enterprise_jobs + government_jobs},
+    )
+    jobs = enterprise_jobs + government_jobs + legacy_label_jobs
+
+    if not args.allow_missing_labels and (not silver_pairs or not gold_pairs):
+        raise FileNotFoundError(
+            "Label files are missing. Add resume_job_silver_30.jsonl and 金标30×20.csv, "
+            "or run with --allow-missing-labels."
+        )
 
     counts = {
         "candidate_profiles": write_jsonl(output_dir / "candidate_profiles.jsonl", candidate_profiles),
         "jobs": write_jsonl(output_dir / "jobs.jsonl", jobs),
+        "jobs_enterprise": write_jsonl(output_dir / "jobs_enterprise.jsonl", enterprise_jobs),
+        "jobs_government": write_jsonl(output_dir / "jobs_government.jsonl", government_jobs),
+        "jobs_label_legacy": write_jsonl(output_dir / "jobs_label_legacy.jsonl", legacy_label_jobs),
         "label_pairs_silver": write_jsonl(output_dir / "label_pairs_silver.jsonl", silver_pairs),
         "label_pairs_gold": write_jsonl(output_dir / "label_pairs_gold.jsonl", gold_pairs),
     }
@@ -552,31 +699,38 @@ def main() -> None:
     manifest = {
         "iteration": "05",
         "workflow": "workflow_1_data_foundation_and_label_evaluation",
-        "purpose": "dataset_adapter_schema_samples_quality_no_training",
+        "purpose": "large_dataset_adapter_schema_samples_quality_no_training",
         "dataset_dir": str(dataset_dir),
         "output_dir": str(output_dir),
         "inputs": {
-            "jobs": str(jobs_path),
-            "resumes": str(resumes_path),
-            "title_dictionary": str(title_dictionary_path),
-            "silver": str(silver_path) if silver_path.exists() else None,
-            "gold": str(gold_path) if gold_path.exists() else None,
+            "enterprise_jobs": str(enterprise_path),
+            "government_jobs": str(government_path) if government_path else "",
+            "resumes": str(resume_path),
+            "job_title_dictionary": str(dictionary_path) if dictionary_path else "",
+            "silver": str(silver_path) if silver_path else "",
+            "gold": str(gold_path) if gold_path else "",
         },
-        "allow_missing_labels": args.allow_missing_labels,
         "counts": counts,
         "sample_counts": sample_counts,
-        "resume_splits": dict(Counter(profile["split"] for profile in candidate_profiles)),
-        "resume_job_families": dict(Counter(profile["target_job_family"] for profile in candidate_profiles)),
+        "resume_splits": dict(Counter(profile.get("split", "") for profile in candidate_profiles)),
+        "resume_job_families_top20": dict(Counter(profile.get("target_job_family", "") for profile in candidate_profiles).most_common(20)),
+        "job_source_type_counts": dict(Counter(job.get("source_type", "") for job in jobs)),
+        "label_mapping_counts": {
+            "silver": silver_mapping_counts,
+            "gold": gold_mapping_counts,
+            "legacy_label_jobs": len(legacy_label_jobs),
+        },
         "silver_grade_counts": grade_counts(silver_pairs),
         "gold_grade_counts": grade_counts(gold_pairs),
         "data_quality_report": str(output_dir / "data_quality_report.json"),
         "notes": [
             "No model training is performed.",
             "PII fields such as name, phone, and email are not emitted.",
-            "jobs.jsonl uses the complete big-company CSV rather than jobs inferred from old silver pairs.",
-            "job_family temporarily mirrors standard_job until Workflow 1 publishes a crosswalk aligned with resume target_job_family.",
-            "Gold and silver inputs are required by default; --allow-missing-labels is only for smoke tests without labels.",
-            "sample_pack contains 10 jobs and 5 candidate profiles; labels are included when available.",
+            "jobs.jsonl combines enterprise and government technical jobs.",
+            "jobs_label_legacy.jsonl reconstructs legacy label jobs so old gold/silver labels can still be evaluated.",
+            "jobs_enterprise.jsonl and jobs_government.jsonl are split files for workflow-specific experiments.",
+            "candidate_profiles.jsonl uses the expanded experience-aware synthetic resume file when available.",
+            "sample_pack contains small stable examples for downstream parallel development.",
         ],
     }
     write_json(output_dir / "dataset_manifest.json", manifest)

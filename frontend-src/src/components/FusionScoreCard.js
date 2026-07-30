@@ -87,7 +87,7 @@ function TrendIndicator({ score }) {
 }
 
 // ── 组件主体 ────────────────────────────────────────────────────
-export default function FusionScoreCard({ result, rank, showRank = true }) {
+export default function FusionScoreCard({ result, rank, showRank = true, dataSources = {} }) {
   const [expanded, setExpanded] = useState(false);
 
   if (!result) return null;
@@ -110,11 +110,17 @@ export default function FusionScoreCard({ result, rank, showRank = true }) {
         key,
         score,
         config: FACTOR_CONFIG[key] || { label: key, icon: '📊', color: '#8c8c8c', description: '' },
+        source: dataSources[key] || 'mock',
       }))
     : [];
 
   // 按分数排序
   factorEntries.sort((a, b) => b.score - a.score);
+
+  // 判断整体数据模式
+  const hasRealData = Object.values(dataSources).some(s => s === 'real');
+  const hasPendingData = Object.values(dataSources).some(s => s === 'pending');
+  const allMock = !hasRealData && !hasPendingData;
 
   return (
     <Card
@@ -145,9 +151,22 @@ export default function FusionScoreCard({ result, rank, showRank = true }) {
         <Col flex="auto">
           <Title level={5} style={{ margin: 0 }}>
             {meta.title || `Job ${result.job_id}`}
+            {!allMock && (
+              <Tag
+                color={hasRealData ? 'green' : 'blue'}
+                style={{ marginLeft: 8, fontSize: 11 }}
+              >
+                {hasRealData ? '真实数据' : '部分真实'}
+              </Tag>
+            )}
+            {allMock && (
+              <Tag color="default" style={{ marginLeft: 8, fontSize: 11 }}>模拟数据</Tag>
+            )}
           </Title>
           <Text type="secondary" style={{ fontSize: 13 }}>
             {meta.company || ''}
+            {meta.standard_job && ` · ${meta.standard_job}`}
+            {meta.location && ` · ${meta.location}`}
           </Text>
         </Col>
 
@@ -194,7 +213,7 @@ export default function FusionScoreCard({ result, rank, showRank = true }) {
           <Text strong style={{ fontSize: 14, marginBottom: 12, display: 'block' }}>
             📊 得分明细
           </Text>
-          {factorEntries.map(({ key, score, config }) => (
+          {factorEntries.map(({ key, score, config, source }) => (
             <Row
               key={key}
               align="middle"
@@ -215,17 +234,25 @@ export default function FusionScoreCard({ result, rank, showRank = true }) {
                 <Progress
                   percent={Math.round(score * 100)}
                   size="small"
-                  strokeColor={config.color}
+                  strokeColor={source === 'real' ? config.color : '#d9d9d9'}
                   showInfo={false}
                 />
               </Col>
               <Col flex="50px" style={{ textAlign: 'right' }}>
-                <Text strong style={{ color: getScoreColor(score), fontSize: 14 }}>
+                <Text strong style={{ color: source === 'real' ? getScoreColor(score) : '#bbb', fontSize: 14 }}>
                   {Math.round(score * 100)}%
                 </Text>
               </Col>
               <Col flex="20px">
                 <TrendIndicator score={score} />
+              </Col>
+              <Col flex="56px" style={{ textAlign: 'right' }}>
+                <Tag
+                  color={source === 'real' ? 'green' : source === 'pending' ? 'blue' : 'default'}
+                  style={{ fontSize: 10, margin: 0 }}
+                >
+                  {source === 'real' ? '✅ 真实' : source === 'pending' ? '🔸 待接入' : '🔸 模拟'}
+                </Tag>
               </Col>
             </Row>
           ))}
