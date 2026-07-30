@@ -2,10 +2,16 @@
 批量抽取技能脚本
 从 jobs.jsonl 或 candidate_profiles.jsonl 中抽取技能并保存为 CSV
 """
+import sys
 import json
 import csv
 from pathlib import Path
+
+# 将项目根目录添加到 Python 路径
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from app.services.skill_extractor import SkillExtractor
+
 
 def extract_from_jobs():
     """从岗位数据中抽取技能"""
@@ -37,6 +43,7 @@ def extract_from_jobs():
     
     print(f"完成！输出文件: {output_path}")
 
+
 def extract_from_resumes():
     """从简历数据中抽取技能"""
     extractor = SkillExtractor()
@@ -66,6 +73,7 @@ def extract_from_resumes():
             ])
     
     print(f"完成！输出文件: {output_path}")
+
 
 if __name__ == "__main__":
     print("开始从岗位数据抽取技能...")
