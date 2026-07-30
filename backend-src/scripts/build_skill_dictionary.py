@@ -1,32 +1,25 @@
-"""Build a draft skill dictionary CSV from a plain skill list.
-
-This utility is for local iteration. The curated dictionary used by the backend lives at
-backend-src/standard_skill_dictionary.csv.
-"""
-from __future__ import annotations
-
-import argparse
 import csv
-from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+# 读取原始技能
+with open('skills_temp.txt', 'r', encoding='utf-8') as f:
+    skills = [line.strip() for line in f if line.strip()]
 
+# 按中文/英文粗略分类（你可以手动调整）
+# 这里先全部放在"通用技能"下，后面你可以按需调整
+with open('standard_skill_dictionary.csv', 'w', newline='', encoding='utf-8') as f:
+    writer = csv.writer(f)
+    writer.writerow(['skill_id', 'canonical_name', 'aliases', 'skill_category', 'parent_skill', 'match_pattern', 'source', 'version'])
+    for idx, skill in enumerate(skills, 1):
+        # 如果有别名可以加在 aliases 里，这里先留空
+        writer.writerow([
+            f'SK{idx:03d}',
+            skill,
+            '',  # aliases，后面可补充
+            '通用技能',  # skill_category
+            '',  # parent_skill
+            '',  # match_pattern
+            'data_collection',
+            'v1'
+        ])
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Build draft standard_skill_dictionary.csv")
-    parser.add_argument("--input", type=Path, default=REPO_ROOT / "artifacts" / "kg" / "skills_temp.txt")
-    parser.add_argument("--output", type=Path, default=REPO_ROOT / "artifacts" / "kg" / "standard_skill_dictionary_draft.csv")
-    args = parser.parse_args()
-
-    skills = [line.strip() for line in args.input.read_text(encoding="utf-8").splitlines() if line.strip()]
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    with args.output.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.writer(handle)
-        writer.writerow(["skill_id", "canonical_name", "aliases", "skill_category", "parent_skill", "match_pattern", "source", "version"])
-        for idx, skill in enumerate(skills, 1):
-            writer.writerow([f"SK{idx:03d}", skill, "", "通用技能", "", "", "local_draft", "v1"])
-    print(f"Wrote {len(skills)} draft skills to {args.output}")
-
-
-if __name__ == "__main__":
-    main()
+print(f'已生成 standard_skill_dictionary.csv，共 {len(skills)} 条')
