@@ -64,6 +64,8 @@ services:
     volumes:
       - ./uploads:/app/uploads
       - ./artifacts:/app/artifacts
+      - ./backend-src/app:/app/app
+      - ./backend-src/scripts:/app/scripts
     depends_on:
       elasticsearch:
         condition: service_healthy
