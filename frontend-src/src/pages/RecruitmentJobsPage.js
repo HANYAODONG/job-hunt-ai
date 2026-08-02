@@ -124,7 +124,7 @@ const RecruitmentJobsPage = () => {
           <div className="recruitment-detail-actions">
             {editing ? <Button icon={<SaveOutlined />} onClick={saveDraft}>保存修改</Button> : <Button icon={<EditOutlined />} onClick={() => setEditing(true)}>编辑 JD</Button>}
             <Button icon={selected.status === '招聘中' ? <PauseCircleOutlined /> : <SendOutlined />} onClick={changeStatus}>{selected.status === '招聘中' ? '暂停招聘' : '发布招聘'}</Button>
-            <Link to={`/candidates?job=${selected.id}`}><Button type="primary" icon={<TeamOutlined />}>查看候选人 <ArrowRightOutlined /></Button></Link>
+            <Link to={`/candidates?job=${selected.id}`}><Button className="candidate-view-button" type="primary" icon={<TeamOutlined />}>查看候选人 <ArrowRightOutlined /></Button></Link>
           </div>
         </header>
 
