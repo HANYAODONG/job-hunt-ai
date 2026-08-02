@@ -673,10 +673,25 @@ const GalaxyScene = ({ tree, mode, focusDomainId, focusFamilyId, selectedId, onN
       familySystems,
       reduceMotion,
     } = engine;
-    const duration = reduceMotion ? 0 : 1.05;
-    const timeline = gsap.timeline({ defaults: { ease: 'expo.inOut' } });
+    const motionScale = reduceMotion ? 0 : 1;
+    const timeline = gsap.timeline({ defaults: { ease: 'power2.inOut' } });
     const allSystems = [...domainSystems.values(), ...familySystems.values()];
     const previousSystem = engine.currentSystem;
+
+    const beginTransition = () => {
+      controls.enabled = false;
+      controls.enableDamping = false;
+      controls.minDistance = 0.05;
+      controls.maxDistance = 100;
+    };
+    const finishTransition = ({ minDistance, maxDistance, currentSystem }) => {
+      controls.minDistance = minDistance;
+      controls.maxDistance = maxDistance;
+      controls.enableDamping = true;
+      controls.enabled = true;
+      engine.currentSystem = currentSystem;
+      controls.update();
+    };
 
     if (mode === 'overview' || !focusDomainId) {
       domainAnchors.forEach((anchor) => { anchor.visible = true; });
@@ -686,28 +701,45 @@ const GalaxyScene = ({ tree, mode, focusDomainId, focusFamilyId, selectedId, onN
           system.scale.setScalar(0.001);
         }
       });
-      controls.enabled = false;
+      if (!previousSystem) {
+        galaxyGroup.visible = true;
+        galaxyGroup.scale.setScalar(1);
+        galaxyMaterial.uniforms.uOpacity.value = 1;
+        backgroundMaterial.uniforms.uOpacity.value = 0.8;
+        controls.minDistance = 4.2;
+        controls.maxDistance = 16;
+        controls.enableDamping = true;
+        controls.enabled = true;
+        return undefined;
+      }
+      beginTransition();
+      timeline.addLabel('systemOut');
       if (previousSystem) {
         timeline.to(previousSystem.scale, {
           x: 0.001,
           y: 0.001,
           z: 0.001,
-          duration: duration * 0.46,
-          ease: 'power3.in',
-          onComplete: () => { previousSystem.visible = false; },
-        }, 0);
+          duration: 0.28 * motionScale,
+          ease: 'power2.in',
+        }, 'systemOut');
       }
       timeline
-        .to(galaxyMaterial.uniforms.uOpacity, { value: 1, duration: duration * 0.78 }, 0)
-        .to(backgroundMaterial.uniforms.uOpacity, { value: 0.8, duration: duration * 0.78 }, 0)
-        .to(galaxyGroup.scale, { x: 1, y: 1, z: 1, duration }, 0)
-        .to(camera.position, { ...OVERVIEW_CAMERA, duration }, 0)
-        .to(controls.target, { x: 0, y: 0, z: 0, duration, onComplete: () => {
-          controls.enabled = true;
-          controls.minDistance = 4.2;
-          controls.maxDistance = 16;
-          engine.currentSystem = null;
-        } }, 0);
+        .addLabel('galaxyReturn')
+        .call(() => {
+          if (previousSystem) previousSystem.visible = false;
+          galaxyGroup.visible = true;
+        }, [], 'galaxyReturn')
+        .to(galaxyMaterial.uniforms.uOpacity, { value: 1, duration: 0.38 * motionScale }, 'galaxyReturn')
+        .to(backgroundMaterial.uniforms.uOpacity, { value: 0.8, duration: 0.38 * motionScale }, 'galaxyReturn')
+        .to(galaxyGroup.scale, { x: 1, y: 1, z: 1, duration: 0.68 * motionScale }, 'galaxyReturn')
+        .to(camera.position, { ...OVERVIEW_CAMERA, duration: 0.68 * motionScale }, 'galaxyReturn')
+        .to(controls.target, {
+          x: 0,
+          y: 0,
+          z: 0,
+          duration: 0.68 * motionScale,
+          onComplete: () => finishTransition({ minDistance: 4.2, maxDistance: 16, currentSystem: null }),
+        }, 'galaxyReturn');
       return () => timeline.kill();
     }
 
@@ -718,54 +750,74 @@ const GalaxyScene = ({ tree, mode, focusDomainId, focusFamilyId, selectedId, onN
     if (!anchorObject || !targetSystem) return undefined;
 
     const anchor = anchorObject.getWorldPosition(new THREE.Vector3());
-    domainAnchors.forEach((domainAnchor) => { domainAnchor.visible = false; });
     targetSystem.position.copy(anchor);
-    if (targetSystem !== previousSystem) {
-      targetSystem.visible = true;
-      targetSystem.scale.setScalar(0.001);
-    }
+    targetSystem.visible = false;
+    targetSystem.scale.setScalar(0.001);
     allSystems.forEach((system) => {
       if (system !== targetSystem && system !== previousSystem) {
         system.visible = false;
         system.scale.setScalar(0.001);
       }
     });
-    engine.currentSystem = targetSystem;
-    controls.enabled = false;
-
-    const approach = { x: anchor.x + 0.18, y: anchor.y + 0.75, z: anchor.z + 1.45 };
+    beginTransition();
     const reveal = mode === 'family'
       ? { x: anchor.x + 0.55, y: anchor.y + 2.55, z: anchor.z + 4.85 }
       : { x: anchor.x + 0.65, y: anchor.y + 3.25, z: anchor.z + 5.15 };
-    const enteringFromGalaxy = !previousSystem;
+    const enteringFromGalaxy = galaxyGroup.visible;
+    engine.currentSystem = targetSystem;
 
-    if (previousSystem && previousSystem !== targetSystem) {
-      timeline.to(previousSystem.scale, {
-        x: 0.001,
-        y: 0.001,
-        z: 0.001,
-        duration: duration * 0.42,
-        ease: 'power3.in',
-        onComplete: () => { previousSystem.visible = false; },
-      }, 0);
+    if (enteringFromGalaxy) {
+      timeline
+        .addLabel('zoom')
+        .to(camera.position, { ...reveal, duration: 0.56 * motionScale }, 'zoom')
+        .to(controls.target, { x: anchor.x, y: anchor.y, z: anchor.z, duration: 0.56 * motionScale }, 'zoom')
+        .addLabel('galaxyOut')
+        .to(galaxyMaterial.uniforms.uOpacity, { value: 0.0025, duration: 0.24 * motionScale }, 'galaxyOut')
+        .to(backgroundMaterial.uniforms.uOpacity, { value: mode === 'family' ? 0.55 : 0.5, duration: 0.24 * motionScale }, 'galaxyOut')
+        .addLabel('systemIn')
+        .call(() => {
+          galaxyGroup.visible = false;
+          targetSystem.visible = true;
+        }, [], 'systemIn')
+        .to(targetSystem.scale, {
+          x: 1,
+          y: 1,
+          z: 1,
+          duration: 0.42 * motionScale,
+          ease: 'expo.out',
+          onComplete: () => finishTransition({
+            minDistance: mode === 'family' ? 2.5 : 3.2,
+            maxDistance: mode === 'family' ? 7.2 : 8.5,
+            currentSystem: targetSystem,
+          }),
+        }, 'systemIn');
+    } else {
+      targetSystem.visible = true;
+      timeline
+        .addLabel('systemChange')
+        .to(previousSystem.scale, {
+          x: 0.001,
+          y: 0.001,
+          z: 0.001,
+          duration: 0.28 * motionScale,
+          ease: 'power2.in',
+          onComplete: () => { previousSystem.visible = false; },
+        }, 'systemChange')
+        .to(camera.position, { ...reveal, duration: 0.56 * motionScale }, 'systemChange')
+        .to(controls.target, { x: anchor.x, y: anchor.y, z: anchor.z, duration: 0.56 * motionScale }, 'systemChange')
+        .to(targetSystem.scale, {
+          x: 1,
+          y: 1,
+          z: 1,
+          duration: 0.42 * motionScale,
+          ease: 'expo.out',
+          onComplete: () => finishTransition({
+            minDistance: mode === 'family' ? 2.5 : 3.2,
+            maxDistance: mode === 'family' ? 7.2 : 8.5,
+            currentSystem: targetSystem,
+          }),
+        }, 'systemChange+=0.18');
     }
-
-    timeline
-      .addLabel('approach', 0)
-      .to(camera.position, { ...(enteringFromGalaxy ? approach : reveal), duration: duration * 0.66 }, 'approach')
-      .to(controls.target, { x: anchor.x, y: anchor.y, z: anchor.z, duration: duration * 0.66 }, 'approach')
-      .to(galaxyMaterial.uniforms.uOpacity, { value: enteringFromGalaxy ? 0.28 : 0.06, duration: duration * 0.5 }, 'approach')
-      .to(galaxyGroup.scale, { x: 1.12, y: 1.12, z: 1.12, duration: duration * 0.66 }, 'approach')
-      .addLabel('system', enteringFromGalaxy ? duration * 0.58 : duration * 0.08)
-      .to(targetSystem.scale, { x: 1, y: 1, z: 1, duration: duration * 0.7, ease: 'expo.out' }, 'system')
-      .to(camera.position, { ...reveal, duration: duration * 0.7, ease: 'expo.out' }, 'system')
-      .to(galaxyMaterial.uniforms.uOpacity, { value: 0.0025, duration: duration * 0.52 }, 'system')
-      .to(backgroundMaterial.uniforms.uOpacity, { value: mode === 'family' ? 0.55 : 0.5, duration: duration * 0.52 }, 'system')
-      .to(controls.target, { x: anchor.x, y: anchor.y, z: anchor.z, duration: duration * 0.7, ease: 'expo.out', onComplete: () => {
-        controls.enabled = true;
-          controls.minDistance = mode === 'family' ? 2.5 : 3.2;
-          controls.maxDistance = mode === 'family' ? 7.2 : 8.5;
-      } }, 'system');
 
     return () => timeline.kill();
   }, [engineVersion, focusDomainId, focusFamilyId, mode]);
