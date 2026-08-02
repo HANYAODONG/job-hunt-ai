@@ -22,9 +22,11 @@
 .recruitment-detail-header h2 { margin: 6px 0; color: var(--wf-ink); font-size: 23px; }
 .recruitment-detail-header p { margin: 0; color: var(--wf-muted); font-size: 11px; }
 .recruitment-detail-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; align-content: flex-start; gap: 8px; }
-.recruitment-detail-actions .candidate-view-button.ant-btn-primary { color: #f7f9fb; background: var(--wf-ink); border-color: var(--wf-ink); box-shadow: none; }
+.recruitment-detail-actions .candidate-view-button.ant-btn-primary { color: #fff !important; background: #4774cc; border-color: #4774cc; box-shadow: none; }
+.recruitment-detail-actions .candidate-view-button.ant-btn-primary > span { color: #fff; }
+.recruitment-detail-actions .candidate-view-button.ant-btn-primary .anticon { color: #fff; }
 .recruitment-detail-actions .candidate-view-button.ant-btn-primary:hover,
-.recruitment-detail-actions .candidate-view-button.ant-btn-primary:focus-visible { color: #fff; background: oklch(31% 0.035 250); border-color: oklch(31% 0.035 250); }
+.recruitment-detail-actions .candidate-view-button.ant-btn-primary:focus-visible { color: #fff !important; background: #3a62b1; border-color: #3a62b1; }
 .recruitment-facts { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--wf-line); }
 .recruitment-facts > div { min-height: 88px; display: grid; align-content: center; gap: 7px; padding: 14px 16px; border-right: 1px solid var(--wf-line); }
 .recruitment-facts > div:last-child { border-right: 0; }
