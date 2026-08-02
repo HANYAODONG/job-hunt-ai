@@ -166,8 +166,7 @@ def run_fusion(
                     "final_score": o.final_score,
                     "rank": o.rank,
                     "score_breakdown": o.score_breakdown.model_dump(),
-                    "explanation": o.explanation,
-                    "missing_skills": o.missing_skills,
+                    "explanation": o.explanation.model_dump(),
                     "evidence_paths": o.evidence_paths,
                 }
                 for o in outputs

@@ -29,16 +29,23 @@ class FusionInput(BaseModel):
 # ── 单个岗位的融合输出 ──────────────────────────────────────────
 
 class ScoreBreakdown(BaseModel):
-    """各因子得分明细（推荐归一化到0~1，但原始BM25可>1）"""
-    bm25: float = Field(..., ge=0.0)
-    semantic: float = Field(..., ge=0.0, le=1.0)
-    skill_coverage: float = Field(..., ge=0.0, le=1.0)
-    job_family: float = Field(..., ge=0.0, le=1.0)
-    graph: float = Field(..., ge=0.0, le=1.0)
+    """各因子得分明细（对应分工3 Phase 3 字段名）"""
+    bm25_score: float = Field(default=0.0, ge=0.0, description="BM25关键词匹配得分（归一化后）")
+    semantic_score: float = Field(default=0.0, ge=0.0, le=1.0, description="语义向量相似度得分")
+    skill_coverage: float = Field(default=0.0, ge=0.0, le=1.0, description="技能覆盖率")
+    job_family_match: float = Field(default=0.0, ge=0.0, le=1.0, description="岗位大类匹配")
+    graph_relatedness: float = Field(default=0.0, ge=0.0, le=1.0, description="知识图谱关联度")
+
+
+class ExplanationDetail(BaseModel):
+    """推荐解释（分工3 Phase 3 格式：结构化解释对象）"""
+    matched_skills: List[str] = Field(default_factory=list, description="匹配的技能")
+    missing_skills: List[str] = Field(default_factory=list, description="缺失的关键技能")
+    reason: str = Field(default="", description="中文推荐理由")
 
 
 class FusionOutput(BaseModel):
-    """组长指定的融合输出格式（单条 job）"""
+    """分工3 Phase 3 融合输出格式（单条 job）"""
     model_config = {"extra": "allow"}
 
     query_id: str
@@ -46,11 +53,10 @@ class FusionOutput(BaseModel):
     final_score: float = Field(..., ge=0.0, le=1.0, description="加权融合最终得分")
     rank: int = Field(default=1, ge=0, description="在当前 query 下的排名（0 表示未排序）")
     score_breakdown: ScoreBreakdown
-    explanation: str = Field(..., description="推荐解释文本（中文）")
-    # 以下为辅助字段（非组长要求，用于前端展示增强）
-    missing_skills: List[str] = Field(default_factory=list, description="缺失技能")
+    explanation: ExplanationDetail = Field(..., description="结构化推荐解释")
+    # 辅助字段（前端展示用）
     evidence_paths: List[str] = Field(default_factory=list, description="KG证据路径")
-    meta: Optional[dict] = Field(default=None, description="前端展示用元数据（岗位名/公司名等）")
+    meta: Optional[dict] = Field(default=None, description="前端展示用元数据（岗位名/公司名/薪资等）")
 
 
 # ── 批量输入/输出 ────────────────────────────────────────────────
@@ -80,7 +86,7 @@ class FusionWeights(BaseModel):
 
     def validate_sum(self):
         total = self.bm25 + self.semantic + self.skill_coverage + self.job_family + self.graph
-        if abs(total - 1.0) > 0.01:
+        if abs(total - 1.0) > 0.005:
             raise ValueError(f"权重之和必须为 1.0，当前为 {total:.4f}")
 
 

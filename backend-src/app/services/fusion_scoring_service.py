@@ -11,6 +11,7 @@ from app.models.fusion import (
     FusionInput,
     FusionOutput,
     ScoreBreakdown,
+    ExplanationDetail,
     FusionWeights,
 )
 
@@ -87,11 +88,11 @@ def fuse_single(inp: FusionInput, weights: FusionWeights = None) -> FusionOutput
     final_score = compute_final_score(inp, w)
 
     breakdown = ScoreBreakdown(
-        bm25=round(inp.bm25_score, 4),
-        semantic=round(inp.semantic_score, 4),
+        bm25_score=round(inp.bm25_score, 4),
+        semantic_score=round(inp.semantic_score, 4),
         skill_coverage=round(inp.skill_coverage, 4),
-        job_family=round(inp.job_family_match, 4),
-        graph=round(inp.graph_relatedness, 4),
+        job_family_match=round(inp.job_family_match, 4),
+        graph_relatedness=round(inp.graph_relatedness, 4),
     )
 
     explanation = generate_explanation(inp, final_score, w)
@@ -103,7 +104,6 @@ def fuse_single(inp: FusionInput, weights: FusionWeights = None) -> FusionOutput
         rank=0,  # 由 fuse_batch 统一设置
         score_breakdown=breakdown,
         explanation=explanation,
-        missing_skills=inp.missing_skills,
         evidence_paths=inp.evidence_paths,
         meta=getattr(inp, '_meta', None),
     )
@@ -123,17 +123,15 @@ def fuse_batch(inputs: List[FusionInput], weights: FusionWeights = None) -> List
 
 # ── 解释生成 ────────────────────────────────────────────────────
 
-def generate_explanation(inp: FusionInput, final_score: float, weights: FusionWeights = None) -> str:
+def generate_explanation(inp: FusionInput, final_score: float, weights: FusionWeights = None) -> ExplanationDetail:
     """
-    基于模板的中文解释生成。
+    基于模板的中文解释生成（分工3 Phase 3 格式）。
     不依赖 LLM API，纯规则驱动。后续接入真实 LLM 时替换此函数即可。
 
-    模板结构：
-    1. 总体评价
-    2. 强项（高于 0.7 的维度）
-    3. 弱项（低于 0.4 的维度）
-    4. 缺失技能
-    5. 建议
+    返回 ExplanationDetail 对象：
+    - matched_skills: 从 KG 特征中获取匹配技能（当前用 input 中已有数据）
+    - missing_skills: 缺失的关键技能
+    - reason: 中文推荐理由
     """
     w = weights or _current_weights
 
@@ -148,7 +146,6 @@ def generate_explanation(inp: FusionInput, final_score: float, weights: FusionWe
 
     strengths = [(name, score) for name, (score, _) in factor_scores.items() if score >= 0.7]
     weaknesses = [(name, score) for name, (score, _) in factor_scores.items() if score < 0.4]
-    # 找出贡献最大的因子
     top_factor = max(factor_scores.items(), key=lambda x: x[1][0] * x[1][1])
 
     parts = []
@@ -166,34 +163,35 @@ def generate_explanation(inp: FusionInput, final_score: float, weights: FusionWe
     # 2. 强项
     if strengths:
         strength_text = "、".join([f"{name}（{score:.0%}）" for name, score in strengths])
-        parts.append(f"✅ 强项：{strength_text}")
+        parts.append(f"强项：{strength_text}")
     else:
-        parts.append("✅ 各维度均无特别突出的优势项")
+        parts.append("各维度均无特别突出的优势项")
 
     # 3. 弱项
     if weaknesses:
         weak_text = "、".join([f"{name}（{score:.0%}）" for name, score in weaknesses])
-        parts.append(f"⚠️ 弱项：{weak_text}")
-    else:
-        parts.append("⚠️ 无明显弱项")
+        parts.append(f"弱项：{weak_text}")
 
-    # 4. 缺失技能
+    # 4. 建议
     if inp.missing_skills:
-        skills_text = "、".join(inp.missing_skills)
-        parts.append(f"🔍 缺失技能：{skills_text}")
-    else:
-        parts.append("🔍 未发现明显技能缺口")
-
-    # 5. 建议
-    if inp.missing_skills:
-        skills_text = "、".join(inp.missing_skills)
-        parts.append(f"💡 建议：建议补充 {skills_text} 等相关技能，可显著提升匹配度")
+        skills_text = "、".join(inp.missing_skills[:5])
+        parts.append(f"建议补充 {skills_text} 等相关技能，可显著提升匹配度")
     elif final_score < 0.5:
-        parts.append(f"💡 建议：{top_factor[0]}方面有一定差距，可以考虑拓展相关经验")
+        parts.append(f"{top_factor[0]}方面有一定差距，可以考虑拓展相关经验")
     else:
-        parts.append("💡 该岗位是您的良好选择，建议尽快投递")
+        parts.append("该岗位是您的良好选择，建议尽快投递")
 
-    return "。".join(parts) + "。"
+    # 构造 ExplanationDetail
+    # matched_skills: 从 meta 或 input 已有字段推断
+    matched_skills = getattr(inp, '_matched_skills', []) if hasattr(inp, '_matched_skills') else []
+    if not matched_skills and hasattr(inp, '__dict__'):
+        matched_skills = inp.__dict__.get('_matched_skills', [])
+
+    return ExplanationDetail(
+        matched_skills=list(matched_skills) if matched_skills else [],
+        missing_skills=list(inp.missing_skills) if inp.missing_skills else [],
+        reason="。".join(parts) + "。",
+    )
 
 
 # ── Mock 数据生成（用于前端独立开发）────────────────────────────

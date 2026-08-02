@@ -118,26 +118,31 @@ export function generateMockFusionResults(queryId = 'mock_resume_001', numJobs =
       final_score: Math.round(finalScore * 10000) / 10000,
       rank: 0, // 下面排序后设置
       score_breakdown: {
-        bm25: Math.round(bm25 * 100) / 100,
-        semantic: Math.round(semantic * 100) / 100,
+        bm25_score: Math.round(bm25 * 100) / 100,
+        semantic_score: Math.round(semantic * 100) / 100,
         skill_coverage: Math.round(skillCoverage * 100) / 100,
-        job_family: Math.round(jobFamily * 100) / 100,
-        graph: Math.round(graph * 100) / 100,
+        job_family_match: Math.round(jobFamily * 100) / 100,
+        graph_relatedness: Math.round(graph * 100) / 100,
       },
-      explanation: '', // 下面生成
+      explanation: null, // 下面生成
       meta: {
         title: MOCK_TITLES[i % MOCK_TITLES.length],
         company: MOCK_COMPANIES[Math.floor(rand() * MOCK_COMPANIES.length)],
       },
-      missing_skills: missing,
     });
   }
 
   // 排序
   jobs.sort((a, b) => b.final_score - a.final_score);
+  const matchedPool = ['Python', 'SQL', 'JavaScript', 'React', 'Docker', 'Git', 'REST APIs'];
   jobs.forEach((job, i) => {
     job.rank = i + 1;
-    job.explanation = generateExplanation(job, job.missing_skills);
+    const matchedCount = Math.max(1, Math.floor((1 - job.final_score) * matchedPool.length));
+    const matched = matchedPool.slice(0, matchedCount);
+    // 缺失技能 = 排除已匹配的技能
+    const allSkills = ['PyTorch', 'TensorFlow', 'Kubernetes', 'AWS', 'Machine Learning', 'System Design', 'CI/CD', 'Redis'];
+    const missing = allSkills.slice(0, Math.max(1, Math.floor((1 - job.final_score) * allSkills.length)));
+    job.explanation = generateExplanation(job, matched, missing);
   });
 
   return {
@@ -148,24 +153,25 @@ export function generateMockFusionResults(queryId = 'mock_resume_001', numJobs =
 }
 
 /**
- * 基于模板生成中文解释
+ * 基于模板生成中文解释（分工3 Phase 3 格式）
+ * @returns {{matched_skills: string[], missing_skills: string[], reason: string}}
  */
-function generateExplanation(job, missingSkills) {
+function generateExplanation(job, matchedSkills, missingSkills) {
   const { score_breakdown: sb } = job;
   const factorLabels = {
-    bm25: '关键词匹配',
-    semantic: '语义相似度',
+    bm25_score: '关键词匹配',
+    semantic_score: '语义相似度',
     skill_coverage: '技能覆盖',
-    job_family: '岗位大类匹配',
-    graph: '知识图谱关联',
+    job_family_match: '岗位大类匹配',
+    graph_relatedness: '知识图谱关联',
   };
 
   const strengths = Object.entries(sb)
     .filter(([, s]) => s >= 0.7)
-    .map(([k, s]) => `${factorLabels[k]}（${Math.round(s * 100)}%）`);
+    .map(([k, s]) => `${factorLabels[k] || k}（${Math.round(s * 100)}%）`);
   const weaknesses = Object.entries(sb)
     .filter(([, s]) => s < 0.4)
-    .map(([k, s]) => `${factorLabels[k]}（${Math.round(s * 100)}%）`);
+    .map(([k, s]) => `${factorLabels[k] || k}（${Math.round(s * 100)}%）`);
 
   const parts = [];
 
@@ -174,19 +180,20 @@ function generateExplanation(job, missingSkills) {
   else if (job.final_score >= 0.35) parts.push('该岗位与您的简历有一定匹配度');
   else parts.push('该岗位与您的简历匹配度较低');
 
-  if (strengths.length) parts.push(`✅ 强项：${strengths.join('、')}`);
-  else parts.push('✅ 各维度均无特别突出的优势项');
+  if (strengths.length) parts.push(`强项：${strengths.join('、')}`);
+  else parts.push('各维度均无特别突出的优势项');
 
-  if (weaknesses.length) parts.push(`⚠️ 弱项：${weaknesses.join('、')}`);
-  else parts.push('⚠️ 无明显弱项');
+  if (weaknesses.length) parts.push(`弱项：${weaknesses.join('、')}`);
 
   if (missingSkills && missingSkills.length) {
-    parts.push(`🔍 缺失技能：${missingSkills.join('、')}`);
-    parts.push(`💡 建议：建议补充 ${missingSkills.join('、')} 等相关技能，可显著提升匹配度`);
+    parts.push(`建议补充 ${missingSkills.join('、')} 等相关技能，可显著提升匹配度`);
   } else {
-    parts.push('🔍 未发现明显技能缺口');
-    parts.push('💡 该岗位是您的良好选择，建议尽快投递');
+    parts.push('该岗位是您的良好选择，建议尽快投递');
   }
 
-  return parts.join('。') + '。';
+  return {
+    matched_skills: matchedSkills || [],
+    missing_skills: missingSkills || [],
+    reason: parts.join('。') + '。',
+  };
 }

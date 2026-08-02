@@ -23,15 +23,15 @@ import './FusionScoreCard.css';
 const { Title, Text, Paragraph } = Typography;
 const { Panel } = Collapse;
 
-// ── 因子配置 ────────────────────────────────────────────────────
+// ── 因子配置（key 对应 ScoreBreakdown 字段名）─────────────────────
 const FACTOR_CONFIG = {
-  bm25: {
+  bm25_score: {
     label: '关键词匹配',
     icon: '🔤',
     color: '#1890ff',
     description: '基于 BM25 算法的关键词匹配得分，衡量查询词在岗位描述中的出现频率和重要性',
   },
-  semantic: {
+  semantic_score: {
     label: '语义相似度',
     icon: '🧠',
     color: '#722ed1',
@@ -43,18 +43,26 @@ const FACTOR_CONFIG = {
     color: '#52c41a',
     description: '您的技能集覆盖岗位要求的比例，权重最高',
   },
-  job_family: {
+  job_family_match: {
     label: '岗位大类',
     icon: '🏢',
     color: '#fa8c16',
     description: '岗位所属类别与目标岗位类别的匹配（1.0 = 完全匹配，0.0 = 不同类别）',
   },
-  graph: {
+  graph_relatedness: {
     label: '知识图谱',
     icon: '🔗',
     color: '#eb2f96',
     description: '基于知识图谱的关联度，反映您与岗位在技能关系网络中的距离',
   },
+};
+
+// 兼容旧字段名映射
+const FIELD_ALIASES = {
+  bm25: 'bm25_score',
+  semantic: 'semantic_score',
+  job_family: 'job_family_match',
+  graph: 'graph_relatedness',
 };
 
 // ── 分数颜色 ────────────────────────────────────────────────────
@@ -99,19 +107,27 @@ export default function FusionScoreCard({ result, rank, showRank = true, dataSou
     meta = {},
   } = result;
 
+  // 兼容新旧 explanation 格式：新格式是对象 {reason, matched_skills, missing_skills}，旧格式是字符串
+  const explanationText = typeof explanation === 'string' ? explanation : (explanation?.reason || '');
+  const matchedSkills = explanation?.matched_skills || [];
+  const missingSkills = explanation?.missing_skills || [];
+
   const scoreColor = getScoreColor(finalScore);
   const scoreLabel = getScoreLabel(finalScore);
   const rankBadge = getRankBadge(rank || result.rank);
   const scorePercent = Math.round(finalScore * 100);
 
-  // breakdown 中的 key -> Factor config
+  // breakdown 中的 key -> Factor config（兼容新旧字段名）
   const factorEntries = breakdown
-    ? Object.entries(breakdown).map(([key, score]) => ({
-        key,
-        score,
-        config: FACTOR_CONFIG[key] || { label: key, icon: '📊', color: '#8c8c8c', description: '' },
-        source: dataSources[key] || 'mock',
-      }))
+    ? Object.entries(breakdown).map(([key, score]) => {
+        const resolvedKey = FIELD_ALIASES[key] || key;
+        return {
+          key: resolvedKey,
+          score,
+          config: FACTOR_CONFIG[resolvedKey] || { label: key, icon: '📊', color: '#8c8c8c', description: '' },
+          source: dataSources[resolvedKey] || dataSources[key] || 'mock',
+        };
+      })
     : [];
 
   // 按分数排序
@@ -164,10 +180,16 @@ export default function FusionScoreCard({ result, rank, showRank = true, dataSou
             )}
           </Title>
           <Text type="secondary" style={{ fontSize: 13 }}>
-            {meta.company || ''}
+            {meta.company || meta.company_name || ''}
             {meta.standard_job && ` · ${meta.standard_job}`}
             {meta.location && ` · ${meta.location}`}
+            {meta.salary && ` · ${meta.salary}`}
           </Text>
+          {!meta.company && !meta.company_name && !meta.standard_job && !meta.location && !meta.salary && (
+            <Text type="secondary" style={{ fontSize: 13, fontStyle: 'italic' }}>
+              暂无详细岗位信息
+            </Text>
+          )}
         </Col>
 
         {/* 最终得分 */}
@@ -192,7 +214,7 @@ export default function FusionScoreCard({ result, rank, showRank = true, dataSou
       </Row>
 
       {/* ── 解释文本 ── */}
-      {explanation && (
+      {explanationText && (
         <Paragraph
           style={{
             marginTop: 12,
@@ -203,8 +225,32 @@ export default function FusionScoreCard({ result, rank, showRank = true, dataSou
             lineHeight: 1.8,
           }}
         >
-          {explanation}
+          {explanationText}
         </Paragraph>
+      )}
+
+      {/* ── 匹配技能 ── */}
+      {matchedSkills.length > 0 && (
+        <div style={{ marginTop: 8 }}>
+          <Text strong style={{ fontSize: 13 }}>✅ 匹配技能：</Text>
+          {matchedSkills.map((skill) => (
+            <Tag key={skill} color="green" style={{ marginLeft: 4, marginTop: 4 }}>
+              {skill}
+            </Tag>
+          ))}
+        </div>
+      )}
+
+      {/* ── 缺失技能 ── */}
+      {missingSkills.length > 0 && (
+        <div style={{ marginTop: 8 }}>
+          <Text strong style={{ fontSize: 13 }}>🔍 缺失技能：</Text>
+          {missingSkills.map((skill) => (
+            <Tag key={skill} color="error" style={{ marginLeft: 4, marginTop: 4 }}>
+              {skill}
+            </Tag>
+          ))}
+        </div>
       )}
 
       {/* ── 展开：分项得分详情 ── */}
@@ -257,11 +303,11 @@ export default function FusionScoreCard({ result, rank, showRank = true, dataSou
             </Row>
           ))}
 
-          {/* ── 缺失技能 ── */}
-          {result.missing_skills && result.missing_skills.length > 0 && (
+          {/* ── 缺失技能（详情区，仅当列表较长时重复展示） ── */}
+          {missingSkills.length > 5 && (
             <div style={{ marginTop: 12 }}>
-              <Text strong style={{ fontSize: 13 }}>🔍 缺失技能：</Text>
-              {result.missing_skills.map((skill) => (
+              <Text strong style={{ fontSize: 13 }}>🔍 全部缺失技能：</Text>
+              {missingSkills.map((skill) => (
                 <Tag key={skill} color="error" style={{ marginLeft: 4, marginTop: 4 }}>
                   {skill}
                 </Tag>

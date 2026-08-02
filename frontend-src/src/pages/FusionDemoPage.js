@@ -34,13 +34,13 @@ import './FusionDemoPage.css';
 
 const { Title, Text, Paragraph } = Typography;
 
-// ── 因子配置 ────────────────────────────────────────────────────
+// ── 因子配置（key 用于权重API，breakdownKey 用于展示）─────────────────
 const FACTORS = [
-  { key: 'bm25', label: '关键词匹配 (BM25)', icon: '🔤', tip: '来自工作流2：Elasticsearch BM25 得分' },
-  { key: 'semantic', label: '语义相似度', icon: '🧠', tip: '来自工作流2：向量嵌入语义相似度' },
-  { key: 'skill_coverage', label: '技能覆盖', icon: '🎯', tip: '来自工作流3：技能覆盖率', weight: 0.30 },
-  { key: 'job_family', label: '岗位大类匹配', icon: '🏢', tip: '来自工作流3：岗位类别匹配' },
-  { key: 'graph', label: '知识图谱关联', icon: '🔗', tip: '来自工作流3：KG关系网络关联度' },
+  { key: 'bm25', breakdownKey: 'bm25_score', label: '关键词匹配 (BM25)', icon: '🔤', tip: '来自工作流5：Elasticsearch BM25 得分' },
+  { key: 'semantic', breakdownKey: 'semantic_score', label: '语义相似度', icon: '🧠', tip: '来自工作流2：向量嵌入语义相似度' },
+  { key: 'skill_coverage', breakdownKey: 'skill_coverage', label: '技能覆盖', icon: '🎯', tip: '来自工作流3：技能覆盖率' },
+  { key: 'job_family', breakdownKey: 'job_family_match', label: '岗位大类匹配', icon: '🏢', tip: '来自工作流3：岗位类别匹配' },
+  { key: 'graph', breakdownKey: 'graph_relatedness', label: '知识图谱关联', icon: '🔗', tip: '来自工作流3：KG关系网络关联度' },
 ];
 
 const DEFAULT_WEIGHTS = { bm25: 0.15, semantic: 0.25, skill_coverage: 0.30, job_family: 0.15, graph: 0.15 };
@@ -72,11 +72,10 @@ export default function FusionDemoPage() {
 
   const resultsRef = useRef(null);  // 结果区域 ref，用于自动滚动
 
-  // ── 数据来源标注 ───────────────────────────────────────────
-  // 真实BM25模式下：只有bm25是真实的，其余因子待接入
+  // ── 数据来源标注（key 对应 ScoreBreakdown 字段名）─────────────
   const dataSources = mode === 'bm25'
-    ? { bm25: 'real', semantic: 'pending', skill_coverage: 'pending', job_family: 'pending', graph: 'pending' }
-    : { bm25: 'mock', semantic: 'mock', skill_coverage: 'mock', job_family: 'mock', graph: 'mock' };
+    ? { bm25_score: 'real', semantic_score: 'pending', skill_coverage: 'pending', job_family_match: 'pending', graph_relatedness: 'pending' }
+    : { bm25_score: 'mock', semantic_score: 'mock', skill_coverage: 'mock', job_family_match: 'mock', graph_relatedness: 'mock' };
 
   // ── BM25-only 快捷权重 ─────────────────────────────────────
   const bm25OnlyWeights = { bm25: 1.0, semantic: 0.0, skill_coverage: 0.0, job_family: 0.0, graph: 0.0 };
@@ -191,7 +190,7 @@ export default function FusionDemoPage() {
 
   // 验证权重之和
   const weightSum = Object.values(weights).reduce((a, b) => a + b, 0);
-  const weightsValid = Math.abs(weightSum - 1.0) < 0.01;
+  const weightsValid = Math.abs(weightSum - 1.0) < 0.005;
 
   // ── 统计数据 ───────────────────────────────────────────────
   const stats = results
@@ -222,6 +221,8 @@ export default function FusionDemoPage() {
         <Paragraph type="secondary">
           支持 Mock 模拟数据和真实 BM25 检索两种模式。其余因子（semantic / skill / graph）待其他工作流接入。
         </Paragraph>
+
+        {/* 模式切换 + 当前模式标注 */}
         <Segmented
           value={mode}
           onChange={(val) => {
@@ -229,7 +230,6 @@ export default function FusionDemoPage() {
             setResults(null);
             setError(null);
             setSearched(false);
-            // 切换到BM25模式时自动应用BM25-only权重
             if (val === 'bm25') {
               setWeights({ ...bm25OnlyWeights });
             } else {
@@ -237,12 +237,33 @@ export default function FusionDemoPage() {
             }
           }}
           options={[
-            { label: <><SearchOutlined /> BM25 真实模式</>, value: 'bm25' },
-            { label: <><ApiOutlined /> Mock 模拟模式</>, value: 'mock' },
+            { label: <><SearchOutlined /> BM25 真实检索</>, value: 'bm25' },
+            { label: <><ApiOutlined /> Demo 演示</>, value: 'mock' },
           ]}
           block
           style={{ marginBottom: 16 }}
         />
+
+        {/* 当前模式提示 Banner */}
+        {mode === 'bm25' ? (
+          <Alert
+            message="真实数据模式"
+            description="当前使用 Elasticsearch BM25 真实检索。其他因子（语义相似度、技能覆盖、岗位大类、知识图谱）待工作流2/3接入后自动生效。"
+            type="info"
+            showIcon
+            icon={<SearchOutlined />}
+            style={{ marginBottom: 16 }}
+          />
+        ) : (
+          <Alert
+            message="Demo 演示模式"
+            description="当前使用本地随机生成的模拟数据展示 UI 效果。所有分数均为随机值，不代表真实算法结果。点击「BM25 真实检索」切换到真实数据模式。"
+            type="warning"
+            showIcon
+            icon={<ApiOutlined />}
+            style={{ marginBottom: 16 }}
+          />
+        )}
       </div>
 
       {/* ── 权重配置面板 ── */}
@@ -286,11 +307,16 @@ export default function FusionDemoPage() {
         style={{ marginBottom: 20 }}
       >
         <Row gutter={[24, 16]}>
-          {FACTORS.map((factor) => (
+          {FACTORS.map((factor) => {
+            const src = dataSources[factor.breakdownKey] || 'mock';
+            return (
             <Col key={factor.key} span={12} md={24 / FACTORS.length}>
               <div className="factor-slider">
                 <Text className="factor-label">
                   {factor.icon} {factor.label}
+                  {src === 'real' && <Tag color="green" style={{ marginLeft: 4, fontSize: 10 }}>真实</Tag>}
+                  {src === 'pending' && <Tag color="blue" style={{ marginLeft: 4, fontSize: 10 }}>待接入</Tag>}
+                  {src === 'mock' && <Tag color="default" style={{ marginLeft: 4, fontSize: 10 }}>模拟</Tag>}
                 </Text>
                 <Row align="middle" gutter={8}>
                   <Col flex="auto">
@@ -318,7 +344,7 @@ export default function FusionDemoPage() {
                 </Row>
               </div>
             </Col>
-          ))}
+          )})}
         </Row>
       </Card>
 

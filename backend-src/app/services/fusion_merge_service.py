@@ -135,13 +135,20 @@ def merge_from_bm25_api(
 
 def _extract_job_meta(hit: Dict[str, Any]) -> Dict[str, Any]:
     """从 BM25 hit 中提取前端展示用的岗位元数据"""
+    # 处理 salary 字段（可能是字符串或对象）
+    salary = hit.get("salary_text", "") or hit.get("salary", "")
+    if isinstance(salary, dict):
+        salary = f"{salary.get('min', '')}-{salary.get('max', '')}{salary.get('currency', '')}"
+
     return {
         "title": hit.get("title", ""),
-        "company": hit.get("company", ""),
+        "company": hit.get("company", "") or hit.get("company_name", ""),
         "standard_job": hit.get("standard_job", ""),
         "job_family": hit.get("job_family", ""),
-        "location": hit.get("location", ""),
+        "location": hit.get("location", "") or hit.get("location_text", ""),
+        "salary": str(salary) if salary else "",
         "source_type": hit.get("source_type", ""),
+        "source": hit.get("source", ""),
         "bm25_score_raw": hit.get("score"),  # 保留原始分数
     }
 
