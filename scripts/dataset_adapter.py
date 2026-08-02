@@ -28,6 +28,7 @@ ENTERPRISE_JOB_CANDIDATES = (
     "job_bigcompany_final(1).csv",
 )
 GOVERNMENT_JOB_CANDIDATES = (
+    "government_jobs_2024_2026_tech_final.csv",
     "government_jobs_2026_tech_filtered.csv",
 )
 RESUME_CANDIDATES = (
@@ -73,6 +74,16 @@ def read_jsonl(path: Path) -> list[dict[str, Any]]:
             except json.JSONDecodeError as exc:
                 raise ValueError(f"Invalid JSONL at {path}:{line_number}: {exc}") from exc
     return records
+
+
+def parse_json_object(text: str) -> dict[str, Any]:
+    if not text or not text.strip():
+        return {}
+    try:
+        payload = json.loads(text)
+    except json.JSONDecodeError:
+        return {}
+    return payload if isinstance(payload, dict) else {}
 
 
 def write_jsonl(path: Path, records: Iterable[dict[str, Any]]) -> int:
@@ -246,10 +257,19 @@ def adapt_enterprise_jobs(rows: list[dict[str, str]], rules: list[dict[str, str]
     return jobs
 
 
-def adapt_government_jobs(rows: list[dict[str, str]], rules: list[dict[str, str]], start_index: int = 1) -> list[dict[str, Any]]:
+def adapt_government_jobs(
+    rows: list[dict[str, str]],
+    rules: list[dict[str, str]],
+    start_index: int = 1,
+    source_file: str = "government_jobs",
+) -> list[dict[str, Any]]:
     jobs: list[dict[str, Any]] = []
     for index, row in enumerate(rows, start=start_index):
-        job_id = row.get("job_id", "").strip() or f"GOV{index:05d}"
+        raw_payload = parse_json_object(row.get("raw", ""))
+        job_uid = str(raw_payload.get("job_uid") or "").strip()
+        dataset_year = raw_payload.get("dataset_year")
+        tech_filter = raw_payload.get("tech_filter") if isinstance(raw_payload.get("tech_filter"), dict) else {}
+        job_id = row.get("job_id", "").strip() or job_uid or f"GOV{index:05d}"
         title = row.get("job_title", "").strip()
         description = row.get("job_description", "").strip()
         tags = split_items(row.get("tags", ""))
@@ -272,15 +292,21 @@ def adapt_government_jobs(rows: list[dict[str, str]], rules: list[dict[str, str]
                 "source": row.get("source", "").strip() or "government_jobs",
                 "source_type": "government",
                 "source_name": row.get("source_name", "").strip(),
+                "dataset_year": dataset_year,
                 "salary_text": row.get("salary_text", "").strip(),
                 "tags": tags,
                 "publish_time": row.get("publish_time", "").strip(),
                 "source_url": row.get("source_url", "").strip(),
                 "search_metadata": {
-                    "source_file": "government_jobs_2026_tech_filtered",
+                    "source_file": source_file,
                     "source_job_id": job_id,
+                    "source_job_uid": job_uid,
+                    "dataset_year": dataset_year,
                     "job_family_alignment_method": method,
                     "keyword": row.get("keyword", "").strip(),
+                    "tech_filter_categories": tech_filter.get("categories", []),
+                    "tech_filter_reason": tech_filter.get("reason", ""),
+                    "tech_filter_scope": tech_filter.get("scope", ""),
                 },
             }
         )
@@ -660,6 +686,7 @@ def main() -> None:
             read_csv_rows(government_path),
             rules,
             start_index=len(enterprise_jobs) + 1,
+            source_file=government_path.stem,
         )
     candidate_profiles = adapt_candidate_profiles(read_csv_rows(resume_path))
     silver_records = read_jsonl(silver_path) if silver_path else []
