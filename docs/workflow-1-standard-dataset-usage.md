@@ -14,7 +14,7 @@
 挑战杯大模型组/
 ├─ database/
 │  ├─ job_bigcompany_final.csv
-│  ├─ government_jobs_2026_tech_filtered.csv
+│  ├─ government_jobs_2024_2026_tech_final.csv
 │  ├─ synthetic_detailed_resumes_experience_30k.csv
 │  ├─ standard_job_title_dictionary.csv
 │  ├─ resume_job_silver_30.jsonl
@@ -27,7 +27,7 @@
 | 文件 | 作用 |
 | --- | --- |
 | `job_bigcompany_final.csv` | 企业岗位主数据 |
-| `government_jobs_2026_tech_filtered.csv` | 公务员/事业单位技术岗位 |
+| `government_jobs_2024_2026_tech_final.csv` | 2024-2026 公务员/事业单位技术岗位，含年份和技术筛选信息 |
 | `synthetic_detailed_resumes_experience_30k.csv` | 扩充后的 30k 简历数据 |
 | `standard_job_title_dictionary.csv` | 岗位名称归一词典 |
 | `resume_job_silver_30.jsonl` | 旧版银标，暂时用于兼容评估 |
@@ -124,6 +124,12 @@ jobs_label_legacy.jsonl
 ```
 
 并将它们合入 `jobs.jsonl`。后续如果数据集小组重新生成新版金银标，应直接使用新版 `candidate_id` 和 `job_id`，不要再依赖 legacy 映射。
+
+新版政府岗位文件中的 `raw.dataset_year` 和 `raw.job_uid` 会被保留：
+
+- 标准 `job_id` 优先使用 `job_uid`，例如 `GOV-2024-002000-100210003001`。
+- `dataset_year` 会写入岗位记录，方便按 2024、2025、2026 做筛选或分析。
+- `tech_filter` 中的技术类别和筛选原因会写入 `search_metadata`。
 
 ## 6. 各工作流读取方式
 
