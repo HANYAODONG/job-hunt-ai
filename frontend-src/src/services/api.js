@@ -2,6 +2,7 @@ import axios from 'axios';
 import { getMockSearchResults, mockApiDelay } from '../data/mockJobData';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
+const API_ORIGIN = API_BASE_URL.replace(/\/api\/v1\/?$/, '');
 const USE_MOCK_DATA = process.env.REACT_APP_USE_MOCK_DATA === 'true';
 
 const api = axios.create({
@@ -260,8 +261,8 @@ export const searchJobsWithRerankingAndResume = async (searchParams, resumeFile,
     if (searchParams.visa_sponsorship !== undefined && searchParams.visa_sponsorship !== null) {
       formData.append('visa_sponsorship', searchParams.visa_sponsorship.toString());
     }
-    formData.append('page', searchParams.page.toString());
-    formData.append('page_size', searchParams.page_size.toString());
+    formData.append('page', (searchParams.page || 1).toString());
+    formData.append('page_size', (searchParams.page_size || 20).toString());
     
     // Add optional parameters
     if (userDescription) formData.append('user_description', userDescription);
@@ -450,7 +451,7 @@ export const rerankWithKeywords = async (searchResults, selectedKeywords) => {
   try {
     const response = await api.post('/reranking/rerank-with-keywords', {
       search_results: searchResults,
-      keywords: selectedKeywords
+      selected_keywords: selectedKeywords
     }, {
       headers: {
         'Content-Type': 'application/json',
@@ -466,7 +467,7 @@ export const rerankWithKeywords = async (searchResults, selectedKeywords) => {
 // Health Check API
 export const healthCheck = async () => {
   try {
-    const response = await api.get('/health');
+    const response = await axios.get(`${API_ORIGIN}/health`);
     return response.data;
   } catch (error) {
     throw new Error('Health check failed');

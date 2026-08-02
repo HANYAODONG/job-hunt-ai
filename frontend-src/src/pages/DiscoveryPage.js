@@ -1,19 +1,37 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { App as AntdApp, Button, Input, Progress, Skeleton } from 'antd';
+import { App as AntdApp, Button, Input, Progress, Skeleton, Upload } from 'antd';
 import { ArrowRightOutlined, CheckOutlined, EditOutlined, PlusOutlined, SendOutlined } from '@ant-design/icons';
 import PageHeading from '../components/workbench/PageHeading';
 import TechnicalInspector from '../components/workbench/TechnicalInspector';
-import { getDiscoveryCandidates, getMarketChangeCandidates, reviewDiscoveryCandidate } from '../services/talentApi';
+import {
+  getDiscoveryCandidates,
+  getLiveMarketTrend,
+  getMarketChangeCandidates,
+  getMarketRuntimeStatus,
+  importMarketCsv,
+  reviewDiscoveryCandidate,
+} from '../services/talentApi';
 
 const { TextArea } = Input;
 
 const statusClass = { '待审核': 'review', '补充证据': 'evidence', '已发布': 'published' };
 
-const buildEvidence = (item) => [
+const buildEvidence = (item, liveTrend, trendSkill) => [
   { source: '企业招聘官网', confidence: '可信度 0.94', excerpt: item.signals[0], collectedAt: item.updatedAt },
   { source: '主流招聘平台', confidence: '交叉验证', excerpt: `与“${item.skills.slice(0, 2).join('、')}”相关的能力组合连续四周高频共现。`, collectedAt: '2026-07-25 08:30' },
   { source: '行业报告与白皮书', confidence: '专家复核', excerpt: `${item.name}的职责边界与应用场景正在形成稳定表达。`, collectedAt: '2026-07-24 18:40' },
+  ...(liveTrend && trendSkill ? [{
+    source: '市场趋势接口',
+    confidence: '后端实时查询',
+    excerpt: `${trendSkill} 当前关联岗位/技能关系数：${liveTrend.skill_demand?.[trendSkill] ?? '未返回'}。`,
+    collectedAt: '本次页面查询',
+  }] : []),
 ];
+
+const normalizeRelatedSkills = (items) => (Array.isArray(items) ? items : [])
+  .map((item) => typeof item === 'string' ? item : item?.skill || item?.name)
+  .filter(Boolean)
+  .slice(0, 6);
 
 const MarketSignalItem = ({ item, active, onClick }) => (
   <button className={`signal-list-item ${active ? 'active' : ''}`} onClick={onClick}>
@@ -34,6 +52,10 @@ const DiscoveryPage = () => {
   const [selectedId, setSelectedId] = useState(null);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState({ name: '', summary: '' });
+  const [runtime, setRuntime] = useState(null);
+  const [liveTrend, setLiveTrend] = useState(null);
+  const [trendLoading, setTrendLoading] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   useEffect(() => {
     Promise.all([getDiscoveryCandidates(), getMarketChangeCandidates()]).then(([roles, updates]) => {
@@ -41,6 +63,16 @@ const DiscoveryPage = () => {
       setChanges(updates);
       setSelectedId(roles[0]?.id);
     });
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    getMarketRuntimeStatus().then((status) => {
+      if (active) setRuntime(status);
+    }).catch(() => {
+      if (active) setRuntime({ available: false, ingestion: null, bm25: null });
+    });
+    return () => { active = false; };
   }, []);
 
   const visibleItems = activeTab === 'new' ? newRoles : activeTab === 'change' ? changes : [...newRoles, ...changes].filter((item) => item.status === '已发布');
@@ -56,6 +88,41 @@ const DiscoveryPage = () => {
     });
     setEditing(false);
   }, [selected, activeTab]);
+
+  const trendSkill = selected?.skills?.[0] || null;
+  useEffect(() => {
+    let active = true;
+    setLiveTrend(null);
+    if (!trendSkill) return () => { active = false; };
+    setTrendLoading(true);
+    getLiveMarketTrend(trendSkill)
+      .then((result) => { if (active && Object.keys(result || {}).length) setLiveTrend(result); })
+      .catch(() => {})
+      .finally(() => { if (active) setTrendLoading(false); });
+    return () => { active = false; };
+  }, [trendSkill]);
+
+  const relatedSkills = normalizeRelatedSkills(liveTrend?.related_skills?.[trendSkill]);
+  const indexedJobs = runtime?.bm25?.document_count ?? runtime?.ingestion?.total_jobs_elasticsearch;
+
+  const importCsv = async (file) => {
+    if (!/\.csv$/i.test(file.name || '')) {
+      message.error('请选择 CSV 格式的市场 JD 文件');
+      return false;
+    }
+    setImporting(true);
+    try {
+      const result = await importMarketCsv(file);
+      message.success(result.message || `${file.name} 已提交后台导入`);
+      const status = await getMarketRuntimeStatus();
+      setRuntime(status);
+    } catch (importError) {
+      message.error(importError.message || '市场 JD 导入失败');
+    } finally {
+      setImporting(false);
+    }
+    return false;
+  };
 
   const switchTab = (tab) => {
     setActiveTab(tab);
@@ -77,7 +144,12 @@ const DiscoveryPage = () => {
   return (
     <div className="workbench-page signal-center-page">
       <PageHeading eyebrow="JOB MARKET RADAR" title="岗位市场雷达" description="把外部市场 JD 的新岗位、技能变化和岗位演变转化为带证据的人工审核建议。">
-        <Button icon={<PlusOutlined />}>导入市场 JD</Button>
+        <span className={`market-runtime-badge ${runtime?.available ? 'live' : 'offline'}`}>
+          {runtime?.available ? `岗位索引 ${indexedJobs ?? '已连接'}` : '数据服务未连接'}
+        </span>
+        <Upload accept=".csv,text/csv" maxCount={1} showUploadList={false} beforeUpload={importCsv} disabled={importing}>
+          <Button icon={<PlusOutlined />} loading={importing}>导入市场 JD</Button>
+        </Upload>
       </PageHeading>
 
       <nav className="workflow-tabs" aria-label="市场信号类型">
@@ -103,6 +175,14 @@ const DiscoveryPage = () => {
             <Progress percent={selected.confidence} showInfo={false} strokeColor="#4059c7" />
             <small>基于 {selected.evidence} 条有效证据，覆盖 3 类数据源</small>
           </div>
+
+          <section className="live-market-snapshot">
+            <header><span>LIVE MARKET SNAPSHOT</span><strong>{trendSkill || '待选择技能'}</strong></header>
+            {trendLoading ? <Skeleton active paragraph={{ rows: 1 }} title={false} /> : liveTrend ? <div>
+              <p><span>关联关系数</span><b>{liveTrend.skill_demand?.[trendSkill] ?? 0}</b></p>
+              <p><span>图谱相关技能</span><strong>{relatedSkills.join('、') || '接口暂未返回相关技能'}</strong></p>
+            </div> : <p className="live-market-empty">市场趋势接口当前不可用，审核候选仍为演示数据。</p>}
+          </section>
 
           {activeTab === 'change' && <section className="version-diff">
             <header><span>VERSION DIFF</span><strong>{selected.version}</strong></header>
@@ -137,7 +217,7 @@ const DiscoveryPage = () => {
           version={activeTab === 'change' ? selected.version : '定义草稿 v0.1'}
           confidence={selected.confidence}
           explanation={selected.signals}
-          evidence={buildEvidence(selected)}
+          evidence={buildEvidence(selected, liveTrend, trendSkill)}
           history={[
             { label: '完成多源交叉验证', time: selected.updatedAt },
             { label: '生成岗位定义草稿', time: '2026-07-25 09:36' },

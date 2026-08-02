@@ -185,6 +185,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .candidate-evidence-band small { color: var(--wf-faint); font-size: 9px; }
 
 /* Market signals */
+.market-runtime-badge { padding: 5px 8px; color: var(--wf-faint); background: var(--wf-surface-quiet); border: 1px solid var(--wf-line); font-size: 10px; white-space: nowrap; }
+.market-runtime-badge.live { color: var(--wf-success); background: var(--wf-success-soft); border-color: oklch(85% 0.05 158); }
 .workflow-tabs { display: flex; gap: 4px; margin-bottom: 12px; border-bottom: 1px solid var(--wf-line-strong); }
 .workflow-tabs button { min-height: 42px; padding: 0 14px; color: var(--wf-muted); background: transparent; border: 0; border-bottom: 2px solid transparent; cursor: pointer; }
 .workflow-tabs button.active { color: var(--wf-ink); border-bottom-color: var(--wf-primary); font-weight: 650; }
@@ -220,6 +222,15 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .signal-scoreline > div strong { color: var(--wf-primary); font-size: 13px; }
 .signal-scoreline .ant-progress { margin: 0; }
 .signal-scoreline small { grid-column: 2; color: var(--wf-faint); font-size: 10px; }
+.live-market-snapshot { margin-top: 18px; padding: 13px 15px; background: var(--wf-surface-quiet); border: 1px solid var(--wf-line); }
+.live-market-snapshot header { display: flex; justify-content: space-between; color: var(--wf-faint); font-size: 9px; }
+.live-market-snapshot header strong { color: var(--wf-ink); }
+.live-market-snapshot > div { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 14px; margin-top: 10px; }
+.live-market-snapshot p { margin: 0; color: var(--wf-muted); font-size: 10px; line-height: 1.55; }
+.live-market-snapshot p span { display: block; margin-bottom: 3px; color: var(--wf-faint); }
+.live-market-snapshot p b { color: var(--wf-primary); font-size: 16px; }
+.live-market-snapshot p strong { color: var(--wf-ink); font-size: 11px; font-weight: 600; }
+.live-market-snapshot .live-market-empty { margin-top: 10px; color: var(--wf-faint); }
 .version-diff { margin: 18px 0; padding: 15px 16px; background: var(--wf-surface-quiet); border: 1px solid var(--wf-line); }
 .version-diff header { display: flex; justify-content: space-between; margin-bottom: 10px; color: var(--wf-faint); font-size: 9px; }
 .version-diff header strong { color: var(--wf-ink); }

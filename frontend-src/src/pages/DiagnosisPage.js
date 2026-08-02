@@ -15,6 +15,14 @@ const gapActions = {
   '可观测性': { title: '为项目补齐运行证据与反馈闭环', detail: '记录链路耗时、调用成本和失败类型，让项目从演示原型走向可诊断系统。' },
 };
 
+const scoreLabels = {
+  bm25: 'BM25 召回',
+  semantic: '语义相关度',
+  skill_coverage: '技能覆盖率',
+  job_family: '岗位族匹配',
+  graph: '图谱关联度',
+};
+
 gsap.registerPlugin(useGSAP);
 
 const DiagnosisPage = () => {
@@ -63,7 +71,9 @@ const DiagnosisPage = () => {
       setAnalysis(result);
       setSelectedRoleId(result.matches?.[0]?.id || null);
       setSelectedGap(result.matches?.[0]?.gaps?.[0]?.skill || result.gaps?.[0]?.skill || '岗位适配');
-      message.success(result.source === 'live' ? '简历解析完成，已从真实岗位库生成匹配结果' : '已加载脱敏示例诊断');
+      message.success(result.source === 'live'
+        ? (result.pipeline?.mode === 'full' ? '完整人岗智能匹配流水线已完成' : '简历解析完成，已从现有推荐服务生成结果')
+        : '已加载脱敏示例诊断');
       requestAnimationFrame(() => {
         window.scrollTo({ top: 0, behavior: 'auto' });
         document.querySelector('.workbench-content')?.scrollTo({ top: 0, behavior: 'auto' });
@@ -106,6 +116,14 @@ const DiagnosisPage = () => {
       <nav className="diagnosis-flow" aria-label="诊断流程">
         {['上传简历', '确认画像', '自动匹配', '差距诊断'].map((label, index) => <React.Fragment key={label}><span className={analysis || index === 0 ? 'active' : ''}><b>{index + 1}</b>{label}</span>{index < 3 && <i />}</React.Fragment>)}
       </nav>
+
+      {analysis?.pipeline?.warning && <Alert
+        className="diagnosis-error"
+        type="warning"
+        showIcon
+        message="完整智能匹配流水线已降级"
+        description={`${analysis.pipeline.warning}。当前结果来自现有岗位推荐接口。`}
+      />}
 
       {loading && !analysis ? <Skeleton active paragraph={{ rows: 12 }} /> : !analysis ? <section className="diagnosis-setup">
         <div className="diagnosis-upload-zone">
@@ -174,6 +192,24 @@ const DiagnosisPage = () => {
             { source: '简历解析结果', confidence: '后端实际提取', excerpt: analysis.profile.skills.join('、') || '未提取到明确技能', collectedAt: analysis.generatedAt },
             { source: `${selectedMatch?.role}岗位要求`, confidence: selectedMatch?.version, excerpt: selectedGaps.length ? `待补充技能：${selectedGaps.map((gap) => gap.skill).join('、')}` : '未发现明确技能缺口', collectedAt: analysis.generatedAt },
             { source: '人岗匹配服务', confidence: `综合匹配度 ${selectedMatch?.score}%`, excerpt: selectedMatch?.reason, collectedAt: analysis.generatedAt },
+            ...Object.entries(selectedMatch?.scoreBreakdown || {}).map(([factor, score]) => ({
+              source: scoreLabels[factor] || factor,
+              confidence: `因子得分 ${Math.round((Number(score) || 0) * 100)}%`,
+              excerpt: `该因子已参与 Fusion 融合排序，最终综合匹配度为 ${selectedMatch?.score}%。`,
+              collectedAt: analysis.generatedAt,
+            })),
+            ...(selectedMatch?.evidencePaths || []).slice(0, 4).map((path) => ({
+              source: '知识图谱证据路径',
+              confidence: 'Neo4j 实际查询',
+              excerpt: path,
+              collectedAt: analysis.generatedAt,
+            })),
+            ...(analysis.pipeline?.warning ? [{
+              source: '流水线运行状态',
+              confidence: '已降级',
+              excerpt: analysis.pipeline.warning,
+              collectedAt: analysis.generatedAt,
+            }] : []),
           ] : [
             { source: '脱敏示例简历', confidence: '演示数据', excerpt: '使用 LangChain 与 FastAPI 完成企业知识库问答服务。', collectedAt: '示例快照' },
             { source: `${selectedMatch?.role}岗位能力项`, confidence: selectedMatch?.version, excerpt: `${selectedGaps[0]?.skill}被标记为当前目标岗位的优先能力要求。`, collectedAt: selectedMatch?.version },
@@ -182,7 +218,8 @@ const DiagnosisPage = () => {
           history={analysis.source === 'live' ? [
             { label: '完成简历文本解析', time: analysis.generatedAt },
             { label: `提取 ${analysis.profile.skills.length} 项技能证据`, time: analysis.generatedAt },
-            { label: `完成 ${matches.length} 个候选岗位匹配`, time: analysis.generatedAt },
+            ...(analysis.pipeline?.capabilities || []).map((capability) => ({ label: `完成${capability}`, time: analysis.generatedAt })),
+            { label: `输出 ${matches.length} 个候选岗位匹配`, time: analysis.generatedAt },
           ] : [
             { label: '加载脱敏示例简历', time: '示例' },
             { label: '生成示例能力画像', time: '示例' },
