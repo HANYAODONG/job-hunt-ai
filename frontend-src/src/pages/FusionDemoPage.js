@@ -29,7 +29,7 @@ import {
   ApiOutlined,
 } from '@ant-design/icons';
 import FusionScoreCard from '../components/FusionScoreCard';
-import { getMockRankedResults, rankFromQuery, getWeights, updateWeights, resetWeights } from '../services/fusionApi';
+import { getMockRankedResults, rankFromQuery, getWeights, updateWeights, resetWeights, loadFusionResults } from '../services/fusionApi';
 import './FusionDemoPage.css';
 
 const { Title, Text, Paragraph } = Typography;
@@ -64,18 +64,23 @@ export default function FusionDemoPage() {
   const [useServerWeights, setUseServerWeights] = useState(false);
   const [queryId] = useState(`fusion_demo_${Date.now()}`);
 
-  // ── 模式切换（Mock / 真实BM25）─────────────────────────────
-  const [mode, setMode] = useState('bm25');  // 'mock' | 'bm25'
+  // ── 模式切换（Mock / 真实BM25 / 离线融合）───────────────────
+  const [mode, setMode] = useState('bm25');  // 'mock' | 'bm25' | 'offline'
   const [queryText, setQueryText] = useState('');
   const [bm25Size, setBm25Size] = useState(20);
   const [searched, setSearched] = useState(false);  // 是否已搜索过
+  const [offlineQueryIds, setOfflineQueryIds] = useState([]);
+  const [offlineQueryId, setOfflineQueryId] = useState(null);
 
   const resultsRef = useRef(null);  // 结果区域 ref，用于自动滚动
 
   // ── 数据来源标注（key 对应 ScoreBreakdown 字段名）─────────────
-  const dataSources = mode === 'bm25'
-    ? { bm25_score: 'real', semantic_score: 'pending', skill_coverage: 'pending', job_family_match: 'pending', graph_relatedness: 'pending' }
-    : { bm25_score: 'mock', semantic_score: 'mock', skill_coverage: 'mock', job_family_match: 'mock', graph_relatedness: 'mock' };
+  const dataSources =
+    mode === 'offline'
+      ? { bm25_score: 'real', semantic_score: 'real', skill_coverage: 'real', job_family_match: 'real', graph_relatedness: 'real' }
+      : mode === 'bm25'
+        ? { bm25_score: 'real', semantic_score: 'pending', skill_coverage: 'pending', job_family_match: 'pending', graph_relatedness: 'pending' }
+        : { bm25_score: 'mock', semantic_score: 'mock', skill_coverage: 'mock', job_family_match: 'mock', graph_relatedness: 'mock' };
 
   // ── BM25-only 快捷权重 ─────────────────────────────────────
   const bm25OnlyWeights = { bm25: 1.0, semantic: 0.0, skill_coverage: 0.0, job_family: 0.0, graph: 0.0 };
@@ -118,6 +123,49 @@ export default function FusionDemoPage() {
       setLoading(false);
     }
   }, [queryId, numJobs, seed, weights, useServerWeights, serverWeights]);
+
+  // ── 加载离线融合结果 ─────────────────────────────────────
+  const handleOfflineLoad = useCallback(async () => {
+    if (!offlineQueryId) {
+      message.warning('请先选择一个简历 ID');
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await loadFusionResults(offlineQueryId, 'full');
+      if (data.results && data.results.length > 0) {
+        setResults({ query_id: data.query_id, results: data.results, weights_used: DEFAULT_WEIGHTS });
+        setSearched(true);
+        message.success(`加载了 ${data.count} 条离线融合结果`);
+        setTimeout(() => {
+          resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+      } else {
+        setResults({ query_id: offlineQueryId, results: [], weights_used: DEFAULT_WEIGHTS });
+        message.info('该简历暂无离线融合结果');
+      }
+    } catch (err) {
+      setError(err.message);
+      message.error('加载失败: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [offlineQueryId]);
+
+  // ── 切换到离线模式时加载 query_id 列表 ────────────────────
+  useEffect(() => {
+    if (mode === 'offline') {
+      loadFusionResults().then((data) => {
+        if (data.query_ids && data.query_ids.length > 0) {
+          setOfflineQueryIds(data.query_ids);
+          if (!offlineQueryId && data.query_ids.length > 0) {
+            setOfflineQueryId(data.query_ids[0]);
+          }
+        }
+      }).catch(() => {});
+    }
+  }, [mode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── 执行真实 BM25 融合排序 ─────────────────────────────────
   const handleBm25Search = useCallback(async () => {
@@ -238,6 +286,7 @@ export default function FusionDemoPage() {
           }}
           options={[
             { label: <><SearchOutlined /> BM25 真实检索</>, value: 'bm25' },
+            { label: <><BarChartOutlined /> 离线融合结果</>, value: 'offline' },
             { label: <><ApiOutlined /> Demo 演示</>, value: 'mock' },
           ]}
           block
@@ -245,7 +294,16 @@ export default function FusionDemoPage() {
         />
 
         {/* 当前模式提示 Banner */}
-        {mode === 'bm25' ? (
+        {mode === 'offline' ? (
+          <Alert
+            message="离线融合结果模式"
+            description="从预计算的融合排序结果中加载，包含完整的 5 因子得分（BM25 + Semantic + Skill + JobFamily + Graph）。选择简历 ID 后点击加载即可查看。"
+            type="success"
+            showIcon
+            icon={<BarChartOutlined />}
+            style={{ marginBottom: 16 }}
+          />
+        ) : mode === 'bm25' ? (
           <Alert
             message="真实数据模式"
             description="当前使用 Elasticsearch BM25 真实检索。其他因子（语义相似度、技能覆盖、岗位大类、知识图谱）待工作流2/3接入后自动生效。"
@@ -257,7 +315,7 @@ export default function FusionDemoPage() {
         ) : (
           <Alert
             message="Demo 演示模式"
-            description="当前使用本地随机生成的模拟数据展示 UI 效果。所有分数均为随机值，不代表真实算法结果。点击「BM25 真实检索」切换到真实数据模式。"
+            description="当前使用本地随机生成的模拟数据展示 UI 效果。所有分数均为随机值，不代表真实算法结果。"
             type="warning"
             showIcon
             icon={<ApiOutlined />}
@@ -350,7 +408,39 @@ export default function FusionDemoPage() {
 
       {/* ── 控制栏 ── */}
       <Card style={{ marginBottom: 20 }}>
-        {mode === 'bm25' ? (
+        {mode === 'offline' ? (
+          /* ── 离线融合模式：选择 query_id ── */
+          <Row align="middle" gutter={16} justify="space-between">
+            <Col flex="auto">
+              <Space>
+                <Text strong>选择简历 ID：</Text>
+                <select
+                  value={offlineQueryId || ''}
+                  onChange={(e) => setOfflineQueryId(e.target.value)}
+                  style={{ padding: '4px 8px', fontSize: 14, borderRadius: 4, border: '1px solid #d9d9d9', minWidth: 280 }}
+                >
+                  <option value="">-- 选择 query_id --</option>
+                  {offlineQueryIds.slice(0, 500).map((id) => (
+                    <option key={id} value={id}>{id}</option>
+                  ))}
+                </select>
+                <Text type="secondary">共 {offlineQueryIds.length} 个可用</Text>
+              </Space>
+            </Col>
+            <Col>
+              <Button
+                type="primary"
+                size="large"
+                icon={<BarChartOutlined />}
+                onClick={handleOfflineLoad}
+                loading={loading}
+                disabled={!offlineQueryId}
+              >
+                加载融合结果
+              </Button>
+            </Col>
+          </Row>
+        ) : mode === 'bm25' ? (
           /* ── BM25 真实模式：查询输入 ── */
           <>
             <div style={{ marginBottom: 12 }}>
@@ -582,8 +672,10 @@ export default function FusionDemoPage() {
             尚未生成融合结果
           </Title>
           <Paragraph type="secondary">
-            {mode === 'bm25'
-              ? '在搜索框中输入查询文本，点击「搜索并融合排序」查看真实 BM25 融合结果'
+            {mode === 'offline'
+              ? '选择简历 ID，点击「加载融合结果」查看完整的 5 因子融合排序结果'
+              : mode === 'bm25'
+                ? '在搜索框中输入查询文本，点击「搜索并融合排序」查看真实 BM25 融合结果'
               : '调整权重配置，点击「生成 Mock 融合结果」查看排序和解释效果'}
           </Paragraph>
         </Card>

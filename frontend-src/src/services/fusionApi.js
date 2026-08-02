@@ -93,3 +93,15 @@ export async function resetWeights() {
   const response = await api.post('/fusion/weights/reset');
   return response.data;
 }
+
+/**
+ * 加载离线融合排序结果（从 artifacts/fusion_ranking/）
+ * @param {string|null} queryId - 指定 query_id，不传则列出所有可用的
+ * @param {string} preset - 融合预设: full, bm25-only, bm25-semantic, bm25-semantic-skill
+ */
+export async function loadFusionResults(queryId = null, preset = 'full') {
+  const params = { preset };
+  if (queryId) params.query_id = queryId;
+  const response = await api.get('/fusion/load-results', { params });
+  return response.data;
+}

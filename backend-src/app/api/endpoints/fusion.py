@@ -1,16 +1,19 @@
 """
 Fusion API Endpoints — 工作流4：融合排序 API
 
-提供三种融合模式：
+提供四种融合模式：
 1. /rank            — 手动传入完整 FusionInput（所有因子已就绪时使用）
 2. /rank-from-query — 传入查询文本，后端自动调 BM25 → 合并 → 融合（在线模式）
-3. /mock-rank       — 纯 Mock 数据，前端独立开发用（后续可废弃）
+3. /mock-rank       — 纯 Mock 数据，前端独立开发用
+4. /load-results    — 加载离线融合排序结果（从 artifacts/fusion_ranking/ 读取）
 """
 
+import json
 import logging
+from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from app.models.fusion import (
@@ -218,3 +221,138 @@ async def reset_fusion_weights():
         "message": "权重已恢复为默认值",
         "weights": w.model_dump(),
     }
+
+
+# ── 离线融合结果加载 ─────────────────────────────────────────────
+
+# 默认从 artifacts/ 读取，支持 Docker（/app/artifacts/）和本地运行
+_ARTIFACTS_BASE = Path(__file__).resolve().parents[4]  # backend-src/app/api/endpoints/ -> repo root
+_FUSION_RESULTS_DIR = _ARTIFACTS_BASE / "artifacts" / "fusion_ranking"
+_JOBS_PATH = _ARTIFACTS_BASE / "artifacts" / "dataset_iteration_05" / "jobs.jsonl"
+# Docker 容器内的 fallback
+if not _FUSION_RESULTS_DIR.exists():
+    _FUSION_RESULTS_DIR = Path("/app/artifacts/fusion_ranking")
+    _JOBS_PATH = Path("/app/artifacts/dataset_iteration_05/jobs.jsonl")
+
+# 岗位元数据缓存
+_job_meta_cache: dict[str, dict] | None = None
+
+
+def _load_job_meta() -> dict[str, dict]:
+    """加载 jobs.jsonl 中的岗位元数据（标题、公司、地点、薪资等）"""
+    global _job_meta_cache
+    if _job_meta_cache is not None:
+        return _job_meta_cache
+
+    _job_meta_cache = {}
+    if _JOBS_PATH.exists():
+        with open(_JOBS_PATH, "r", encoding="utf-8") as f:
+            for line in f:
+                if not line.strip():
+                    continue
+                job = json.loads(line)
+                jid = job.get("job_id", "")
+                if jid:
+                    _job_meta_cache[jid] = {
+                        "title": job.get("title", ""),
+                        "company": job.get("company", "") or job.get("company_name", ""),
+                        "standard_job": job.get("standard_job", ""),
+                        "job_family": job.get("job_family", ""),
+                        "location": job.get("location", "") or job.get("location_text", ""),
+                        "salary": str(job.get("salary_text", "")) if job.get("salary_text") else "",
+                        "source_type": job.get("source_type", ""),
+                    }
+    logger.info(f"Loaded {len(_job_meta_cache)} job metadata records")
+    return _job_meta_cache
+
+
+def _list_query_ids() -> list[str]:
+    """快速获取所有 query_id，只读每一行的 query_id 字段"""
+    path = _FUSION_RESULTS_DIR / "fusion_full.jsonl"
+    if not path.exists():
+        candidates = sorted(_FUSION_RESULTS_DIR.glob("fusion_*.jsonl"))
+        path = candidates[0] if candidates else None
+        if path is None:
+            return []
+    ids = []
+    with open(path, "r", encoding="utf-8") as f:
+        for line in f:
+            if not line.strip():
+                continue
+            ids.append(json.loads(line)["query_id"])
+    return ids
+
+
+def _load_query_results(query_id: str, preset: str = "full") -> list[dict]:
+    """加载单个 query 的融合结果，附带岗位元数据"""
+    path = _FUSION_RESULTS_DIR / f"fusion_{preset}.jsonl"
+    if not path.exists():
+        return []
+
+    job_meta = _load_job_meta()
+    with open(path, "r", encoding="utf-8") as f:
+        for line in f:
+            if not line.strip():
+                continue
+            batch = json.loads(line)
+            if batch["query_id"] == query_id:
+                results = batch.get("results", [])
+                for r in results:
+                    r["_preset"] = preset
+                    jid = r.get("job_id", "")
+                    if jid and jid in job_meta:
+                        r["meta"] = job_meta[jid]
+                return results
+    return []
+
+
+@router.get("/load-results", summary="加载离线融合排序结果")
+async def load_fusion_results(
+    query_id: Optional[str] = Query(default=None, description="指定 query_id，不传则列出所有可用的 query_id"),
+    preset: Optional[str] = Query(default="full", description="融合预设: full, bm25-only, bm25-semantic, bm25-semantic-skill"),
+):
+    """
+    从 artifacts/fusion_ranking/ 加载离线预计算的融合排序结果。
+
+    - 不传 query_id：返回所有可用的 query_id 列表及数量
+    - 传 query_id：返回该 query 的排序结果（含分项得分和解释）
+
+    使用场景：
+    - 前端以真实离线融合数据展示 5 因子效果
+    - 其他工作流暂未提供在线服务时的降级方案
+    """
+    try:
+        if query_id is not None:
+            results = _load_query_results(query_id, preset)
+            if not results:
+                all_ids = _list_query_ids()
+                return {
+                    "query_id": query_id,
+                    "available": False,
+                    "message": f"未找到 query_id={query_id} 的结果",
+                    "available_query_ids": sorted(all_ids)[:20],
+                }
+            results.sort(key=lambda r: r.get("final_score", 0), reverse=True)
+            return {
+                "query_id": query_id,
+                "preset": preset,
+                "count": len(results),
+                "results": results,
+            }
+
+        # 不传 query_id：返回列表
+        ids = _list_query_ids()
+        if not ids:
+            return {
+                "available": False,
+                "message": "未找到离线融合结果。请先运行 run_fusion_pipeline.py",
+                "expected_dir": str(_FUSION_RESULTS_DIR),
+            }
+        return {
+            "available": True,
+            "total_queries": len(ids),
+            "query_ids": sorted(ids),
+        }
+    except Exception as e:
+        logger.error(f"加载融合结果失败: {e}")
+        raise HTTPException(status_code=500, detail=f"加载融合结果失败: {str(e)}")
