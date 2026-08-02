@@ -16,8 +16,8 @@ from pathlib import Path
 from typing import Any, Iterable
 
 
-DEFAULT_LABELS = Path(__file__).resolve().parents[1] / "artifacts" / "dataset_iteration_04" / "label_pairs_gold.jsonl"
-DEFAULT_OUTPUT = Path(__file__).resolve().parents[1] / "artifacts" / "dataset_iteration_04" / "jsonl_eval_report.json"
+DEFAULT_LABELS = Path(__file__).resolve().parents[1] / "artifacts" / "dataset_iteration_05" / "label_pairs_gold.jsonl"
+DEFAULT_OUTPUT = Path(__file__).resolve().parents[1] / "artifacts" / "dataset_iteration_05" / "jsonl_eval_report.json"
 
 
 def read_json_records(path: Path) -> Iterable[dict[str, Any]]:

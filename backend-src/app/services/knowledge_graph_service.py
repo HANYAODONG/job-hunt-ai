@@ -69,7 +69,10 @@ class KnowledgeGraphService:
                     j.experience_level = $experience_level,
                     j.remote_allowed = $remote_allowed,
                     j.visa_sponsorship = $visa_sponsorship,
-                    j.posted_date = $posted_date
+                    j.posted_date = $posted_date,
+                    j.required_skills = $required_skills,
+                    j.job_family = $job_family,
+                    j.source = $source
                 """
                 
                 session.run(job_query, {
@@ -80,7 +83,10 @@ class KnowledgeGraphService:
                     "experience_level": job.experience_level,
                     "remote_allowed": job.remote_allowed,
                     "visa_sponsorship": job.visa_sponsorship,
-                    "posted_date": job.posted_date.isoformat()
+                    "posted_date": job.posted_date.isoformat(),
+                    "required_skills": job.required_skills,
+                    "job_family": getattr(job, 'job_family', None),
+                    "source": getattr(job, 'source', None)
                 })
                 
                 # Create company node and relationship
@@ -163,7 +169,9 @@ class KnowledgeGraphService:
                     c.location = $location,
                     c.summary = $summary,
                     c.visa_status = $visa_status,
-                    c.salary_expectation = $salary_expectation
+                    c.salary_expectation = $salary_expectation,
+                    c.target_job_family = $target_job_family,
+                    c.years_experience = $years_experience
                 """
                 
                 session.run(candidate_query, {
@@ -173,7 +181,9 @@ class KnowledgeGraphService:
                     "location": candidate.location,
                     "summary": candidate.summary,
                     "visa_status": candidate.visa_status,
-                    "salary_expectation": candidate.salary_expectation
+                    "salary_expectation": candidate.salary_expectation,
+                    "target_job_family": getattr(candidate, 'target_job_family', None),
+                    "years_experience": getattr(candidate, 'years_experience', None)
                 })
                 
                 # Create skill relationships
@@ -452,7 +462,6 @@ class KnowledgeGraphService:
         except Exception as e:
             logger.error(f"Error computing location path for job {job_id}: {e}")
         return None
-    
     def find_related_skills(self, skills: List[str], max_depth: int = 2) -> List[str]:
         """Find skills related to the given skills through the knowledge graph"""
         try:

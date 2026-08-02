@@ -1,4 +1,4 @@
-# 数据基座字段契约
+﻿# 数据基座字段契约
 
 本文档对应工作流 1：数据基座与标签评估，定义后续 BM25、Embedding、知识图谱、融合排序等工作流共同使用的数据格式。
 
@@ -11,7 +11,7 @@ python .\scripts\dataset_adapter.py
 默认输出目录：
 
 ```text
-artifacts/dataset_iteration_04/
+artifacts/dataset_iteration_05/
 ```
 
 注意：`artifacts/` 已加入 `.gitignore`，输出文件用于本地开发和组内传递，不默认提交到 Git。
@@ -21,7 +21,7 @@ artifacts/dataset_iteration_04/
 文件：
 
 ```text
-artifacts/dataset_iteration_04/jobs.jsonl
+artifacts/dataset_iteration_05/jobs.jsonl
 ```
 
 一行一个岗位对象。
@@ -67,7 +67,7 @@ artifacts/dataset_iteration_04/jobs.jsonl
 文件：
 
 ```text
-artifacts/dataset_iteration_04/candidate_profiles.jsonl
+artifacts/dataset_iteration_05/candidate_profiles.jsonl
 ```
 
 一行一个简历/候选人对象。
@@ -112,13 +112,13 @@ artifacts/dataset_iteration_04/candidate_profiles.jsonl
 金标文件：
 
 ```text
-artifacts/dataset_iteration_04/label_pairs_gold.jsonl
+artifacts/dataset_iteration_05/label_pairs_gold.jsonl
 ```
 
 银标文件：
 
 ```text
-artifacts/dataset_iteration_04/label_pairs_silver.jsonl
+artifacts/dataset_iteration_05/label_pairs_silver.jsonl
 ```
 
 统一字段：
@@ -194,7 +194,7 @@ positive_grade >= 2
 文件夹：
 
 ```text
-artifacts/dataset_iteration_04/sample_pack/
+artifacts/dataset_iteration_05/sample_pack/
 ```
 
 包含：
@@ -220,7 +220,7 @@ sample_manifest.json
 文件：
 
 ```text
-artifacts/dataset_iteration_04/data_quality_report.json
+artifacts/dataset_iteration_05/data_quality_report.json
 ```
 
 包含：
@@ -252,7 +252,7 @@ python .\scripts\evaluate_label_rankings.py `
   --ranking-mode semantic `
   --positive-grade 2 `
   --ks 5,10,20 `
-  --output ".\artifacts\dataset_iteration_04\baseline_eval_report.json"
+  --output ".\artifacts\dataset_iteration_05\baseline_eval_report.json"
 ```
 
 输出指标：
@@ -309,12 +309,12 @@ Batch JSONL：
 
 ```powershell
 python .\scripts\evaluate_candidate_rankings.py `
-  --ranking ".\artifacts\dataset_iteration_04\label_pairs_silver.jsonl" `
-  --labels ".\artifacts\dataset_iteration_04\label_pairs_gold.jsonl" `
+  --ranking ".\artifacts\dataset_iteration_05\label_pairs_silver.jsonl" `
+  --labels ".\artifacts\dataset_iteration_05\label_pairs_gold.jsonl" `
   --score-field score `
   --positive-grade 2 `
   --ks 5,10,20 `
-  --output ".\artifacts\dataset_iteration_04\jsonl_eval_report.json"
+  --output ".\artifacts\dataset_iteration_05\jsonl_eval_report.json"
 ```
 
 如果排序结果有显式 rank 字段，可以使用：
@@ -322,7 +322,7 @@ python .\scripts\evaluate_candidate_rankings.py `
 ```powershell
 python .\scripts\evaluate_candidate_rankings.py `
   --ranking ".\path\to\ranking.jsonl" `
-  --labels ".\artifacts\dataset_iteration_04\label_pairs_gold.jsonl" `
+  --labels ".\artifacts\dataset_iteration_05\label_pairs_gold.jsonl" `
   --score-field bm25_score `
   --rank-field bm25_rank
 ```
@@ -437,3 +437,4 @@ candidate_profiles.jsonl
   "explanation": "该岗位与简历在 Python、SQL 上匹配度较高，但仍缺少 Machine Learning 相关能力。"
 }
 ```
+

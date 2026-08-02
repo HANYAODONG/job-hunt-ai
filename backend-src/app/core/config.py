@@ -35,7 +35,12 @@ class Settings(BaseSettings):
     
     # NLP Models
     SPACY_MODEL: str = "en_core_web_sm"
-    SENTENCE_TRANSFORMER_MODEL: str = "all-MiniLM-L6-v2"
+    SENTENCE_TRANSFORMER_MODEL: str = "BAAI/bge-m3"
+    SEMANTIC_EMBEDDING_MODEL: str = "BAAI/bge-m3"
+    SEMANTIC_EMBEDDING_DEVICE: str = "cpu"
+    SEMANTIC_EMBEDDING_BATCH_SIZE: int = 16
+    SEMANTIC_EMBEDDING_NORMALIZE: bool = True
+    SEMANTIC_EMBEDDING_TRUST_REMOTE_CODE: bool = True
     HF_TOKEN: Optional[str] = None
     TOKENIZERS_PARALLELISM: Optional[str] = None
     
@@ -54,8 +59,8 @@ class Settings(BaseSettings):
     INGESTION_RATE_LIMIT: int = 100  # requests per hour
 
     # Semantic ANN index
-    SEMANTIC_INDEX_PATH: Optional[str] = None
-    SEMANTIC_INDEX_IDS: Optional[str] = None
+    SEMANTIC_INDEX_PATH: Optional[str] = "artifacts/semantic_index/jobs_embeddings.npy"
+    SEMANTIC_INDEX_IDS: Optional[str] = "artifacts/semantic_index/jobs_embedding_ids.json"
     DISABLE_EXTERNAL_SERVICES: bool = False
     
     class Config:

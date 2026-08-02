@@ -2,8 +2,10 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
+# Use Aliyun mirror for China mainland network
+RUN sed -i 's|http://deb.debian.org/debian|http://mirrors.aliyun.com/debian|g' /etc/apt/sources.list.d/debian.sources 2>/dev/null; \
+    sed -i 's|http://deb.debian.org/debian|http://mirrors.aliyun.com/debian|g' /etc/apt/sources.list 2>/dev/null; \
+    apt-get update && apt-get install -y \
     gcc \
     g++ \
     curl \
@@ -16,7 +18,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Download spaCy model
-RUN python -m spacy download en_core_web_sm
+# RUN python -m spacy download en_core_web_sm
 
 # Download TextBlob corpora
 RUN python -m textblob.download_corpora
@@ -34,4 +36,4 @@ ENV PORT=8000
 EXPOSE 8000
 
 # Run the application (read PORT from environment for Cloud Run compatibility)
-CMD sh -c "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --reload"
+CMD sh -c "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} "
