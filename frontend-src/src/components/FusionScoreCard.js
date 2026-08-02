@@ -6,8 +6,6 @@ import {
   Typography,
   Row,
   Col,
-  Descriptions,
-  Collapse,
   Tooltip,
 } from 'antd';
 import {
@@ -21,7 +19,6 @@ import {
 import './FusionScoreCard.css';
 
 const { Title, Text, Paragraph } = Typography;
-const { Panel } = Collapse;
 
 // ── 因子配置 ────────────────────────────────────────────────────
 const FACTOR_CONFIG = {

@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
-import { App as AntdApp, Button, Skeleton, Upload } from 'antd';
+import { Alert, App as AntdApp, Button, Skeleton, Upload } from 'antd';
 import { ArrowRightOutlined, CheckCircleFilled, FilePdfOutlined, InboxOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import PageHeading from '../components/workbench/PageHeading';
 import TechnicalInspector from '../components/workbench/TechnicalInspector';
@@ -22,6 +22,7 @@ const DiagnosisPage = () => {
   const navigate = useNavigate();
   const [analysis, setAnalysis] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [selectedRoleId, setSelectedRoleId] = useState(null);
   const [selectedGap, setSelectedGap] = useState('Agent 工作流');
   const pageRef = useRef(null);
@@ -45,17 +46,32 @@ const DiagnosisPage = () => {
   }, { scope: pageRef, dependencies: [Boolean(analysis)], revertOnUpdate: true });
 
   const startDiagnosis = async (file = { name: '陈同学-前端与AI项目简历.pdf' }) => {
+    if (!/\.(pdf|doc|docx)$/i.test(file.name || '')) {
+      message.error('仅支持 PDF、DOC、DOCX 格式的简历');
+      return false;
+    }
+    if (file.size && file.size > 10 * 1024 * 1024) {
+      message.error('简历文件不能超过 10 MB');
+      return false;
+    }
+
     setLoading(true);
+    setError(null);
     try {
-      const result = await diagnoseCandidate({ fileName: file.name, targetRole: '大模型应用工程师', targetVersion: 'v1.2' });
+      const resumeFile = typeof File !== 'undefined' && file instanceof File ? file : null;
+      const result = await diagnoseCandidate({ resumeFile });
       setAnalysis(result);
       setSelectedRoleId(result.matches?.[0]?.id || null);
-      setSelectedGap(result.matches?.[0]?.gaps?.[0]?.skill || result.gaps[0]?.skill || 'Agent 工作流');
-      message.success('简历解析完成，已从岗位图谱中生成匹配结果');
+      setSelectedGap(result.matches?.[0]?.gaps?.[0]?.skill || result.gaps?.[0]?.skill || '岗位适配');
+      message.success(result.source === 'live' ? '简历解析完成，已从真实岗位库生成匹配结果' : '已加载脱敏示例诊断');
       requestAnimationFrame(() => {
         window.scrollTo({ top: 0, behavior: 'auto' });
         document.querySelector('.workbench-content')?.scrollTo({ top: 0, behavior: 'auto' });
       });
+    } catch (diagnosisError) {
+      const errorMessage = diagnosisError.message || '诊断失败，请检查后端服务后重试';
+      setError(errorMessage);
+      message.error(errorMessage);
     } finally { setLoading(false); }
     return false;
   };
@@ -91,8 +107,9 @@ const DiagnosisPage = () => {
         {['上传简历', '确认画像', '自动匹配', '差距诊断'].map((label, index) => <React.Fragment key={label}><span className={analysis || index === 0 ? 'active' : ''}><b>{index + 1}</b>{label}</span>{index < 3 && <i />}</React.Fragment>)}
       </nav>
 
-      {!analysis ? <section className="diagnosis-setup">
+      {loading && !analysis ? <Skeleton active paragraph={{ rows: 12 }} /> : !analysis ? <section className="diagnosis-setup">
         <div className="diagnosis-upload-zone">
+          {error && <Alert className="diagnosis-error" type="error" showIcon message="无法完成人岗诊断" description={error} closable onClose={() => setError(null)} />}
           <Upload.Dragger accept=".pdf,.doc,.docx" maxCount={1} beforeUpload={startDiagnosis} showUploadList={false} disabled={loading}>
             <p className="ant-upload-drag-icon"><InboxOutlined /></p>
             <h2>上传一份简历，建立能力画像</h2>
@@ -107,7 +124,7 @@ const DiagnosisPage = () => {
           <div className="target-version-facts"><p><span>岗位池</span><strong>38 个</strong></p><p><span>能力节点</span><strong>3,468</strong></p><p><span>图谱版本</span><strong>2026.7</strong></p></div>
           <footer><SafetyCertificateOutlined />所有结论均引用已发布岗位版本和简历证据</footer>
         </aside>
-      </section> : loading ? <Skeleton active paragraph={{ rows: 12 }} /> : <div className="diagnosis-results">
+      </section> : <div className="diagnosis-results">
         <section className="diagnosis-match-selector" aria-label="自动匹配岗位">
           <header><div><span>AUTOMATIC ROLE MATCHES</span><h2>选择一个目标岗位继续诊断</h2></div><p>匹配基于当前简历画像与已发布岗位版本</p></header>
           <div>{matches.map((match, index) => <button type="button" key={match.id} className={match.id === selectedMatch?.id ? 'active' : ''} onClick={() => selectRole(match)}>
@@ -119,7 +136,7 @@ const DiagnosisPage = () => {
         <main className="diagnosis-report">
           <header className="diagnosis-report-header">
             <div><span>{analysis.profile.name} / 已确认目标岗位</span><h2>{selectedMatch?.role} <small>{selectedMatch?.version}</small></h2><p>{analysis.profile.experience}</p></div>
-            <div className="overall-match"><strong>{selectedMatch?.score}</strong><span>综合匹配度</span><small><SafetyCertificateOutlined /> 画像置信度 {analysis.profile.confidence}%</small></div>
+            <div className="overall-match"><strong>{selectedMatch?.score}</strong><span>综合匹配度</span><small><SafetyCertificateOutlined /> {analysis.profile.confidence == null ? '后端未提供画像置信度' : `画像置信度 ${analysis.profile.confidence}%`}</small></div>
           </header>
 
           <section className="profile-skill-confirmation">
@@ -150,18 +167,26 @@ const DiagnosisPage = () => {
         <TechnicalInspector
           title="诊断报告"
           status="已生成"
-          version="岗位 v1.2"
+          version={selectedMatch?.version || '当前 JD'}
           confidence={analysis.profile.confidence}
           explanation={[...selectedGaps.filter((gap) => gap.skill === selectedGap), ...selectedGaps.filter((gap) => gap.skill !== selectedGap)].map((gap) => gap.reason)}
-          evidence={[
-            { source: '简历项目经历', confidence: '提取置信度 0.93', excerpt: '使用 LangChain 与 FastAPI 完成企业知识库问答服务。', collectedAt: '2026-07-25 11:02' },
-            { source: `${selectedMatch?.role}岗位能力项`, confidence: `当前版本 ${selectedMatch?.version}`, excerpt: `${selectedGaps[0]?.skill}被标记为当前目标岗位的优先能力要求。`, collectedAt: `岗位版本 ${selectedMatch?.version}` },
-            { source: '岗位市场交叉验证', confidence: '已通过', excerpt: selectedMatch?.reason, collectedAt: '2026-08-01' },
+          evidence={analysis.source === 'live' ? [
+            { source: '简历解析结果', confidence: '后端实际提取', excerpt: analysis.profile.skills.join('、') || '未提取到明确技能', collectedAt: analysis.generatedAt },
+            { source: `${selectedMatch?.role}岗位要求`, confidence: selectedMatch?.version, excerpt: selectedGaps.length ? `待补充技能：${selectedGaps.map((gap) => gap.skill).join('、')}` : '未发现明确技能缺口', collectedAt: analysis.generatedAt },
+            { source: '人岗匹配服务', confidence: `综合匹配度 ${selectedMatch?.score}%`, excerpt: selectedMatch?.reason, collectedAt: analysis.generatedAt },
+          ] : [
+            { source: '脱敏示例简历', confidence: '演示数据', excerpt: '使用 LangChain 与 FastAPI 完成企业知识库问答服务。', collectedAt: '示例快照' },
+            { source: `${selectedMatch?.role}岗位能力项`, confidence: selectedMatch?.version, excerpt: `${selectedGaps[0]?.skill}被标记为当前目标岗位的优先能力要求。`, collectedAt: selectedMatch?.version },
+            { source: '岗位市场交叉验证', confidence: '演示数据', excerpt: selectedMatch?.reason, collectedAt: '示例快照' },
           ]}
-          history={[
-            { label: '完成简历文本解析', time: '11:02:14' },
-            { label: '用户确认 6 项技能证据', time: '11:03:08' },
-            { label: `对照${selectedMatch?.role} ${selectedMatch?.version}完成诊断`, time: '11:03:12' },
+          history={analysis.source === 'live' ? [
+            { label: '完成简历文本解析', time: analysis.generatedAt },
+            { label: `提取 ${analysis.profile.skills.length} 项技能证据`, time: analysis.generatedAt },
+            { label: `完成 ${matches.length} 个候选岗位匹配`, time: analysis.generatedAt },
+          ] : [
+            { label: '加载脱敏示例简历', time: '示例' },
+            { label: '生成示例能力画像', time: '示例' },
+            { label: `对照${selectedMatch?.role}完成示例诊断`, time: '示例' },
           ]}
         />
         </section>

@@ -65,12 +65,37 @@ export const searchJobs = async (searchParams) => {
   }
 };
 
+export const createResumeSearchForm = (searchParams, resumeFile) => {
+  const formData = new FormData();
+  formData.append('resume_file', resumeFile);
+  formData.append('query', searchParams.query || '');
+
+  const optionalFields = [
+    'location',
+    'min_salary',
+    'max_salary',
+    'job_type',
+    'experience_level',
+    'remote_allowed',
+    'visa_sponsorship',
+    'limit',
+  ];
+  optionalFields.forEach((field) => {
+    const value = searchParams[field];
+    if (value !== undefined && value !== null && value !== '') {
+      formData.append(field, value.toString());
+    }
+  });
+  (searchParams.required_skills || []).forEach((skill) => formData.append('required_skills', skill));
+  (searchParams.preferred_skills || []).forEach((skill) => formData.append('preferred_skills', skill));
+
+  return formData;
+};
+
 export const searchJobsWithResume = async (searchParams, resumeFile) => {
   try {
-    const formData = new FormData();
-    formData.append('resume_file', resumeFile);
-    formData.append('query', JSON.stringify(searchParams));
-    
+    const formData = createResumeSearchForm(searchParams, resumeFile);
+
     const response = await api.post('/jobs/search-with-resume', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',

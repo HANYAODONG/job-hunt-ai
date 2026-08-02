@@ -22,7 +22,7 @@ const TechnicalInspector = ({ title, status = 'AI 生成', version = '草稿', c
 
       <div className="inspector-facts">
         <div><span>版本</span><strong>{version}</strong></div>
-        <div><span>置信度</span><strong>{confidence}%</strong></div>
+        <div><span>置信度</span><strong>{confidence == null ? '未提供' : `${confidence}%`}</strong></div>
       </div>
 
       <div className="inspector-tabs" role="tablist" aria-label="技术详情">

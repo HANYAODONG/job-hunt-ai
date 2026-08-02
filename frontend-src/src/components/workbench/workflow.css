@@ -291,6 +291,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .diagnosis-setup { display: grid; grid-template-columns: minmax(440px, 1fr) 320px; min-height: 520px; background: var(--wf-surface); border: 1px solid var(--wf-line-strong); }
 .diagnosis-upload-zone { padding: 28px; border-right: 1px solid var(--wf-line); }
 .diagnosis-upload-zone .ant-upload-wrapper, .diagnosis-upload-zone .ant-upload-drag { height: 330px; }
+.diagnosis-error { margin-bottom: 12px; }
+.diagnosis-error + .ant-upload-wrapper, .diagnosis-error + .ant-upload-wrapper .ant-upload-drag { height: 256px; }
 .diagnosis-upload-zone .ant-upload-drag { display: grid; place-items: center; background: var(--wf-surface); border-color: var(--wf-line-strong); border-radius: 4px; }
 .diagnosis-upload-zone .ant-upload-drag:hover { border-color: var(--wf-primary); }
 .diagnosis-upload-zone .ant-upload-drag-icon { margin-bottom: 6px !important; color: var(--wf-primary) !important; font-size: 35px; }
