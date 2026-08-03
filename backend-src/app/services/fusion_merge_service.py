@@ -119,6 +119,7 @@ def merge_from_bm25_api(
             "skill_coverage": 0.0,
             "job_family_match": 0.0,
             "graph_relatedness": 0.0,
+            "matched_skills": [],
             "missing_skills": [],
             "evidence_paths": [],
         }
@@ -193,6 +194,7 @@ def merge_from_artifacts(
             "skill_coverage": 0.0,
             "job_family_match": 0.0,
             "graph_relatedness": 0.0,
+            "matched_skills": [],
             "missing_skills": [],
             "evidence_paths": [],
             "_meta": {},
@@ -238,6 +240,7 @@ def merge_from_artifacts(
             entry["skill_coverage"] = record.get("skill_coverage", 0.0)
             entry["job_family_match"] = record.get("job_family_match", 0.0)
             entry["graph_relatedness"] = record.get("graph_relatedness", 0.0)
+            entry["matched_skills"] = record.get("matched_skills", [])
             entry["missing_skills"] = record.get("missing_skills", [])
             entry["evidence_paths"] = record.get("evidence_paths", [])
         logger.info("Merged KG features from %d records", len(kg_features))

@@ -182,13 +182,8 @@ def generate_explanation(inp: FusionInput, final_score: float, weights: FusionWe
         parts.append("该岗位是您的良好选择，建议尽快投递")
 
     # 构造 ExplanationDetail
-    # matched_skills: 从 meta 或 input 已有字段推断
-    matched_skills = getattr(inp, '_matched_skills', []) if hasattr(inp, '_matched_skills') else []
-    if not matched_skills and hasattr(inp, '__dict__'):
-        matched_skills = inp.__dict__.get('_matched_skills', [])
-
     return ExplanationDetail(
-        matched_skills=list(matched_skills) if matched_skills else [],
+        matched_skills=list(inp.matched_skills) if inp.matched_skills else [],
         missing_skills=list(inp.missing_skills) if inp.missing_skills else [],
         reason="。".join(parts) + "。",
     )
@@ -280,6 +275,8 @@ def generate_mock_inputs(
             missing_count = random.randint(2, 5)
 
         missing = random.sample(_SKILL_POOL, min(missing_count, len(_SKILL_POOL)))
+        matched_count = random.randint(2, 8) if tier == "high" else random.randint(1, 4) if tier == "medium" else random.randint(0, 2)
+        matched = random.sample(_SKILL_POOL, min(matched_count, len(_SKILL_POOL)))
 
         # 构造 evidence_paths（模拟 KG 路径）
         if graph > 0.5:
@@ -298,6 +295,7 @@ def generate_mock_inputs(
             "skill_coverage": skill_cov,
             "job_family_match": job_family,
             "graph_relatedness": graph,
+            "matched_skills": matched,
             "missing_skills": missing,
             "evidence_paths": evidence_paths,
             # 额外元数据（方便前端展示，非融合输入格式要求）

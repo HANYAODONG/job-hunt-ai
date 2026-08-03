@@ -22,6 +22,7 @@ class FusionInput(BaseModel):
     skill_coverage: float = Field(default=0.0, ge=0.0, le=1.0, description="工作流3：技能覆盖率")
     job_family_match: float = Field(default=0.0, ge=0.0, le=1.0, description="工作流3：岗位大类匹配")
     graph_relatedness: float = Field(default=0.0, ge=0.0, le=1.0, description="工作流3：知识图谱关联度")
+    matched_skills: List[str] = Field(default_factory=list, description="匹配技能列表")
     missing_skills: List[str] = Field(default_factory=list, description="缺失技能列表")
     evidence_paths: List[str] = Field(default_factory=list, description="KG 证据路径")
 
