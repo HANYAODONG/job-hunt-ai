@@ -29,21 +29,35 @@ import {
   ApiOutlined,
 } from '@ant-design/icons';
 import FusionScoreCard from '../components/FusionScoreCard';
-import { getMockRankedResults, rankFromQuery, getWeights, updateWeights, resetWeights, loadFusionResults } from '../services/fusionApi';
+import { getMockRankedResults, rankFromQuery, getLayeredWeights, updateLayeredWeights, resetWeights, loadFusionResults } from '../services/fusionApi';
 import './FusionDemoPage.css';
 
 const { Title, Text, Paragraph } = Typography;
 
-// ── 因子配置（key 用于权重API，breakdownKey 用于展示）─────────────────
-const FACTORS = [
-  { key: 'bm25', breakdownKey: 'bm25_score', label: '关键词匹配 (BM25)', icon: '🔤', tip: '来自工作流5：Elasticsearch BM25 得分' },
-  { key: 'semantic', breakdownKey: 'semantic_score', label: '语义相似度', icon: '🧠', tip: '来自工作流2：向量嵌入语义相似度' },
-  { key: 'skill_coverage', breakdownKey: 'skill_coverage', label: '技能覆盖', icon: '🎯', tip: '来自工作流3：技能覆盖率' },
-  { key: 'job_family', breakdownKey: 'job_family_match', label: '岗位大类匹配', icon: '🏢', tip: '来自工作流3：岗位类别匹配' },
-  { key: 'graph', breakdownKey: 'graph_relatedness', label: '知识图谱关联', icon: '🔗', tip: '来自工作流3：KG关系网络关联度' },
+// ── 分层因子配置（第三阶段 v2）──────────────────────────────────────
+const RELEVANCE_FACTORS = [
+  { key: 'relevance_bm25', label: '关键词匹配 (BM25)', icon: '🔤' },
+  { key: 'relevance_semantic', label: '语义相似度', icon: '🧠' },
+];
+const ABILITY_FACTORS = [
+  { key: 'ability_skill', label: '技能覆盖', icon: '🎯' },
+  { key: 'ability_graph', label: '知识图谱关联', icon: '🔗' },
 ];
 
-const DEFAULT_WEIGHTS = { bm25: 0.15, semantic: 0.25, skill_coverage: 0.30, job_family: 0.15, graph: 0.15 };
+const FACTOR_BREAKDOWN_MAP = {
+  relevance_bm25: 'bm25_score',
+  relevance_semantic: 'semantic_score',
+  ability_skill: 'skill_coverage',
+  ability_graph: 'graph_relatedness',
+  job_family: 'job_family_match',
+};
+
+const DEFAULT_WEIGHTS = {
+  relevance_bm25: 0.4, relevance_semantic: 0.6,
+  ability_skill: 0.7, ability_graph: 0.3,
+  relevance_base: 0.7, ability_multiplier: 0.3,
+  use_family_gate: false,
+};
 
 const EXAMPLE_QUERIES = [
   { label: 'Python 数据分析', text: '熟悉 Python、SQL、数据分析，有3年经验，期望数据工程师岗位' },
@@ -74,16 +88,23 @@ export default function FusionDemoPage() {
 
   const resultsRef = useRef(null);  // 结果区域 ref，用于自动滚动
 
-  // ── 数据来源标注（key 对应 ScoreBreakdown 字段名）─────────────
+  // ── 数据来源标注 ────────────────────────────────────────────
   const dataSources =
     mode === 'offline'
       ? { bm25_score: 'real', semantic_score: 'real', skill_coverage: 'real', job_family_match: 'real', graph_relatedness: 'real' }
       : mode === 'bm25'
         ? { bm25_score: 'real', semantic_score: 'pending', skill_coverage: 'pending', job_family_match: 'pending', graph_relatedness: 'pending' }
         : { bm25_score: 'mock', semantic_score: 'mock', skill_coverage: 'mock', job_family_match: 'mock', graph_relatedness: 'mock' };
+  // job_family_match 数据来源（独立标注，用于门控）
+  const familySource = mode === 'offline' ? 'real' : mode === 'bm25' ? 'pending' : 'mock';
 
-  // ── BM25-only 快捷权重 ─────────────────────────────────────
-  const bm25OnlyWeights = { bm25: 1.0, semantic: 0.0, skill_coverage: 0.0, job_family: 0.0, graph: 0.0 };
+  // ── BM25-Only 快捷权重 ─────────────────────────────────────
+  const bm25OnlyWeights = {
+    relevance_bm25: 1.0, relevance_semantic: 0.0,
+    ability_skill: 0.5, ability_graph: 0.5,
+    relevance_base: 1.0, ability_multiplier: 0.0,
+    use_family_gate: false,
+  };
 
   // ── 加载权重 ───────────────────────────────────────────────
   useEffect(() => {
@@ -92,21 +113,39 @@ export default function FusionDemoPage() {
 
   const loadServerWeights = async () => {
     try {
-      const data = await getWeights();
-      setServerWeights(data.weights);
+      const data = await getLayeredWeights();
+      const w = data.weights;
+      setServerWeights({
+        relevance_bm25: w.relevance_bm25, relevance_semantic: w.relevance_semantic,
+        ability_skill: w.ability_skill, ability_graph: w.ability_graph,
+        relevance_base: w.relevance_base, ability_multiplier: w.ability_multiplier,
+        use_family_gate: (w.family_discount || 1.0) < 0.95,
+      });
     } catch {
       // 后端不可用，使用默认值
     }
   };
 
   // ── 执行 Mock 融合排序 ─────────────────────────────────────
+  // ── 将前端权重转为 API 分层格式 ────────────────────────────
+  const toLayeredApi = (w) => ({
+    relevance_bm25: w.relevance_bm25,
+    relevance_semantic: w.relevance_semantic,
+    ability_skill: w.ability_skill,
+    ability_graph: w.ability_graph,
+    relevance_base: w.relevance_base,
+    ability_multiplier: w.ability_multiplier,
+    family_discount: w.use_family_gate ? 0.85 : 1.0,
+  });
+
   const handleMockRank = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const activeWeights = useServerWeights ? serverWeights || DEFAULT_WEIGHTS : weights;
-
-      const data = await getMockRankedResults(queryId, numJobs, seed, activeWeights);
+      const data = await getMockRankedResults(
+        queryId, numJobs, seed, null, toLayeredApi(activeWeights)
+      );
       setResults(data);
       setSearched(true);
 
@@ -180,7 +219,7 @@ export default function FusionDemoPage() {
 
       const data = await rankFromQuery(queryText.trim(), {
         size: bm25Size,
-        weights: activeWeights,
+        layeredWeights: toLayeredApi(activeWeights),
       });
       setResults(data);
       setSearched(true);
@@ -209,14 +248,23 @@ export default function FusionDemoPage() {
     }
   }, [queryText, bm25Size, weights, useServerWeights, serverWeights]);
 
-  // ── 更新服务端权重 ─────────────────────────────────────────
+  // ── 更新服务端分层权重 ────────────────────────────────────
   const handleUpdateServerWeights = async () => {
     try {
-      await updateWeights(weights);
-      message.success('服务端权重已更新');
+      const lw = {
+        relevance_bm25: weights.relevance_bm25,
+        relevance_semantic: weights.relevance_semantic,
+        ability_skill: weights.ability_skill,
+        ability_graph: weights.ability_graph,
+        relevance_base: weights.relevance_base,
+        ability_multiplier: weights.ability_multiplier,
+        family_discount: weights.use_family_gate ? 0.85 : 1.0,
+      };
+      await updateLayeredWeights(lw);
+      message.success('分层权重已推送到服务端');
       setServerWeights({ ...weights });
     } catch (err) {
-      message.error('更新服务端权重失败: ' + err.message);
+      message.error('推送失败: ' + err.message);
     }
   };
 
@@ -236,9 +284,12 @@ export default function FusionDemoPage() {
     setWeights((prev) => ({ ...prev, [key]: value }));
   };
 
-  // 验证权重之和
-  const weightSum = Object.values(weights).reduce((a, b) => a + b, 0);
-  const weightsValid = Math.abs(weightSum - 1.0) < 0.005;
+  // 验证分层权重（两组各自求和为 1）
+  const relSum = weights.relevance_bm25 + weights.relevance_semantic;
+  const abSum = weights.ability_skill + weights.ability_graph;
+  const relValid = Math.abs(relSum - 1.0) < 0.005;
+  const abValid = Math.abs(abSum - 1.0) < 0.005;
+  const weightsValid = relValid && abValid;
 
   // ── 统计数据 ───────────────────────────────────────────────
   const stats = results
@@ -267,7 +318,7 @@ export default function FusionDemoPage() {
           <ExperimentOutlined /> 工作流4：融合排序演示
         </Title>
         <Paragraph type="secondary">
-          支持 Mock 模拟数据和真实 BM25 检索两种模式。其余因子（semantic / skill / graph）待其他工作流接入。
+          第三阶段 v2：分层融合。相关性（BM25+Semantic）主导排序，能力（Skill+Graph）做候选集内调制，岗位族做门控。
         </Paragraph>
 
         {/* 模式切换 + 当前模式标注 */}
@@ -324,19 +375,21 @@ export default function FusionDemoPage() {
         )}
       </div>
 
-      {/* ── 权重配置面板 ── */}
+      {/* ── 分层权重配置面板（第三阶段 v2）── */}
       <Card
         className="weights-panel"
         title={
           <Space>
             <SettingOutlined />
-            <span>融合权重配置</span>
+            <span>分层融合权重</span>
             {!weightsValid && (
-              <Tag color="error">权重之和: {weightSum.toFixed(2)}（需为 1.00）</Tag>
+              <Tag color="error">
+                {!relValid && `相关性: ${relSum.toFixed(2)} `}
+                {!abValid && `能力: ${abSum.toFixed(2)}`}
+                （需各为 1.00）
+              </Tag>
             )}
-            {weightsValid && (
-              <Tag color="success">权重之和: 1.00 ✓</Tag>
-            )}
+            {weightsValid && <Tag color="success">✓</Tag>}
           </Space>
         }
         extra={
@@ -347,16 +400,9 @@ export default function FusionDemoPage() {
               checked={useServerWeights}
               onChange={setUseServerWeights}
             />
-            <Button size="small" onClick={handleResetWeights}>
-              恢复默认
-            </Button>
+            <Button size="small" onClick={handleResetWeights}>恢复默认</Button>
             {!useServerWeights && (
-              <Button
-                size="small"
-                type="primary"
-                onClick={handleUpdateServerWeights}
-                disabled={!weightsValid}
-              >
+              <Button size="small" type="primary" onClick={handleUpdateServerWeights} disabled={!weightsValid}>
                 推送到服务端
               </Button>
             )}
@@ -364,45 +410,81 @@ export default function FusionDemoPage() {
         }
         style={{ marginBottom: 20 }}
       >
-        <Row gutter={[24, 16]}>
-          {FACTORS.map((factor) => {
-            const src = dataSources[factor.breakdownKey] || 'mock';
-            return (
-            <Col key={factor.key} span={12} md={24 / FACTORS.length}>
-              <div className="factor-slider">
-                <Text className="factor-label">
-                  {factor.icon} {factor.label}
-                  {src === 'real' && <Tag color="green" style={{ marginLeft: 4, fontSize: 10 }}>真实</Tag>}
-                  {src === 'pending' && <Tag color="blue" style={{ marginLeft: 4, fontSize: 10 }}>待接入</Tag>}
-                  {src === 'mock' && <Tag color="default" style={{ marginLeft: 4, fontSize: 10 }}>模拟</Tag>}
-                </Text>
-                <Row align="middle" gutter={8}>
-                  <Col flex="auto">
-                    <Slider
-                      min={0}
-                      max={0.5}
-                      step={0.01}
-                      value={weights[factor.key]}
-                      onChange={(v) => handleWeightChange(factor.key, v)}
-                      disabled={useServerWeights}
-                    />
-                  </Col>
-                  <Col flex="60px">
-                    <InputNumber
-                      size="small"
-                      min={0}
-                      max={1}
-                      step={0.05}
-                      value={weights[factor.key]}
-                      onChange={(v) => handleWeightChange(factor.key, v || 0)}
-                      disabled={useServerWeights}
-                      style={{ width: 60 }}
-                    />
-                  </Col>
-                </Row>
-              </div>
+        {/* 相关性权重组 */}
+        <Text strong style={{ fontSize: 13 }}>📊 相关性得分 = w₁ × BM25 + w₂ × Semantic</Text>
+        <Row gutter={[16, 8]} style={{ marginTop: 4, marginBottom: 12 }}>
+          {RELEVANCE_FACTORS.map((f) => (
+            <Col key={f.key} span={12}>
+              <Text style={{ fontSize: 12 }}>{f.icon} {f.label}</Text>
+              <Row align="middle" gutter={8}>
+                <Col flex="auto">
+                  <Slider min={0} max={1} step={0.05} value={weights[f.key]}
+                    onChange={(v) => handleWeightChange(f.key, v)} disabled={useServerWeights} />
+                </Col>
+                <Col flex="50px">
+                  <InputNumber size="small" min={0} max={1} step={0.05}
+                    value={weights[f.key]} onChange={(v) => handleWeightChange(f.key, v || 0)}
+                    disabled={useServerWeights} style={{ width: 50 }} />
+                </Col>
+              </Row>
             </Col>
-          )})}
+          ))}
+        </Row>
+
+        <Divider style={{ margin: '8px 0' }} />
+
+        {/* 能力权重组 */}
+        <Text strong style={{ fontSize: 13 }}>🎯 能力得分 = w₁ × Skill + w₂ × Graph（候选集内归一化）</Text>
+        <Row gutter={[16, 8]} style={{ marginTop: 4, marginBottom: 12 }}>
+          {ABILITY_FACTORS.map((f) => (
+            <Col key={f.key} span={12}>
+              <Text style={{ fontSize: 12 }}>{f.icon} {f.label}</Text>
+              <Row align="middle" gutter={8}>
+                <Col flex="auto">
+                  <Slider min={0} max={1} step={0.05} value={weights[f.key]}
+                    onChange={(v) => handleWeightChange(f.key, v)} disabled={useServerWeights} />
+                </Col>
+                <Col flex="50px">
+                  <InputNumber size="small" min={0} max={1} step={0.05}
+                    value={weights[f.key]} onChange={(v) => handleWeightChange(f.key, v || 0)}
+                    disabled={useServerWeights} style={{ width: 50 }} />
+                </Col>
+              </Row>
+            </Col>
+          ))}
+        </Row>
+
+        <Divider style={{ margin: '8px 0' }} />
+
+        {/* 公式参数 + 门控 */}
+        <Text strong style={{ fontSize: 13 }}>公式：final = relevance × (base + multiplier × ability)</Text>
+        <Row gutter={[16, 8]} style={{ marginTop: 4 }} align="middle">
+          <Col span={8}>
+            <Text style={{ fontSize: 12 }}>基础乘数 (base)</Text>
+            <InputNumber size="small" min={0} max={1} step={0.05}
+              value={weights.relevance_base}
+              onChange={(v) => handleWeightChange('relevance_base', v || 0.7)}
+              disabled={useServerWeights} style={{ width: '100%' }} />
+          </Col>
+          <Col span={8}>
+            <Text style={{ fontSize: 12 }}>能力调制 (multiplier)</Text>
+            <InputNumber size="small" min={0} max={1} step={0.05}
+              value={weights.ability_multiplier}
+              onChange={(v) => handleWeightChange('ability_multiplier', v || 0.3)}
+              disabled={useServerWeights} style={{ width: '100%' }} />
+          </Col>
+          <Col span={8}>
+            <Text style={{ fontSize: 12 }}>岗位族门控🏢</Text>
+            <br />
+            <Switch
+              checkedChildren="降权" unCheckedChildren="忽略"
+              checked={weights.use_family_gate}
+              onChange={(v) => handleWeightChange('use_family_gate', v)}
+              disabled={useServerWeights}
+            />
+            {familySource === 'real' && <Tag color="green" style={{ marginLeft: 4, fontSize: 10 }}>真实</Tag>}
+            {familySource === 'pending' && <Tag color="blue" style={{ marginLeft: 4, fontSize: 10 }}>待接入</Tag>}
+          </Col>
         </Row>
       </Card>
 
@@ -629,9 +711,9 @@ export default function FusionDemoPage() {
               <Tag color="blue">共 {results.results.length} 条</Tag>
               {results.weights_used && (
                 <Text type="secondary" style={{ fontSize: 12 }}>
-                  权重: BM25={results.weights_used.bm25} | Semantic={results.weights_used.semantic} |
-                  Skill={results.weights_used.skill_coverage} | Family={results.weights_used.job_family} |
-                  Graph={results.weights_used.graph}
+                  {results.weights_used.relevance_bm25 != null
+                    ? `分层: rel(${results.weights_used.relevance_bm25}/${results.weights_used.relevance_semantic}) × (${results.weights_used.relevance_base}+${results.weights_used.ability_multiplier}×ability(${results.weights_used.ability_skill}/${results.weights_used.ability_graph}))`
+                    : `权重: BM25=${results.weights_used.bm25} | Semantic=${results.weights_used.semantic} | Skill=${results.weights_used.skill_coverage} | Family=${results.weights_used.job_family} | Graph=${results.weights_used.graph}`}
                 </Text>
               )}
             </Space>

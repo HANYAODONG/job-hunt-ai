@@ -22,6 +22,7 @@ from app.models.fusion import (
     FusionBatchInput,
     FusionBatchOutput,
     FusionWeights,
+    LayeredWeights,
     MockRankRequest,
 )
 from app.services.fusion_scoring_service import (
@@ -29,11 +30,14 @@ from app.services.fusion_scoring_service import (
     fuse_batch,
     mock_rank,
     get_weights,
+    get_layered_weights,
     update_weights,
+    update_layered_weights,
     reset_weights,
     FACTOR_LABELS,
     FACTOR_ORDER,
     DEFAULT_WEIGHTS,
+    DEFAULT_LAYERED_WEIGHTS,
 )
 from app.services.fusion_merge_service import merge_from_bm25_api
 from app.core.database import get_elasticsearch
@@ -51,7 +55,8 @@ class RankFromQueryRequest(BaseModel):
     query_text: str = Field(..., min_length=1, description="查询文本（简历 summary 或自由文本）")
     query_id: Optional[str] = Field(default=None, description="查询/简历 ID，不传则自动生成")
     size: int = Field(default=20, ge=1, le=200, description="BM25 召回数量")
-    weights: Optional[FusionWeights] = Field(default=None, description="自定义融合权重（不传则用服务端默认值）")
+    weights: Optional[FusionWeights] = Field(default=None, description="[旧格式] 自定义融合权重")
+    layered_weights: Optional[LayeredWeights] = Field(default=None, description="[v2] 分层融合权重，不传则用服务端默认值")
     source_type: Optional[str] = Field(default=None, description="enterprise 或 government")
 
 
@@ -125,27 +130,25 @@ async def rank_from_query(body: RankFromQueryRequest):
         )
 
         if not bm25_result.get("hits"):
-            # BM25 无结果 → 返回空列表
             query_id = body.query_id or f"query_{id(body)}"
             return FusionBatchOutput(
                 query_id=query_id,
                 results=[],
-                weights_used=(body.weights or get_weights()).model_dump(),
+                weights_used=get_layered_weights().model_dump(),
             )
 
-        # 3. Merge：BM25 结果 → FusionInput 列表（含归一化）
+        # 3. Merge & Fuse
         query_id = body.query_id or f"query_{id(body)}"
         fusion_inputs = merge_from_bm25_api(query_id, bm25_result)
 
-        # 4. Fuse：加权融合排序
-        w = body.weights if body.weights else None
-        results = fuse_batch(fusion_inputs, w)
+        if body.layered_weights is not None:
+            update_layered_weights(body.layered_weights)
+        results = fuse_batch(fusion_inputs)
 
-        used_weights = w or get_weights()
         return FusionBatchOutput(
             query_id=query_id,
             results=results,
-            weights_used=used_weights.model_dump(),
+            weights_used=get_layered_weights().model_dump(),
         )
     except HTTPException:
         raise
@@ -160,19 +163,15 @@ async def rank_from_query(body: RankFromQueryRequest):
 async def mock_rank_endpoint(body: MockRankRequest = MockRankRequest()):
     """
     无需任何真实数据，服务端自动生成 Mock 融合输入并返回排序结果。
-
-    前端直接调用此接口即可看到完整展示效果。
-    后期其他工作流完成后，将前端调用切换到 /rank 即可。
     """
     try:
-        weights = body.weights if body.weights else None
         results = mock_rank(
             query_id=body.query_id,
             num_jobs=body.num_jobs,
             seed=body.seed,
-            weights=weights,
+            layered_weights=body.layered_weights,
         )
-        used_weights = weights or get_weights()
+        used_weights = get_layered_weights()
         return FusionBatchOutput(
             query_id=body.query_id,
             results=results,
@@ -221,6 +220,37 @@ async def reset_fusion_weights():
         "message": "权重已恢复为默认值",
         "weights": w.model_dump(),
     }
+
+
+# ── 分层权重管理（第三阶段 v2）─────────────────────────────────────
+
+@router.get("/weights/layered", summary="查看当前分层融合权重")
+async def get_layered_fusion_weights():
+    """返回当前分层融合权重和公式说明"""
+    lw = get_layered_weights()
+    return {
+        "weights": lw.model_dump(),
+        "defaults": DEFAULT_LAYERED_WEIGHTS.model_dump(),
+        "formula": {
+            "relevance": "relevance_score = w_bm25 * bm25 + w_semantic * semantic",
+            "ability": "ability_score = normalize( w_skill * skill + w_graph * graph )  within candidates",
+            "final": "final_score = relevance_score * (base + multiplier * ability_score)",
+            "gate": "if job_family_match == 0: final_score *= family_discount",
+        },
+    }
+
+
+@router.put("/weights/layered", summary="修改分层融合权重")
+async def update_layered_fusion_weights(lw: LayeredWeights):
+    """动态调整分层融合权重。修改后立即生效。"""
+    try:
+        updated = update_layered_weights(lw)
+        return {
+            "message": "分层权重已更新",
+            "weights": updated.model_dump(),
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
 
 
 # ── 离线融合结果加载 ─────────────────────────────────────────────

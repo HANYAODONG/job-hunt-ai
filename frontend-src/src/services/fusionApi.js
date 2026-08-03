@@ -16,36 +16,33 @@ const api = axios.create({
 /**
  * 获取 Mock 融合排序结果（不依赖后端）
  */
-export async function getMockRankedResults(queryId, numJobs = 20, seed = null, weights = null) {
-  // 如果后端可达且不是强制 mock 模式，优先调真实接口
+export async function getMockRankedResults(queryId, numJobs = 20, seed = null, weights = null, layeredWeights = null) {
   if (!USE_MOCK) {
     try {
       const response = await api.post('/fusion/mock-rank', {
         query_id: queryId || 'mock_resume_001',
         num_jobs: numJobs,
         seed: seed,
-        weights: weights,
+        layered_weights: layeredWeights,
       });
       return response.data;
     } catch (err) {
       console.warn('Backend /fusion/mock-rank unreachable, using local mock:', err.message);
     }
   }
-  // 降级到纯前端 mock（传入 weights 以影响本地计算）
   return generateMockFusionResults(queryId, numJobs, seed || Date.now(), weights);
 }
 
 /**
- * 查询驱动融合排序（真实 BM25）
- * 输入查询文本，后端自动调 BM25 → 归一化 → 融合
+ * 查询驱动融合排序（真实 BM25 + 分层融合）
  */
 export async function rankFromQuery(queryText, options = {}) {
-  const { queryId = null, size = 20, weights = null, sourceType = null } = options;
+  const { queryId = null, size = 20, weights = null, layeredWeights = null, sourceType = null } = options;
   const response = await api.post('/fusion/rank-from-query', {
     query_text: queryText,
     query_id: queryId,
     size,
-    weights,
+    layered_weights: layeredWeights,
     source_type: sourceType,
   });
   return response.data;
@@ -79,7 +76,7 @@ export async function getWeights() {
 }
 
 /**
- * 更新服务端融合权重
+ * 更新服务端融合权重（旧格式）
  */
 export async function updateWeights(weights) {
   const response = await api.put('/fusion/weights', weights);
@@ -91,6 +88,22 @@ export async function updateWeights(weights) {
  */
 export async function resetWeights() {
   const response = await api.post('/fusion/weights/reset');
+  return response.data;
+}
+
+/**
+ * 获取分层融合权重（v2）
+ */
+export async function getLayeredWeights() {
+  const response = await api.get('/fusion/weights/layered');
+  return response.data;
+}
+
+/**
+ * 更新分层融合权重（v2）
+ */
+export async function updateLayeredWeights(lw) {
+  const response = await api.put('/fusion/weights/layered', lw);
   return response.data;
 }
 

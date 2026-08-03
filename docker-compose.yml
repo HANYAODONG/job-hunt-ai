@@ -60,7 +60,7 @@ services:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - PORT=8000
     ports:
-      - "8000:8000"
+      - "18088:8000"
     volumes:
       - ./uploads:/app/uploads
       - ./artifacts:/app/artifacts
@@ -88,11 +88,11 @@ services:
     image: jobmatch-ai-frontend:local
     container_name: jobmatch_frontend
     environment:
-      - REACT_APP_API_URL=http://localhost:8000/api/v1
+      - REACT_APP_API_URL=http://localhost:18088/api/v1
       - REACT_APP_USE_MOCK_DATA=false
       - HOST=0.0.0.0
     ports:
-      - "${FRONTEND_PORT:-3001}:3000"
+      - "18080:3000"
     depends_on:
       backend:
         condition: service_healthy

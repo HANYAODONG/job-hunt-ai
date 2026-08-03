@@ -78,7 +78,7 @@ class FusionBatchOutput(BaseModel):
 # ── 权重配置 ────────────────────────────────────────────────────
 
 class FusionWeights(BaseModel):
-    """融合权重配置"""
+    """融合权重配置（保留向后兼容）"""
     bm25: float = Field(default=0.15, ge=0.0, le=1.0)
     semantic: float = Field(default=0.25, ge=0.0, le=1.0)
     skill_coverage: float = Field(default=0.30, ge=0.0, le=1.0)
@@ -91,6 +91,30 @@ class FusionWeights(BaseModel):
             raise ValueError(f"权重之和必须为 1.0，当前为 {total:.4f}")
 
 
+class LayeredWeights(BaseModel):
+    """分层融合权重（第三阶段 v2）
+
+    将五个因子分为三层：
+    - 相关性层：bm25 + semantic → relevance_score
+    - 能力层：skill_coverage + graph_relatedness → ability_score（候选集内归一化）
+    - 门控层：job_family_match → 折扣系数
+    """
+    relevance_bm25: float = Field(default=0.4, ge=0.0, le=1.0, description="BM25 在相关性中的权重")
+    relevance_semantic: float = Field(default=0.6, ge=0.0, le=1.0, description="Semantic 在相关性中的权重")
+    ability_skill: float = Field(default=0.7, ge=0.0, le=1.0, description="技能覆盖率在能力中的权重")
+    ability_graph: float = Field(default=0.3, ge=0.0, le=1.0, description="知识图谱在能力中的权重")
+    relevance_base: float = Field(default=0.7, ge=0.0, le=1.0, description="相关性基础乘数")
+    ability_multiplier: float = Field(default=0.3, ge=0.0, le=1.0, description="能力调制幅度")
+    family_discount: float = Field(default=0.85, ge=0.0, le=1.0, description="岗位族不匹配时的折扣系数")
+
+    def validate_groups(self):
+        """验证两组权重各自求和为 1.0（仅在对应乘数 > 0 时校验）"""
+        if abs(self.relevance_bm25 + self.relevance_semantic - 1.0) > 0.005:
+            raise ValueError(f"相关性权重之和必须为 1.0，当前为 {self.relevance_bm25 + self.relevance_semantic:.4f}")
+        if self.ability_multiplier > 0.0 and abs(self.ability_skill + self.ability_graph - 1.0) > 0.005:
+            raise ValueError(f"能力权重之和必须为 1.0，当前为 {self.ability_skill + self.ability_graph:.4f}")
+
+
 # ── Mock 数据生成请求 ────────────────────────────────────────────
 
 class MockRankRequest(BaseModel):
@@ -98,4 +122,5 @@ class MockRankRequest(BaseModel):
     query_id: str = Field(default="mock_resume_001", description="模拟的简历 ID")
     num_jobs: int = Field(default=20, ge=1, le=100, description="生成的 mock 岗位数量")
     seed: Optional[int] = Field(default=None, description="随机种子（可选，用于复现结果）")
-    weights: Optional[FusionWeights] = Field(default=None, description="自定义融合权重（不传则用服务端默认值）")
+    weights: Optional[FusionWeights] = Field(default=None, description="[旧格式] 自定义融合权重")
+    layered_weights: Optional[LayeredWeights] = Field(default=None, description="[v2] 分层融合权重，不传则用服务端默认值")
