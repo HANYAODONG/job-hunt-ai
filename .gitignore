@@ -13,6 +13,9 @@ backend-src/**/*.pyc
 scripts/__pycache__/
 *.whl
 
+# Hugging Face model cache (local only, ~400MB+)
+hf_cache/
+
 # Generated workflow artifacts
 artifacts/*
 !artifacts/README.md
