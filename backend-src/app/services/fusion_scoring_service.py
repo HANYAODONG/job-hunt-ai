@@ -11,7 +11,9 @@ from app.models.fusion import (
     FusionInput,
     FusionOutput,
     ScoreBreakdown,
+    ExplanationDetail,
     FusionWeights,
+    LayeredWeights,
 )
 
 logger = logging.getLogger(__name__)
@@ -25,8 +27,19 @@ DEFAULT_WEIGHTS = FusionWeights(
     graph=0.15,
 )
 
+DEFAULT_LAYERED_WEIGHTS = LayeredWeights(
+    relevance_bm25=0.4,
+    relevance_semantic=0.6,
+    ability_skill=0.7,
+    ability_graph=0.3,
+    relevance_base=0.7,
+    ability_multiplier=0.3,
+    family_discount=1.0,
+)
+
 # 运行时权重（可通过 API 修改）
 _current_weights: FusionWeights = DEFAULT_WEIGHTS
+_current_layered_weights: LayeredWeights = DEFAULT_LAYERED_WEIGHTS
 
 
 # ── 因子中文标签 ─────────────────────────────────────────────────
@@ -42,32 +55,64 @@ FACTOR_ORDER: List[str] = ["bm25", "semantic", "skill_coverage", "job_family", "
 
 
 def get_weights() -> FusionWeights:
-    """获取当前融合权重"""
+    """获取当前融合权重（旧格式，向后兼容）"""
     return _current_weights
+
+
+def get_layered_weights() -> LayeredWeights:
+    """获取当前分层融合权重"""
+    return _current_layered_weights
 
 
 def update_weights(weights: FusionWeights) -> FusionWeights:
-    """更新融合权重"""
+    """更新融合权重（旧格式，向后兼容）"""
     global _current_weights
     weights.validate_sum()
     _current_weights = weights
-    logger.info(f"Fusion weights updated: {weights.model_dump()}")
+    logger.info(f"Fusion weights updated (legacy): {weights.model_dump()}")
     return _current_weights
+
+
+def update_layered_weights(lw: LayeredWeights) -> LayeredWeights:
+    """更新分层融合权重"""
+    global _current_layered_weights
+    lw.validate_groups()
+    _current_layered_weights = lw
+    logger.info(f"Layered weights updated: {lw.model_dump()}")
+    return _current_layered_weights
 
 
 def reset_weights() -> FusionWeights:
     """恢复默认权重"""
-    global _current_weights
+    global _current_weights, _current_layered_weights
     _current_weights = DEFAULT_WEIGHTS
+    _current_layered_weights = DEFAULT_LAYERED_WEIGHTS
     return _current_weights
 
 
-# ── 核心融合函数 ────────────────────────────────────────────────
+# ── 核心融合函数（第三阶段 v2：分层融合）──────────────────────────
+
+def _normalize_within_batch(values: list[float]) -> list[float]:
+    """对一批数值做 min-max 归一化到 [0, 1]。
+
+    边界情况：
+    - 单元素：返回 [0.5]（无法比较时取中间值）
+    - 全部同分：全部返回 1.0
+    """
+    if not values:
+        return []
+    if len(values) == 1:
+        return [0.5]
+    mn, mx = min(values), max(values)
+    if mx == mn:
+        return [1.0] * len(values)
+    return [(v - mn) / (mx - mn) for v in values]
+
 
 def compute_final_score(inp: FusionInput, weights: FusionWeights = None) -> float:
     """
-    加权线性融合
-    final_score = Σ(factor_i × weight_i)
+    [兼容旧接口] 五因子简单加权，仅在旧调用路径中使用。
+    新代码请使用 compute_layered_score()。
     """
     w = weights or _current_weights
     return (
@@ -79,31 +124,54 @@ def compute_final_score(inp: FusionInput, weights: FusionWeights = None) -> floa
     )
 
 
+def compute_layered_score(
+    inp: FusionInput,
+    ability_norm: float = 0.5,  # 候选集内归一化后的能力分，单条时默认 0.5
+    lw: LayeredWeights = None,
+) -> float:
+    """分层融合公式（第三阶段 v2）
+
+    relevance = w_bm25 * bm25 + w_semantic * semantic
+    final = relevance * (base + multiplier * ability_norm)
+    若 job_family_match == 0，额外乘以 family_discount
+    """
+    w = lw or _current_layered_weights
+
+    relevance = inp.bm25_score * w.relevance_bm25 + inp.semantic_score * w.relevance_semantic
+    final = relevance * (w.relevance_base + w.ability_multiplier * ability_norm)
+
+    # job_family 门控：不匹配时打折
+    if inp.job_family_match < 0.5:
+        final *= w.family_discount
+
+    return max(0.0, min(1.0, final))
+
+
 def fuse_single(inp: FusionInput, weights: FusionWeights = None) -> FusionOutput:
     """
-    单条融合：计算 final_score + score_breakdown + explanation
+    单条融合（兼容旧接口，内部走分层公式）。
+    单条时 ability_norm 固定为 0.5（无候选集可比较）。
     """
-    w = weights or _current_weights
-    final_score = compute_final_score(inp, w)
+    lw = _current_layered_weights
+    final_score = compute_layered_score(inp, ability_norm=0.5, lw=lw)
 
     breakdown = ScoreBreakdown(
-        bm25=round(inp.bm25_score, 4),
-        semantic=round(inp.semantic_score, 4),
+        bm25_score=round(inp.bm25_score, 4),
+        semantic_score=round(inp.semantic_score, 4),
         skill_coverage=round(inp.skill_coverage, 4),
-        job_family=round(inp.job_family_match, 4),
-        graph=round(inp.graph_relatedness, 4),
+        job_family_match=round(inp.job_family_match, 4),
+        graph_relatedness=round(inp.graph_relatedness, 4),
     )
 
-    explanation = generate_explanation(inp, final_score, w)
+    explanation = generate_explanation(inp, final_score)
 
     return FusionOutput(
         query_id=inp.query_id,
         job_id=inp.job_id,
         final_score=round(final_score, 4),
-        rank=0,  # 由 fuse_batch 统一设置
+        rank=0,
         score_breakdown=breakdown,
         explanation=explanation,
-        missing_skills=inp.missing_skills,
         evidence_paths=inp.evidence_paths,
         meta=getattr(inp, '_meta', None),
     )
@@ -111,89 +179,121 @@ def fuse_single(inp: FusionInput, weights: FusionWeights = None) -> FusionOutput
 
 def fuse_batch(inputs: List[FusionInput], weights: FusionWeights = None) -> List[FusionOutput]:
     """
-    批量融合：对每一条计算得分 → 按 final_score 降序排列 → 分配 rank
+    批量融合（第三阶段 v2：分层融合 + 候选集内能力归一化）。
+
+    流程：
+    1. 对每个候选计算 relevance_score
+    2. 对每个候选计算 raw_ability，然后在候选集内 min-max 归一化
+    3. final_score = relevance * (base + multiplier * ability_norm)
+    4. job_family_match == 0 时打折
+    5. 按 final_score 降序排列，分配 rank
     """
-    w = weights or _current_weights
-    outputs = [fuse_single(inp, w) for inp in inputs]
+    lw = _current_layered_weights
+
+    # Step 1 & 2: 计算 relevance 和 raw_ability
+    relevances = []
+    raw_abilities = []
+    for inp in inputs:
+        r = inp.bm25_score * lw.relevance_bm25 + inp.semantic_score * lw.relevance_semantic
+        a = inp.skill_coverage * lw.ability_skill + inp.graph_relatedness * lw.ability_graph
+        relevances.append(r)
+        raw_abilities.append(a)
+
+    # Step 3: 候选集内归一化 ability
+    abilities_norm = _normalize_within_batch(raw_abilities)
+
+    # Step 4: 计算 final_score
+    outputs = []
+    for inp, rel, ab_norm in zip(inputs, relevances, abilities_norm):
+        final_score = rel * (lw.relevance_base + lw.ability_multiplier * ab_norm)
+        if inp.job_family_match < 0.5:
+            final_score *= lw.family_discount
+        final_score = max(0.0, min(1.0, final_score))
+
+        breakdown = ScoreBreakdown(
+            bm25_score=round(inp.bm25_score, 4),
+            semantic_score=round(inp.semantic_score, 4),
+            skill_coverage=round(inp.skill_coverage, 4),
+            job_family_match=round(inp.job_family_match, 4),
+            graph_relatedness=round(inp.graph_relatedness, 4),
+        )
+
+        explanation = generate_explanation(inp, final_score)
+
+        outputs.append(FusionOutput(
+            query_id=inp.query_id,
+            job_id=inp.job_id,
+            final_score=round(final_score, 4),
+            rank=0,
+            score_breakdown=breakdown,
+            explanation=explanation,
+            evidence_paths=inp.evidence_paths,
+            meta=getattr(inp, '_meta', None),
+        ))
+
+    # Step 5: 排序 + 分配 rank
     outputs.sort(key=lambda o: o.final_score, reverse=True)
     for i, out in enumerate(outputs):
         out.rank = i + 1
+
     return outputs
 
 
 # ── 解释生成 ────────────────────────────────────────────────────
 
-def generate_explanation(inp: FusionInput, final_score: float, weights: FusionWeights = None) -> str:
+def generate_explanation(inp: FusionInput, final_score: float, weights: FusionWeights = None) -> ExplanationDetail:
     """
-    基于模板的中文解释生成。
-    不依赖 LLM API，纯规则驱动。后续接入真实 LLM 时替换此函数即可。
+    基于模板的中文解释生成（第三阶段 v2：分层逻辑）。
 
-    模板结构：
-    1. 总体评价
-    2. 强项（高于 0.7 的维度）
-    3. 弱项（低于 0.4 的维度）
-    4. 缺失技能
-    5. 建议
+    返回 ExplanationDetail 对象。
     """
-    w = weights or _current_weights
+    lw = _current_layered_weights
 
-    # 各维度得分
-    factor_scores = {
-        "关键词匹配": (inp.bm25_score, w.bm25),
-        "语义相似度": (inp.semantic_score, w.semantic),
-        "技能覆盖": (inp.skill_coverage, w.skill_coverage),
-        "岗位大类匹配": (inp.job_family_match, w.job_family),
-        "知识图谱关联": (inp.graph_relatedness, w.graph),
-    }
-
-    strengths = [(name, score) for name, (score, _) in factor_scores.items() if score >= 0.7]
-    weaknesses = [(name, score) for name, (score, _) in factor_scores.items() if score < 0.4]
-    # 找出贡献最大的因子
-    top_factor = max(factor_scores.items(), key=lambda x: x[1][0] * x[1][1])
-
+    # 按分层逻辑分析
+    relevance = inp.bm25_score * lw.relevance_bm25 + inp.semantic_score * lw.relevance_semantic
     parts = []
 
     # 1. 总体评价
-    if final_score >= 0.75:
-        parts.append("该岗位与您的简历整体匹配度很高")
-    elif final_score >= 0.55:
+    if final_score >= 0.80:
+        parts.append("该岗位与您的简历高度匹配")
+    elif final_score >= 0.60:
         parts.append("该岗位与您的简历匹配度良好")
-    elif final_score >= 0.35:
+    elif final_score >= 0.40:
         parts.append("该岗位与您的简历有一定匹配度")
     else:
         parts.append("该岗位与您的简历匹配度较低")
 
-    # 2. 强项
-    if strengths:
-        strength_text = "、".join([f"{name}（{score:.0%}）" for name, score in strengths])
-        parts.append(f"✅ 强项：{strength_text}")
+    # 2. 相关性分析
+    if relevance >= 0.85:
+        parts.append(f"相关性优秀（关键词 {inp.bm25_score:.0%}、语义 {inp.semantic_score:.0%}）")
+    elif relevance >= 0.65:
+        parts.append(f"相关性良好（关键词 {inp.bm25_score:.0%}、语义 {inp.semantic_score:.0%}）")
     else:
-        parts.append("✅ 各维度均无特别突出的优势项")
+        parts.append(f"相关性一般（关键词 {inp.bm25_score:.0%}、语义 {inp.semantic_score:.0%}）")
 
-    # 3. 弱项
-    if weaknesses:
-        weak_text = "、".join([f"{name}（{score:.0%}）" for name, score in weaknesses])
-        parts.append(f"⚠️ 弱项：{weak_text}")
+    # 3. 技能适配
+    if inp.skill_coverage >= 0.5:
+        parts.append(f"技能覆盖良好（{inp.skill_coverage:.0%}），核心技能大多匹配")
+    elif inp.skill_coverage >= 0.25:
+        parts.append(f"技能覆盖一般（{inp.skill_coverage:.0%}），部分核心技能缺失")
     else:
-        parts.append("⚠️ 无明显弱项")
+        parts.append(f"技能覆盖较低（{inp.skill_coverage:.0%}），存在较大技能差距")
 
-    # 4. 缺失技能
-    if inp.missing_skills:
-        skills_text = "、".join(inp.missing_skills)
-        parts.append(f"🔍 缺失技能：{skills_text}")
-    else:
-        parts.append("🔍 未发现明显技能缺口")
+    # 4. 岗位族
+    if inp.job_family_match < 0.5:
+        parts.append("岗位族不完全一致，建议关注岗位要求的差异")
 
     # 5. 建议
     if inp.missing_skills:
-        skills_text = "、".join(inp.missing_skills)
-        parts.append(f"💡 建议：建议补充 {skills_text} 等相关技能，可显著提升匹配度")
-    elif final_score < 0.5:
-        parts.append(f"💡 建议：{top_factor[0]}方面有一定差距，可以考虑拓展相关经验")
-    else:
-        parts.append("💡 该岗位是您的良好选择，建议尽快投递")
+        skills_text = "、".join(inp.missing_skills[:5])
+        parts.append(f"建议补充 {skills_text} 等相关技能，可显著提升匹配度")
 
-    return "。".join(parts) + "。"
+    # 构造 ExplanationDetail
+    return ExplanationDetail(
+        matched_skills=list(inp.matched_skills) if inp.matched_skills else [],
+        missing_skills=list(inp.missing_skills) if inp.missing_skills else [],
+        reason="。".join(parts) + "。",
+    )
 
 
 # ── Mock 数据生成（用于前端独立开发）────────────────────────────
@@ -282,6 +382,8 @@ def generate_mock_inputs(
             missing_count = random.randint(2, 5)
 
         missing = random.sample(_SKILL_POOL, min(missing_count, len(_SKILL_POOL)))
+        matched_count = random.randint(2, 8) if tier == "high" else random.randint(1, 4) if tier == "medium" else random.randint(0, 2)
+        matched = random.sample(_SKILL_POOL, min(matched_count, len(_SKILL_POOL)))
 
         # 构造 evidence_paths（模拟 KG 路径）
         if graph > 0.5:
@@ -300,6 +402,7 @@ def generate_mock_inputs(
             "skill_coverage": skill_cov,
             "job_family_match": job_family,
             "graph_relatedness": graph,
+            "matched_skills": matched,
             "missing_skills": missing,
             "evidence_paths": evidence_paths,
             # 额外元数据（方便前端展示，非融合输入格式要求）
@@ -317,12 +420,15 @@ def mock_rank(
     num_jobs: int = 20,
     seed: int = None,
     weights: FusionWeights = None,
+    layered_weights: LayeredWeights = None,
 ) -> List[FusionOutput]:
     """
     一键生成 Mock 数据并返回融合排序结果。
     供 /fusion/mock-rank 端点使用。
     """
+    if layered_weights is not None:
+        update_layered_weights(layered_weights)
     raw_jobs = generate_mock_inputs(query_id, num_jobs, seed)
     inputs = [FusionInput(**job) for job in raw_jobs]
-    outputs = fuse_batch(inputs, weights)
+    outputs = fuse_batch(inputs)
     return outputs

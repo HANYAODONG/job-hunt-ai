@@ -45,28 +45,47 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
 
-from app.models.fusion import FusionWeights
+from app.models.fusion import FusionWeights, LayeredWeights
 from app.services.fusion_merge_service import merge_from_artifacts, read_jsonl
-from app.services.fusion_scoring_service import fuse_batch
+from app.services.fusion_scoring_service import fuse_batch, update_layered_weights, DEFAULT_LAYERED_WEIGHTS
 
 
-# ── 权重预设 ────────────────────────────────────────────────────
+# ── 权重预设（第三阶段 v2：分层融合）──────────────────────────────
 
+# 兼容旧格式（仅用于显示）
 WEIGHT_PRESETS: Dict[str, FusionWeights] = {
-    "bm25-only": FusionWeights(
-        bm25=1.0, semantic=0.0, skill_coverage=0.0, job_family=0.0, graph=0.0,
+    "bm25-only": FusionWeights(bm25=1.0, semantic=0.0, skill_coverage=0.0, job_family=0.0, graph=0.0),
+    "default": FusionWeights(bm25=0.15, semantic=0.25, skill_coverage=0.30, job_family=0.15, graph=0.15),
+    "bm25-semantic": FusionWeights(bm25=0.40, semantic=0.60, skill_coverage=0.0, job_family=0.0, graph=0.0),
+    "bm25-semantic-skill": FusionWeights(bm25=0.30, semantic=0.30, skill_coverage=0.40, job_family=0.0, graph=0.0),
+    "full": FusionWeights(bm25=0.15, semantic=0.25, skill_coverage=0.30, job_family=0.15, graph=0.15),
+}
+
+# 分层权重预设
+LAYERED_PRESETS: Dict[str, LayeredWeights] = {
+    "bm25-only": LayeredWeights(
+        relevance_bm25=1.0, relevance_semantic=0.0,
+        ability_skill=0.0, ability_graph=0.0,
+        relevance_base=1.0, ability_multiplier=0.0,
+        family_discount=1.0,
     ),
-    "default": FusionWeights(
-        bm25=0.15, semantic=0.25, skill_coverage=0.30, job_family=0.15, graph=0.15,
+    "bm25-semantic": LayeredWeights(
+        relevance_bm25=0.4, relevance_semantic=0.6,
+        ability_skill=0.0, ability_graph=0.0,
+        relevance_base=1.0, ability_multiplier=0.0,
+        family_discount=1.0,
     ),
-    "bm25-semantic": FusionWeights(
-        bm25=0.40, semantic=0.60, skill_coverage=0.0, job_family=0.0, graph=0.0,
+    "bm25-semantic-skill": LayeredWeights(
+        relevance_bm25=0.4, relevance_semantic=0.6,
+        ability_skill=1.0, ability_graph=0.0,
+        relevance_base=0.7, ability_multiplier=0.3,
+        family_discount=1.0,
     ),
-    "bm25-semantic-skill": FusionWeights(
-        bm25=0.30, semantic=0.30, skill_coverage=0.40, job_family=0.0, graph=0.0,
-    ),
-    "full": FusionWeights(
-        bm25=0.15, semantic=0.25, skill_coverage=0.30, job_family=0.15, graph=0.15,
+    "full": LayeredWeights(
+        relevance_bm25=0.4, relevance_semantic=0.6,
+        ability_skill=0.7, ability_graph=0.3,
+        relevance_base=0.7, ability_multiplier=0.3,
+        family_discount=1.0,
     ),
 }
 
@@ -143,17 +162,22 @@ def load_optional(path: Optional[Path], label: str) -> Optional[List[Dict[str, A
 
 def run_fusion(
     merged: Dict[str, List[Any]],
-    weights: FusionWeights,
-    top_k: int,
+    weights: FusionWeights,  # 仅用于显示，实际计算使用 layered_weights
+    layered_weights: LayeredWeights = None,
+    top_k: int = 20,
 ) -> List[Dict[str, Any]]:
-    """对合并后的数据执行融合排序，返回 Batch JSONL 格式的结果"""
+    """对合并后的数据执行分层融合排序，返回 Batch JSONL 格式的结果"""
+    # 设置运行时权重
+    if layered_weights is not None:
+        update_layered_weights(layered_weights)
+
     batch_results = []
     total_pairs = 0
 
     for query_id, inputs in merged.items():
         if not inputs:
             continue
-        outputs = fuse_batch(inputs, weights)
+        outputs = fuse_batch(inputs)
         # 截断到 top_k
         outputs = outputs[:top_k]
         total_pairs += len(outputs)
@@ -166,8 +190,7 @@ def run_fusion(
                     "final_score": o.final_score,
                     "rank": o.rank,
                     "score_breakdown": o.score_breakdown.model_dump(),
-                    "explanation": o.explanation,
-                    "missing_skills": o.missing_skills,
+                    "explanation": o.explanation.model_dump(),
                     "evidence_paths": o.evidence_paths,
                 }
                 for o in outputs
@@ -251,13 +274,15 @@ def main() -> None:
     merge_time = time.time() - t0
     print(f"合并耗时: {merge_time:.2f}s, {len(merged)} queries")
 
-    # 3. 确定权重组合
+    # 3. 确定权重组合（分层融合 v2）
+    presets_to_run: Dict[str, tuple] = {}  # name → (FusionWeights, LayeredWeights)
     if args.custom_weights:
-        presets_to_run = {"custom": FusionWeights(**json.loads(args.custom_weights))}
+        raise NotImplementedError("自定义权重暂不支持分层格式，请使用 --preset 预设")
     elif args.preset == "all":
-        presets_to_run = {k: WEIGHT_PRESETS[k] for k in PRESETS_FOR_ABLATION}
+        for k in PRESETS_FOR_ABLATION:
+            presets_to_run[k] = (WEIGHT_PRESETS[k], LAYERED_PRESETS[k])
     else:
-        presets_to_run = {args.preset: WEIGHT_PRESETS[args.preset]}
+        presets_to_run[args.preset] = (WEIGHT_PRESETS[args.preset], LAYERED_PRESETS[args.preset])
 
     # 4. 运行融合
     args.output_dir.mkdir(parents=True, exist_ok=True)
@@ -270,16 +295,17 @@ def main() -> None:
         },
         "merge_time_s": round(merge_time, 2),
         "total_queries": len(merged),
+        "formula": "layered_v2",
         "presets": {},
     }
 
-    for preset_name, weights in presets_to_run.items():
+    for preset_name, (legacy_w, layered_w) in presets_to_run.items():
         print("-" * 40)
         print(f"运行预设: {preset_name}")
-        print(f"  权重: {weights.model_dump()}")
+        print(f"  分层权重: {layered_w.model_dump()}")
 
         t1 = time.time()
-        batch_results = run_fusion(merged, weights, args.top_k)
+        batch_results = run_fusion(merged, legacy_w, layered_w, args.top_k)
         fusion_time = time.time() - t1
 
         # 输出结果文件
@@ -290,7 +316,8 @@ def main() -> None:
         print(f"  输出: {output_path} ({fusion_time:.2f}s)")
 
         # 汇总统计
-        summary = compute_summary(batch_results, weights)
+        summary = compute_summary(batch_results, legacy_w)
+        summary["layered_weights"] = layered_w.model_dump()
         summary["fusion_time_s"] = round(fusion_time, 2)
         summary["output_file"] = str(output_path)
         summary_report["presets"][preset_name] = summary
