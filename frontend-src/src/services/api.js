@@ -2,6 +2,7 @@ import axios from 'axios';
 import { getMockSearchResults, mockApiDelay } from '../data/mockJobData';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
+const API_ORIGIN = API_BASE_URL.replace(/\/api\/v1\/?$/, '');
 const USE_MOCK_DATA = process.env.REACT_APP_USE_MOCK_DATA === 'true';
 
 const api = axios.create({
@@ -65,12 +66,37 @@ export const searchJobs = async (searchParams) => {
   }
 };
 
+export const createResumeSearchForm = (searchParams, resumeFile) => {
+  const formData = new FormData();
+  formData.append('resume_file', resumeFile);
+  formData.append('query', searchParams.query || '');
+
+  const optionalFields = [
+    'location',
+    'min_salary',
+    'max_salary',
+    'job_type',
+    'experience_level',
+    'remote_allowed',
+    'visa_sponsorship',
+    'limit',
+  ];
+  optionalFields.forEach((field) => {
+    const value = searchParams[field];
+    if (value !== undefined && value !== null && value !== '') {
+      formData.append(field, value.toString());
+    }
+  });
+  (searchParams.required_skills || []).forEach((skill) => formData.append('required_skills', skill));
+  (searchParams.preferred_skills || []).forEach((skill) => formData.append('preferred_skills', skill));
+
+  return formData;
+};
+
 export const searchJobsWithResume = async (searchParams, resumeFile) => {
   try {
-    const formData = new FormData();
-    formData.append('resume_file', resumeFile);
-    formData.append('query', JSON.stringify(searchParams));
-    
+    const formData = createResumeSearchForm(searchParams, resumeFile);
+
     const response = await api.post('/jobs/search-with-resume', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
@@ -235,8 +261,8 @@ export const searchJobsWithRerankingAndResume = async (searchParams, resumeFile,
     if (searchParams.visa_sponsorship !== undefined && searchParams.visa_sponsorship !== null) {
       formData.append('visa_sponsorship', searchParams.visa_sponsorship.toString());
     }
-    formData.append('page', searchParams.page.toString());
-    formData.append('page_size', searchParams.page_size.toString());
+    formData.append('page', (searchParams.page || 1).toString());
+    formData.append('page_size', (searchParams.page_size || 20).toString());
     
     // Add optional parameters
     if (userDescription) formData.append('user_description', userDescription);
@@ -425,7 +451,7 @@ export const rerankWithKeywords = async (searchResults, selectedKeywords) => {
   try {
     const response = await api.post('/reranking/rerank-with-keywords', {
       search_results: searchResults,
-      keywords: selectedKeywords
+      selected_keywords: selectedKeywords
     }, {
       headers: {
         'Content-Type': 'application/json',
@@ -441,7 +467,7 @@ export const rerankWithKeywords = async (searchResults, selectedKeywords) => {
 // Health Check API
 export const healthCheck = async () => {
   try {
-    const response = await api.get('/health');
+    const response = await axios.get(`${API_ORIGIN}/health`);
     return response.data;
   } catch (error) {
     throw new Error('Health check failed');

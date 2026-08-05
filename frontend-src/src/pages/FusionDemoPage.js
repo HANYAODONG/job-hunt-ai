@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
+  App as AntdApp,
   Card,
   Button,
   Slider,
@@ -11,7 +12,6 @@ import {
   Alert,
   Tag,
   Divider,
-  message,
   InputNumber,
   Statistic,
   Switch,
@@ -67,6 +67,7 @@ const EXAMPLE_QUERIES = [
 ];
 
 export default function FusionDemoPage() {
+  const { message } = AntdApp.useApp();
   // ── State ──────────────────────────────────────────────────
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -161,7 +162,7 @@ export default function FusionDemoPage() {
     } finally {
       setLoading(false);
     }
-  }, [queryId, numJobs, seed, weights, useServerWeights, serverWeights]);
+  }, [message, queryId, numJobs, seed, weights, useServerWeights, serverWeights]);
 
   // ── 加载离线融合结果 ─────────────────────────────────────
   const handleOfflineLoad = useCallback(async () => {
@@ -246,7 +247,7 @@ export default function FusionDemoPage() {
     } finally {
       setLoading(false);
     }
-  }, [queryText, bm25Size, weights, useServerWeights, serverWeights]);
+  }, [message, queryText, bm25Size, weights, useServerWeights, serverWeights]);
 
   // ── 更新服务端分层权重 ────────────────────────────────────
   const handleUpdateServerWeights = async () => {
