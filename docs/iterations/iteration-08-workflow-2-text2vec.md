@@ -33,6 +33,7 @@ python .\backend-src\scripts\rerank_semantic_bge.py
 python .\backend-src\scripts\evaluate_semantic_rerank.py --compare-all
 ```
 
+注意：在第一次生成离线编码和重排文件后，文件会缓存，因此需要使用--force-encode 强制重建
 ## 数据流
 
 ```
