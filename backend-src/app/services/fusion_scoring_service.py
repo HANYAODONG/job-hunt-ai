@@ -34,7 +34,7 @@ DEFAULT_LAYERED_WEIGHTS = LayeredWeights(
     ability_graph=0.3,
     relevance_base=0.7,
     ability_multiplier=0.3,
-    family_discount=1.0,
+    family_discount=0.85,
 )
 
 # 运行时权重（可通过 API 修改）
@@ -173,7 +173,7 @@ def fuse_single(inp: FusionInput, weights: FusionWeights = None) -> FusionOutput
         score_breakdown=breakdown,
         explanation=explanation,
         evidence_paths=inp.evidence_paths,
-        meta=getattr(inp, '_meta', None),
+        meta=_get_extra_meta(inp),
     )
 
 
@@ -228,7 +228,7 @@ def fuse_batch(inputs: List[FusionInput], weights: FusionWeights = None) -> List
             score_breakdown=breakdown,
             explanation=explanation,
             evidence_paths=inp.evidence_paths,
-            meta=getattr(inp, '_meta', None),
+            meta=_get_extra_meta(inp),
         ))
 
     # Step 5: 排序 + 分配 rank
@@ -237,6 +237,13 @@ def fuse_batch(inputs: List[FusionInput], weights: FusionWeights = None) -> List
         out.rank = i + 1
 
     return outputs
+
+
+def _get_extra_meta(inp: FusionInput) -> dict | None:
+    """Read frontend metadata carried in pydantic extra fields."""
+    extra = getattr(inp, "model_extra", None) or {}
+    meta = extra.get("_meta") or extra.get("meta")
+    return meta if isinstance(meta, dict) else None
 
 
 # ── 解释生成 ────────────────────────────────────────────────────

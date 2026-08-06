@@ -10,8 +10,9 @@ Fusion API Endpoints — 工作流4：融合排序 API
 
 import json
 import logging
+import re
 from pathlib import Path
-from typing import Optional
+from typing import Any, Literal, Optional
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -39,7 +40,7 @@ from app.services.fusion_scoring_service import (
     DEFAULT_WEIGHTS,
     DEFAULT_LAYERED_WEIGHTS,
 )
-from app.services.fusion_merge_service import merge_from_bm25_api
+from app.services.fusion_merge_service import merge_from_bm25_api, normalize_bm25_scores
 from app.core.database import get_elasticsearch
 from app.services.chinese_bm25_service import ChineseBM25Service
 
@@ -58,6 +59,21 @@ class RankFromQueryRequest(BaseModel):
     weights: Optional[FusionWeights] = Field(default=None, description="[旧格式] 自定义融合权重")
     layered_weights: Optional[LayeredWeights] = Field(default=None, description="[v2] 分层融合权重，不传则用服务端默认值")
     source_type: Optional[str] = Field(default=None, description="enterprise 或 government")
+
+
+class RecommendRequest(BaseModel):
+    """前端统一推荐请求。candidate_id 和 query_text 至少传一个。"""
+
+    candidate_id: Optional[str] = Field(default=None, description="标准简历/候选人 ID")
+    query_text: Optional[str] = Field(default=None, description="自由查询文本或简历文本")
+    top_k: int = Field(default=10, ge=1, le=50, description="最终返回数量")
+    candidate_pool: int = Field(default=100, ge=1, le=200, description="召回候选池大小")
+    mode: Literal["auto", "sample", "offline", "online", "mock"] = Field(
+        default="auto",
+        description="auto 优先在线，失败后回退；sample 使用 sample_pack 即时链路；offline 读取离线融合结果；mock 使用模拟数据",
+    )
+    source_type: Optional[str] = Field(default=None, description="enterprise 或 government")
+    layered_weights: Optional[LayeredWeights] = Field(default=None, description="本次请求使用的分层融合权重")
 
 
 # ── 核心融合接口 ─────────────────────────────────────────────────
@@ -87,7 +103,7 @@ async def rank_jobs(body: FusionBatchInput):
         return FusionBatchOutput(
             query_id=body.query_id,
             results=results,
-            weights_used=get_weights().model_dump(),
+            weights_used=get_layered_weights().model_dump(),
         )
     except Exception as e:
         logger.error(f"Fusion rank error: {e}")
@@ -155,6 +171,52 @@ async def rank_from_query(body: RankFromQueryRequest):
     except Exception as e:
         logger.error(f"rank-from-query error: {e}")
         raise HTTPException(status_code=500, detail=f"查询融合排序失败: {str(e)}")
+
+
+@router.post("/recommend", response_model=FusionBatchOutput, summary="前端统一推荐接口")
+async def recommend(body: RecommendRequest):
+    """
+    前端主入口：返回 TopN 推荐、分项得分和推荐解释。
+
+    当前支持四种模式：
+    - online: 调 Elasticsearch BM25 后融合；适合真实服务已启动时使用。
+    - sample: 读取 dataset_iteration_05/sample_pack 即时生成一条完整链路；适合联调。
+    - offline: 读取 artifacts/fusion_ranking 下的预计算结果。
+    - mock: 使用服务端 Mock 数据。
+
+    auto 会先尝试 online，失败后回退到 offline/sample，保证前端联调不中断。
+    """
+    try:
+        if body.layered_weights is not None:
+            update_layered_weights(body.layered_weights)
+
+        query_id = body.candidate_id or "adhoc_query"
+
+        if body.mode == "mock":
+            results = mock_rank(query_id=query_id, num_jobs=body.top_k, layered_weights=body.layered_weights)
+            return FusionBatchOutput(query_id=query_id, results=results[: body.top_k], weights_used=get_layered_weights().model_dump())
+
+        if body.mode in {"online", "auto"}:
+            try:
+                online_results = await _recommend_online(body)
+                if online_results.results or body.mode == "online":
+                    return online_results
+            except Exception as exc:
+                if body.mode == "online":
+                    raise
+                logger.warning("Online recommend failed; falling back to offline/sample: %s", exc)
+
+        if body.mode in {"offline", "auto"} and body.candidate_id:
+            offline_results = _recommend_from_offline(body)
+            if offline_results.results or body.mode == "offline":
+                return offline_results
+
+        return _recommend_from_standard_dataset(body)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("recommend error: %s", e)
+        raise HTTPException(status_code=500, detail=f"统一推荐失败: {str(e)}")
 
 
 # ── Mock 接口（前端独立开发用）────────────────────────────────────
@@ -255,14 +317,21 @@ async def update_layered_fusion_weights(lw: LayeredWeights):
 
 # ── 离线融合结果加载 ─────────────────────────────────────────────
 
-# 默认从 artifacts/ 读取，支持 Docker（/app/artifacts/）和本地运行
+# 默认从 artifacts/ 读取，支持 Docker（/app/artifacts/）和本地运行。
+# 注意：fusion_ranking 和 dataset_iteration_05 可能不是同时生成的，必须分别判断。
 _ARTIFACTS_BASE = Path(__file__).resolve().parents[4]  # backend-src/app/api/endpoints/ -> repo root
-_FUSION_RESULTS_DIR = _ARTIFACTS_BASE / "artifacts" / "fusion_ranking"
-_JOBS_PATH = _ARTIFACTS_BASE / "artifacts" / "dataset_iteration_05" / "jobs.jsonl"
-# Docker 容器内的 fallback
+_LOCAL_ARTIFACTS = _ARTIFACTS_BASE / "artifacts"
+_DOCKER_ARTIFACTS = Path("/app/artifacts")
+
+_FUSION_RESULTS_DIR = _LOCAL_ARTIFACTS / "fusion_ranking"
 if not _FUSION_RESULTS_DIR.exists():
-    _FUSION_RESULTS_DIR = Path("/app/artifacts/fusion_ranking")
-    _JOBS_PATH = Path("/app/artifacts/dataset_iteration_05/jobs.jsonl")
+    _FUSION_RESULTS_DIR = _DOCKER_ARTIFACTS / "fusion_ranking"
+
+_DATASET_DIR = _LOCAL_ARTIFACTS / "dataset_iteration_05"
+if not _DATASET_DIR.exists():
+    _DATASET_DIR = _DOCKER_ARTIFACTS / "dataset_iteration_05"
+
+_JOBS_PATH = _DATASET_DIR / "jobs.jsonl"
 
 # 岗位元数据缓存
 _job_meta_cache: dict[str, dict] | None = None
@@ -334,6 +403,241 @@ def _load_query_results(query_id: str, preset: str = "full") -> list[dict]:
                         r["meta"] = job_meta[jid]
                 return results
     return []
+
+
+async def _recommend_online(body: RecommendRequest) -> FusionBatchOutput:
+    query_text, query_id = _resolve_query_text(body)
+    rank_request = RankFromQueryRequest(
+        query_text=query_text,
+        query_id=query_id,
+        size=body.candidate_pool,
+        layered_weights=body.layered_weights,
+        source_type=body.source_type,
+    )
+    ranked = await rank_from_query(rank_request)
+    ranked.results = ranked.results[: body.top_k]
+    return ranked
+
+
+def _recommend_from_offline(body: RecommendRequest) -> FusionBatchOutput:
+    query_id = body.candidate_id or "adhoc_query"
+    results = _load_query_results(query_id, preset="full")[: body.top_k]
+    return FusionBatchOutput(
+        query_id=query_id,
+        results=[FusionOutput(**item) for item in results],
+        weights_used=get_layered_weights().model_dump(),
+    )
+
+
+def _recommend_from_standard_dataset(body: RecommendRequest) -> FusionBatchOutput:
+    dataset_dir = _DATASET_DIR
+    jobs_path = dataset_dir / "sample_pack" / "jobs_sample.jsonl"
+    candidates_path = dataset_dir / "sample_pack" / "candidate_profiles_sample.jsonl"
+    if body.mode not in {"sample", "auto"}:
+        jobs_path = dataset_dir / "jobs.jsonl"
+        candidates_path = dataset_dir / "candidate_profiles.jsonl"
+
+    if not jobs_path.exists() or not candidates_path.exists():
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "标准数据产物不存在，请先运行 scripts/dataset_adapter.py。"
+                f" expected jobs={jobs_path}, candidates={candidates_path}"
+            ),
+        )
+
+    jobs = _read_jsonl(jobs_path)
+    candidates = _read_jsonl(candidates_path)
+    candidate = _find_candidate(candidates, body.candidate_id) if body.candidate_id else None
+    query_id = body.candidate_id or "adhoc_query"
+    query_text = body.query_text or _candidate_text(candidate)
+    if not query_text:
+        raise HTTPException(status_code=422, detail="candidate_id 和 query_text 至少需要一个可用输入")
+
+    if body.source_type:
+        jobs = [job for job in jobs if str(job.get("source_type", "")).lower() == body.source_type.lower()]
+    if not jobs:
+        return FusionBatchOutput(query_id=query_id, results=[], weights_used=get_layered_weights().model_dump())
+
+    fusion_inputs = _build_sample_fusion_inputs(
+        query_id=query_id,
+        query_text=query_text,
+        candidate=candidate,
+        jobs=jobs,
+        candidate_pool=body.candidate_pool,
+        source_label="sample_pack" if "sample_pack" in str(jobs_path) else "standard_dataset",
+    )
+    results = fuse_batch(fusion_inputs)[: body.top_k]
+    return FusionBatchOutput(
+        query_id=query_id,
+        results=results,
+        weights_used=get_layered_weights().model_dump(),
+    )
+
+
+def _resolve_query_text(body: RecommendRequest) -> tuple[str, str]:
+    if body.query_text and body.query_text.strip():
+        return body.query_text.strip(), body.candidate_id or "adhoc_query"
+
+    dataset_dir = _DATASET_DIR
+    candidate_paths = [
+        dataset_dir / "sample_pack" / "candidate_profiles_sample.jsonl",
+        dataset_dir / "candidate_profiles.jsonl",
+    ]
+    for path in candidate_paths:
+        if not path.exists():
+            continue
+        candidate = _find_candidate(_read_jsonl(path), body.candidate_id)
+        if candidate:
+            text = _candidate_text(candidate)
+            if text:
+                return text, body.candidate_id or candidate.get("candidate_id", "adhoc_query")
+
+    raise HTTPException(status_code=422, detail="online 模式需要 query_text，或可在标准数据中找到 candidate_id")
+
+
+def _build_sample_fusion_inputs(
+    query_id: str,
+    query_text: str,
+    candidate: Optional[dict[str, Any]],
+    jobs: list[dict[str, Any]],
+    candidate_pool: int,
+    source_label: str,
+) -> list[FusionInput]:
+    resume_skills = _skill_set(candidate.get("skills", []) if candidate else [])
+    target_family = str((candidate or {}).get("target_job_family") or "").strip()
+    query_tokens = _tokenize(query_text)
+
+    scored: list[dict[str, Any]] = []
+    for job in jobs:
+        job_text = _job_text(job)
+        job_tokens = _tokenize(job_text)
+        job_skills = _skill_set(job.get("skills") or job.get("required_skills") or [])
+        token_overlap = len(query_tokens & job_tokens)
+        skill_overlap = len(resume_skills & job_skills)
+        bm25_score = token_overlap + skill_overlap * 3
+        if bm25_score <= 0:
+            bm25_score = 0.01
+        scored.append({"job": job, "job_id": job.get("job_id", ""), "bm25_score": float(bm25_score)})
+
+    scored.sort(key=lambda item: item["bm25_score"], reverse=True)
+    top = scored[:candidate_pool]
+    normalized = normalize_bm25_scores(
+        [{"job_id": item["job_id"], "bm25_score": item["bm25_score"]} for item in top]
+    )
+    bm25_map = {item["job_id"]: item["bm25_score"] for item in normalized}
+
+    inputs: list[FusionInput] = []
+    for rank, item in enumerate(top, start=1):
+        job = item["job"]
+        job_id = str(job.get("job_id", ""))
+        job_skills = _skill_set(job.get("skills") or job.get("required_skills") or [])
+        matched = sorted(resume_skills & job_skills)
+        missing = sorted(job_skills - resume_skills)
+        skill_coverage = len(matched) / len(job_skills) if job_skills else 0.0
+        union = resume_skills | job_skills
+        graph_relatedness = len(matched) / len(union) if union else 0.0
+        semantic_score = _jaccard(_tokenize(query_text), _tokenize(_job_text(job)))
+        if resume_skills or job_skills:
+            semantic_score = max(semantic_score, _jaccard(resume_skills, job_skills))
+
+        job_family = str(job.get("job_family") or job.get("standard_job") or "").strip()
+        job_family_match = 1.0 if target_family and job_family and target_family == job_family else 0.0
+        if not target_family:
+            job_family_match = 1.0
+
+        inputs.append(
+            FusionInput(
+                query_id=query_id,
+                job_id=job_id,
+                bm25_score=bm25_map.get(job_id, 0.0),
+                semantic_score=round(float(semantic_score), 6),
+                skill_coverage=round(float(skill_coverage), 6),
+                job_family_match=job_family_match,
+                graph_relatedness=round(float(graph_relatedness), 6),
+                matched_skills=matched[:20],
+                missing_skills=missing[:20],
+                evidence_paths=[f"Candidate -> HAS_SKILL -> {skill} <- REQUIRES_SKILL <- Job" for skill in matched[:5]],
+                _meta={
+                    "title": job.get("title", ""),
+                    "company": job.get("company", "") or job.get("company_name", ""),
+                    "standard_job": job.get("standard_job", ""),
+                    "job_family": job_family,
+                    "location": job.get("location", "") or job.get("location_text", ""),
+                    "salary": str(job.get("salary_text", "")) if job.get("salary_text") else "",
+                    "source_type": job.get("source_type", ""),
+                    "bm25_rank": rank,
+                    "recommend_source": source_label,
+                },
+            )
+        )
+    return inputs
+
+
+def _read_jsonl(path: Path) -> list[dict[str, Any]]:
+    records: list[dict[str, Any]] = []
+    with path.open("r", encoding="utf-8") as handle:
+        for line in handle:
+            if line.strip():
+                records.append(json.loads(line))
+    return records
+
+
+def _find_candidate(candidates: list[dict[str, Any]], candidate_id: Optional[str]) -> Optional[dict[str, Any]]:
+    if not candidate_id:
+        return candidates[0] if candidates else None
+    for candidate in candidates:
+        if candidate.get("candidate_id") == candidate_id or candidate.get("resume_id") == candidate_id:
+            return candidate
+    return None
+
+
+def _candidate_text(candidate: Optional[dict[str, Any]]) -> str:
+    if not candidate:
+        return ""
+    return "\n".join(
+        str(part).strip()
+        for part in [
+            candidate.get("summary"),
+            candidate.get("profile_text"),
+            " ".join(candidate.get("skills", []) or []),
+            candidate.get("target_job_family"),
+        ]
+        if str(part or "").strip()
+    )
+
+
+def _job_text(job: dict[str, Any]) -> str:
+    return "\n".join(
+        str(part).strip()
+        for part in [
+            job.get("title"),
+            job.get("description"),
+            job.get("job_family"),
+            " ".join(job.get("skills", []) or job.get("required_skills", []) or []),
+        ]
+        if str(part or "").strip()
+    )
+
+
+def _skill_set(values: Any) -> set[str]:
+    if not values:
+        return set()
+    if isinstance(values, str):
+        parts = re.split(r"[;；,，、\n\r\t]+", values)
+    else:
+        parts = values
+    return {str(item).strip().lower() for item in parts if str(item or "").strip()}
+
+
+def _tokenize(text: str) -> set[str]:
+    return {token.lower() for token in re.findall(r"[A-Za-z0-9_+#.-]+|[\u4e00-\u9fff]{2,}", text or "")}
+
+
+def _jaccard(left: set[str], right: set[str]) -> float:
+    if not left or not right:
+        return 0.0
+    return len(left & right) / len(left | right)
 
 
 @router.get("/load-results", summary="加载离线融合排序结果")
