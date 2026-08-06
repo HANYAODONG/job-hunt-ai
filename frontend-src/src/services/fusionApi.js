@@ -5,7 +5,7 @@
 import axios from 'axios';
 import { generateMockFusionResults } from '../data/mockFusionData';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
+const API_BASE_URL = process.env.REACT_APP_API_URL || '/api/v1';
 const USE_MOCK = process.env.REACT_APP_USE_MOCK_DATA === 'true';
 
 const api = axios.create({
@@ -37,13 +37,39 @@ export async function getMockRankedResults(queryId, numJobs = 20, seed = null, w
  * 查询驱动融合排序（真实 BM25 + 分层融合）
  */
 export async function rankFromQuery(queryText, options = {}) {
-  const { queryId = null, size = 20, weights = null, layeredWeights = null, sourceType = null } = options;
+  const { queryId = null, size = 20, layeredWeights = null, sourceType = null } = options;
   const response = await api.post('/fusion/rank-from-query', {
     query_text: queryText,
     query_id: queryId,
     size,
     layered_weights: layeredWeights,
     source_type: sourceType,
+  });
+  return response.data;
+}
+
+/**
+ * 前端统一推荐入口：后端负责组织 BM25 / Semantic / KG / Fusion 链路。
+ */
+export async function recommendJobs(options = {}) {
+  const {
+    candidateId = null,
+    queryText = null,
+    topK = 20,
+    candidatePool = 100,
+    mode = 'sample',
+    sourceType = null,
+    layeredWeights = null,
+  } = options;
+
+  const response = await api.post('/fusion/recommend', {
+    candidate_id: candidateId,
+    query_text: queryText,
+    top_k: topK,
+    candidate_pool: candidatePool,
+    mode,
+    source_type: sourceType,
+    layered_weights: layeredWeights,
   });
   return response.data;
 }

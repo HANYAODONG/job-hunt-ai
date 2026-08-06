@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { getMockSearchResults, mockApiDelay } from '../data/mockJobData';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
+const API_BASE_URL = process.env.REACT_APP_API_URL || '/api/v1';
 const API_ORIGIN = API_BASE_URL.replace(/\/api\/v1\/?$/, '');
 const USE_MOCK_DATA = process.env.REACT_APP_USE_MOCK_DATA === 'true';
 

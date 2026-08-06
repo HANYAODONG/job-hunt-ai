@@ -77,6 +77,6 @@ describe('createResumeSearchForm', () => {
 
     await healthCheck();
 
-    expect(mockAxiosGet).toHaveBeenCalledWith('http://localhost:8000/health');
+    expect(mockAxiosGet).toHaveBeenCalledWith('/health');
   });
 });

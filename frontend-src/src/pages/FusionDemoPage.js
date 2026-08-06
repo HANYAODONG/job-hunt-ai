@@ -29,7 +29,7 @@ import {
   ApiOutlined,
 } from '@ant-design/icons';
 import FusionScoreCard from '../components/FusionScoreCard';
-import { getMockRankedResults, rankFromQuery, getLayeredWeights, updateLayeredWeights, resetWeights, loadFusionResults } from '../services/fusionApi';
+import { getMockRankedResults, recommendJobs, getLayeredWeights, updateLayeredWeights, resetWeights, loadFusionResults } from '../services/fusionApi';
 import './FusionDemoPage.css';
 
 const { Title, Text, Paragraph } = Typography;
@@ -79,8 +79,8 @@ export default function FusionDemoPage() {
   const [useServerWeights, setUseServerWeights] = useState(false);
   const [queryId] = useState(`fusion_demo_${Date.now()}`);
 
-  // ── 模式切换（Mock / 真实BM25 / 离线融合）───────────────────
-  const [mode, setMode] = useState('bm25');  // 'mock' | 'bm25' | 'offline'
+  // ── 模式切换（统一推荐 / 离线融合 / Mock）───────────────────
+  const [mode, setMode] = useState('recommend');  // 'mock' | 'recommend' | 'offline'
   const [queryText, setQueryText] = useState('');
   const [bm25Size, setBm25Size] = useState(20);
   const [searched, setSearched] = useState(false);  // 是否已搜索过
@@ -93,11 +93,11 @@ export default function FusionDemoPage() {
   const dataSources =
     mode === 'offline'
       ? { bm25_score: 'real', semantic_score: 'real', skill_coverage: 'real', job_family_match: 'real', graph_relatedness: 'real' }
-      : mode === 'bm25'
-        ? { bm25_score: 'real', semantic_score: 'pending', skill_coverage: 'pending', job_family_match: 'pending', graph_relatedness: 'pending' }
+      : mode === 'recommend'
+        ? { bm25_score: 'real', semantic_score: 'real', skill_coverage: 'real', job_family_match: 'real', graph_relatedness: 'real' }
         : { bm25_score: 'mock', semantic_score: 'mock', skill_coverage: 'mock', job_family_match: 'mock', graph_relatedness: 'mock' };
   // job_family_match 数据来源（独立标注，用于门控）
-  const familySource = mode === 'offline' ? 'real' : mode === 'bm25' ? 'pending' : 'mock';
+  const familySource = mode === 'offline' || mode === 'recommend' ? 'real' : 'mock';
 
   // ── BM25-Only 快捷权重 ─────────────────────────────────────
   const bm25OnlyWeights = {
@@ -191,7 +191,7 @@ export default function FusionDemoPage() {
     } finally {
       setLoading(false);
     }
-  }, [offlineQueryId]);
+  }, [message, offlineQueryId]);
 
   // ── 切换到离线模式时加载 query_id 列表 ────────────────────
   useEffect(() => {
@@ -207,8 +207,8 @@ export default function FusionDemoPage() {
     }
   }, [mode]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── 执行真实 BM25 融合排序 ─────────────────────────────────
-  const handleBm25Search = useCallback(async () => {
+  // ── 执行统一推荐链路 ───────────────────────────────────────
+  const handleRecommendSearch = useCallback(async () => {
     if (!queryText.trim()) {
       message.warning('请输入查询文本');
       return;
@@ -218,15 +218,18 @@ export default function FusionDemoPage() {
     try {
       const activeWeights = useServerWeights ? serverWeights || DEFAULT_WEIGHTS : weights;
 
-      const data = await rankFromQuery(queryText.trim(), {
-        size: bm25Size,
+      const data = await recommendJobs({
+        queryText: queryText.trim(),
+        topK: bm25Size,
+        candidatePool: bm25Size,
+        mode: 'sample',
         layeredWeights: toLayeredApi(activeWeights),
       });
       setResults(data);
       setSearched(true);
 
       if (data.results.length > 0) {
-        message.success(`BM25 召回 ${data.results.length} 条结果，已融合排序`);
+        message.success(`统一推荐返回 ${data.results.length} 条结果，已融合排序`);
         // 自动滚动到结果区域
         setTimeout(() => {
           resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -239,11 +242,11 @@ export default function FusionDemoPage() {
           console.log('BM25原始分数:', rawScores.slice(0, 5), '...');
         }
       } else {
-        message.info('BM25 未召回结果，请尝试其他查询词');
+        message.info('统一推荐暂未返回结果，请尝试其他查询词');
       }
     } catch (err) {
       setError(err.message);
-      message.error('BM25 融合排序失败: ' + err.message);
+      message.error('统一推荐失败: ' + err.message);
     } finally {
       setLoading(false);
     }
@@ -330,14 +333,14 @@ export default function FusionDemoPage() {
             setResults(null);
             setError(null);
             setSearched(false);
-            if (val === 'bm25') {
+            if (val === 'recommend') {
               setWeights({ ...bm25OnlyWeights });
             } else {
               setWeights({ ...DEFAULT_WEIGHTS });
             }
           }}
           options={[
-            { label: <><SearchOutlined /> BM25 真实检索</>, value: 'bm25' },
+            { label: <><SearchOutlined /> 统一推荐接口</>, value: 'recommend' },
             { label: <><BarChartOutlined /> 离线融合结果</>, value: 'offline' },
             { label: <><ApiOutlined /> Demo 演示</>, value: 'mock' },
           ]}
@@ -355,10 +358,10 @@ export default function FusionDemoPage() {
             icon={<BarChartOutlined />}
             style={{ marginBottom: 16 }}
           />
-        ) : mode === 'bm25' ? (
+        ) : mode === 'recommend' ? (
           <Alert
-            message="真实数据模式"
-            description="当前使用 Elasticsearch BM25 真实检索。其他因子（语义相似度、技能覆盖、岗位大类、知识图谱）待工作流2/3接入后自动生效。"
+            message="统一推荐接口模式"
+            description="当前调用后端 /api/v1/fusion/recommend，由后端统一组织召回、语义、技能图谱、融合排序和解释。联调阶段默认使用 sample 模式，保证页面稳定返回真实接口结构。"
             type="info"
             showIcon
             icon={<SearchOutlined />}
@@ -523,8 +526,8 @@ export default function FusionDemoPage() {
               </Button>
             </Col>
           </Row>
-        ) : mode === 'bm25' ? (
-          /* ── BM25 真实模式：查询输入 ── */
+        ) : mode === 'recommend' ? (
+          /* ── 统一推荐模式：查询输入 ── */
           <>
             <div style={{ marginBottom: 12 }}>
               <Text type="secondary" style={{ fontSize: 12, marginRight: 8 }}>💡 试试：</Text>
@@ -550,7 +553,7 @@ export default function FusionDemoPage() {
                   onPressEnter={(e) => {
                     if (!e.shiftKey) {
                       e.preventDefault();
-                      handleBm25Search();
+                      handleRecommendSearch();
                     }
                   }}
                 />
@@ -566,7 +569,7 @@ export default function FusionDemoPage() {
               <Col>
                 <Space>
                   <Text type="secondary" style={{ fontSize: 12 }}>
-                    💡 当前只有 BM25 分数来自真实 ES 检索，其余因子待工作流2/3接入后自动填充
+                    💡 当前页面只对接统一推荐入口；后端内部的 sample / offline / online 链路后续可平滑切换
                   </Text>
                 </Space>
               </Col>
@@ -583,11 +586,11 @@ export default function FusionDemoPage() {
                     type="primary"
                     size="large"
                     icon={<SearchOutlined />}
-                    onClick={handleBm25Search}
+                    onClick={handleRecommendSearch}
                     loading={loading}
                     disabled={!weightsValid || !queryText.trim()}
                   >
-                    搜索并融合排序
+                    统一推荐
                   </Button>
                 </Space>
               </Col>
@@ -757,8 +760,8 @@ export default function FusionDemoPage() {
           <Paragraph type="secondary">
             {mode === 'offline'
               ? '选择简历 ID，点击「加载融合结果」查看完整的 5 因子融合排序结果'
-              : mode === 'bm25'
-                ? '在搜索框中输入查询文本，点击「搜索并融合排序」查看真实 BM25 融合结果'
+              : mode === 'recommend'
+                ? '在搜索框中输入查询文本，点击「统一推荐」查看后端统一推荐接口返回的融合结果'
               : '调整权重配置，点击「生成 Mock 融合结果」查看排序和解释效果'}
           </Paragraph>
         </Card>

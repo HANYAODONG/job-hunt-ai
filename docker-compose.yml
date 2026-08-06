@@ -88,7 +88,8 @@ services:
     image: jobmatch-ai-frontend:local
     container_name: jobmatch_frontend
     environment:
-      - REACT_APP_API_URL=http://localhost:18088/api/v1
+      - REACT_APP_API_URL=/api/v1
+      - API_PROXY_TARGET=http://backend:8000
       - REACT_APP_USE_MOCK_DATA=false
       - HOST=0.0.0.0
     ports:
