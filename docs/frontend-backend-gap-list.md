@@ -89,7 +89,7 @@ diagnoseCandidate() 流程：
 
 ### 2.3 `/graph` — 全景图谱页
 
-**负责：魏昊朗**
+**负责：卫昊朗**
 
 **状态：mock-only**
 
@@ -99,7 +99,7 @@ diagnoseCandidate() 流程：
 
 **缺口：**
 1. **[严重]** 后端无图谱可视化 API——需新增接口返回 nodes/edges 结构
-2. 魏昊朗需要设计 API 返回格式以匹配前端 `GalaxyScene` 的数据期望
+2. 卫昊朗需要设计 API 返回格式以匹配前端 `GalaxyScene` 的数据期望
 
 ### 2.4 `/recruitment` — 企业端岗位管理页
 
@@ -130,7 +130,7 @@ diagnoseCandidate() 流程：
 
 ### 2.6 `/signals` (DiscoveryPage) — 岗位市场雷达页
 
-**负责：甘可欣/魏昊朗**
+**负责：甘可欣/卫昊朗**
 
 **状态：partial-live**
 
@@ -220,10 +220,10 @@ diagnoseCandidate() 流程：
 |--------|------|-----------|
 | 叶骑瑞 | `/diagnosis` | 全链路已通 ✅，需验证实际上传流程 |
 | 叶骑瑞 | `/learning` | 学习路径 API 完全缺失 |
-| 魏昊朗 | `/graph` | 图谱可视化 API 缺失，需定义 nodes/edges 格式 |
+| 卫昊朗 | `/graph` | 图谱可视化 API 缺失，需定义 nodes/edges 格式 |
 | 甘可欣 | `/recruitment` | 岗位管理 API 缺失（部分可复用 /jobs/ CRUD） |
 | 甘可欣 | `/candidates` | 候选人匹配 API 缺失 |
-| 甘可欣/魏昊朗 | `/signals` | 市场趋势数据大部分 Mock |
+| 甘可欣/卫昊朗 | `/signals` | 市场趋势数据大部分 Mock |
 
 ---
 
