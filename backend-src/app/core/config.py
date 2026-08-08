@@ -52,6 +52,15 @@ class Settings(BaseSettings):
     LINKEDIN_API_KEY: Optional[str] = None
     INDEED_API_KEY: Optional[str] = None
     GLASSDOOR_API_KEY: Optional[str] = None
+
+    # JD update LLM settings
+    DEEPSEEK_API_KEY: Optional[str] = None
+    DEEPSEEK_MODEL: str = "deepseek-chat"
+    DEEPSEEK_BASE_URL: str = "https://api.deepseek.com"
+    GPT_API_KEY: Optional[str] = None
+    GPT_MODEL: str = "gpt-4.1-mini"
+    GPT_BASE_URL: str = "https://api.openai.com/v1"
+    JOB_UPDATE_TEXT2VEC_MODEL: str = "shibing624/text2vec-base-chinese"
     
     # Job Ingestion Settings
     DEFAULT_INGESTION_LIMIT: int = 50
@@ -65,6 +74,7 @@ class Settings(BaseSettings):
     
     class Config:
         env_file = (Path(__file__).resolve().parents[3] / ".env").as_posix()
+        env_file_encoding = "utf-8-sig"
         case_sensitive = True
 
 settings = Settings()
