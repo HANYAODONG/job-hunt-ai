@@ -92,6 +92,7 @@ services:
       - API_PROXY_TARGET=http://backend:8000
       - REACT_APP_USE_MOCK_DATA=false
       - HOST=0.0.0.0
+      - WDS_SOCKET_PORT=18080
     ports:
       - "18080:3000"
     depends_on:
