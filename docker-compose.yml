@@ -58,6 +58,10 @@ services:
       - SENTENCE_TRANSFORMER_MODEL=BAAI/bge-m3
       - HF_ENDPOINT=https://hf-mirror.com
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
+      - DEEPSEEK_MODEL=${DEEPSEEK_MODEL:-deepseek-chat}
+      - DEEPSEEK_BASE_URL=${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
+      - JOB_UPDATE_TEXT2VEC_MODEL=${JOB_UPDATE_TEXT2VEC_MODEL:-shibing624/text2vec-base-chinese}
       - PORT=8000
     ports:
       - "18088:8000"

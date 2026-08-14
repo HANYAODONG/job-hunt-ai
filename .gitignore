@@ -11,6 +11,13 @@ frontend-src/.npm-cache/
 backend-src/.venv/
 backend-src/**/__pycache__/
 backend-src/**/*.pyc
+backend-src/**/.pytest_cache/
+backend-src/**/skill_extract/cache/
+backend-src/**/data/**/cache/
+backend-src/job_update/**/__pycache__/
+backend-src/job_update/**/.pytest_cache/
+backend-src/job_update/**/cache/
+backend-src/job_update/**/outputs/
 scripts/__pycache__/
 *.whl
 
@@ -35,3 +42,8 @@ dataset/incoming/*.md
 # OS files
 .DS_Store
 Thumbs.db
+backend-src/job_update/company_job_update/data/versions/**
+!backend-src/job_update/company_job_update/data/README.md
+backend-src/job_update/government_job_update/data/base/**
+!backend-src/job_update/government_job_update/data/README.md
+backend-src/job_update/government_job_update/government_jobs_2024_2026_tech_final.csv
