@@ -1,31 +1,62 @@
-import React, { useEffect } from 'react';
-import { 
-  Card, 
-  Typography, 
-  Button, 
-  Space, 
-  Tag, 
-  Row, 
-  Col, 
+import React from 'react';
+import {
+  Card,
+  Typography,
+  Button,
+  Space,
+  Row,
+  Col,
   Alert,
   Spin,
-  Progress,
+  Empty,
   Upload,
-  message
+  message,
+  Tag,
 } from 'antd';
-import { 
-  HeartOutlined, 
-  UploadOutlined, 
-  StarOutlined,
+import {
+  UploadOutlined,
   CheckCircleOutlined,
-  CloseCircleOutlined,
-  InfoCircleOutlined
+  ExperimentOutlined,
+  ReloadOutlined,
 } from '@ant-design/icons';
 import { useQuery, useMutation } from 'react-query';
-import { getJobRecommendations, uploadResume } from '../services/api';
+import { uploadResume } from '../services/api';
+import { recommendJobs } from '../services/fusionApi';
 import { useCandidate } from '../contexts/CandidateContext';
+import FusionScoreCard from '../components/FusionScoreCard';
 
 const { Title, Paragraph, Text } = Typography;
+
+/**
+ * 统一推荐入口：POST /api/v1/fusion/recommend
+ * sample 模式下后端内部完成 BM25 → Semantic → KG → Fusion 全链路。
+ */
+const SAMPLE_CANDIDATE_ID = 'resume_000001_exp00_0';
+const SAMPLE_CANDIDATE_SKILLS = ['LLM', 'Megatron', 'PPO', 'LoRA', 'C/C++', 'PyTorch'];
+
+// 五个因子均来自后端真实计算（sample 链路），用于 FusionScoreCard 数据来源标注
+const REAL_FACTORS = {
+  bm25_score: 'real',
+  semantic_score: 'real',
+  skill_coverage: 'real',
+  job_family_match: 'real',
+  graph_relatedness: 'real',
+};
+
+/** 从简历画像构建查询文本（与 talentApi.buildCandidateQuery 保持一致） */
+const buildCandidateQuery = (candidateProfile) => {
+  const candidate = candidateProfile?.candidate || {};
+  const skills = candidateProfile?.extracted_skills?.length
+    ? candidateProfile.extracted_skills
+    : (candidate.skills || []).map((skill) => skill.name).filter(Boolean);
+  const experience = (candidate.experience || [])
+    .flatMap((item) => [item.position, item.description])
+    .filter(Boolean);
+  return [candidate.target_job_family, candidate.summary, ...skills, ...experience, candidateProfile?.experience_summary]
+    .filter(Boolean)
+    .join(' ')
+    .trim();
+};
 
 const RecommendationsPage = () => {
   const { candidateProfile, updateCandidateProfile, updateResumeFile } = useCandidate();
@@ -33,98 +64,95 @@ const RecommendationsPage = () => {
   const uploadMutation = useMutation(uploadResume, {
     onSuccess: (data) => {
       updateCandidateProfile(data);
-      message.success('Resume processed! Getting recommendations...');
+      message.success('简历解析完成，正在生成推荐…');
     },
     onError: (error) => {
-      message.error(`Failed to process resume: ${error.message}`);
+      message.error(`简历解析失败：${error.message}`);
     },
   });
 
-  // Auto-fetch recommendations if candidate profile exists
-  useEffect(() => {
-    if (candidateProfile?.candidate) {
-      message.info('Using your uploaded resume to get recommendations...');
-    }
-  }, [candidateProfile]);
-
-  const { data: recommendations, isLoading, error } = useQuery(
-    ['recommendations', candidateProfile?.candidate?.id],
-    () => getJobRecommendations(candidateProfile?.candidate),
+  const { data: recommendations = [], isLoading, error, refetch } = useQuery(
+    ['recommendations', candidateProfile?.candidate?.id, candidateProfile?.candidate?.name],
+    async () => {
+      if (!candidateProfile) return [];
+      const queryText = buildCandidateQuery(candidateProfile);
+      const result = await recommendJobs({
+        candidateId: candidateProfile.candidate?.id,
+        queryText,
+        topK: 10,
+        mode: 'sample',
+      });
+      return result.results || [];
+    },
     {
-      enabled: !!candidateProfile?.candidate,
-      retry: 1
+      enabled: !!candidateProfile,
+      retry: 1,
     }
   );
 
   const handleResumeUpload = (file) => {
     const isPdf = file.type === 'application/pdf';
-    const isDoc = file.type === 'application/msword' || 
-                  file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-    
+    const isDoc =
+      file.type === 'application/msword' ||
+      file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
     if (!isPdf && !isDoc) {
-      message.error('You can only upload PDF or DOC files!');
+      message.error('仅支持 PDF 或 DOC/DOCX 格式');
       return false;
     }
-    
-    const isLt10M = file.size / 1024 / 1024 < 10;
-    if (!isLt10M) {
-      message.error('File must be smaller than 10MB!');
+    if (file.size / 1024 / 1024 >= 10) {
+      message.error('文件不能超过 10MB');
       return false;
     }
-    
     updateResumeFile(file);
     uploadMutation.mutate(file);
     return false;
   };
 
-  const getMatchScoreColor = (score) => {
-    if (score >= 0.8) return '#52c41a';
-    if (score >= 0.6) return '#faad14';
-    if (score >= 0.4) return '#fa8c16';
-    return '#f5222d';
+  /** 加载示例候选人：匹配 sample_pack 标准候选人，展示完整技能匹配效果 */
+  const useSampleCandidate = () => {
+    updateCandidateProfile({
+      candidate: {
+        id: SAMPLE_CANDIDATE_ID,
+        name: '示例候选人（大模型算法工程师）',
+        skills: [],
+        experience: [],
+        target_job_family: '大模型算法工程师',
+      },
+      extracted_skills: SAMPLE_CANDIDATE_SKILLS,
+      experience_summary: '示例候选人：大模型算法方向，熟悉 LLM 训练与推理优化。',
+    });
+    message.info('已加载示例候选人，正在生成推荐…');
   };
 
-
-  const getOverallFitColor = (fit) => {
-    switch (fit) {
-      case 'excellent': return '#52c41a';
-      case 'good': return '#faad14';
-      case 'fair': return '#fa8c16';
-      case 'poor': return '#f5222d';
-      default: return '#d9d9d9';
-    }
-  };
+  const candidateName = candidateProfile?.candidate?.name;
 
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px' }}>
-      <Title level={2} style={{ textAlign: 'center', marginBottom: '32px' }}>
-        💡 Personalized Job Recommendations
+      <Title level={2} style={{ textAlign: 'center', marginBottom: '8px' }}>
+        💡 岗位推荐
       </Title>
+      <Paragraph style={{ textAlign: 'center', marginBottom: '24px' }}>
+        上传简历，基于统一融合推荐链路（BM25 → 语义重排 → 知识图谱 → 分层融合排序）生成个性化岗位推荐。
+      </Paragraph>
 
       {!candidateProfile ? (
         <Card style={{ marginBottom: '24px' }}>
           <div style={{ textAlign: 'center', padding: '40px' }}>
             <UploadOutlined style={{ fontSize: '48px', color: '#1890ff', marginBottom: '16px' }} />
-            <Title level={3}>Upload Your Resume to Get Started</Title>
+            <Title level={3}>上传简历开始推荐</Title>
             <Paragraph style={{ marginBottom: '24px' }}>
-              Upload your resume to get personalized job recommendations based on your skills, 
-              experience, and career goals.
+              上传简历后，系统将解析技能与经历，并与岗位库进行融合匹配。
             </Paragraph>
-            
-            <Upload
-              beforeUpload={handleResumeUpload}
-              showUploadList={false}
-              accept=".pdf,.doc,.docx"
-            >
-              <Button 
-                type="primary" 
-                size="large" 
-                icon={<UploadOutlined />}
-                loading={uploadMutation.isLoading}
-              >
-                Upload Resume
+            <Space direction="vertical" size="middle">
+              <Upload beforeUpload={handleResumeUpload} showUploadList={false} accept=".pdf,.doc,.docx">
+                <Button type="primary" size="large" icon={<UploadOutlined />} loading={uploadMutation.isLoading}>
+                  上传简历
+                </Button>
+              </Upload>
+              <Button icon={<ExperimentOutlined />} onClick={useSampleCandidate}>
+                使用示例候选人（大模型算法工程师）
               </Button>
-            </Upload>
+            </Space>
           </div>
         </Card>
       ) : (
@@ -132,24 +160,27 @@ const RecommendationsPage = () => {
           <div style={{ textAlign: 'center', padding: '20px' }}>
             <CheckCircleOutlined style={{ fontSize: '24px', color: '#52c41a', marginBottom: '8px' }} />
             <Title level={4} style={{ color: '#52c41a', marginBottom: '8px' }}>
-              Resume Processed Successfully!
+              简历画像已建立
             </Title>
-            <Paragraph style={{ marginBottom: '16px' }}>
-              Using resume for <strong>{candidateProfile.candidate.name}</strong> to generate recommendations.
+            <Paragraph style={{ marginBottom: '12px' }}>
+              当前候选人：<strong>{candidateName}</strong>，已识别{' '}
+              <Tag color="blue">
+                {(candidateProfile.extracted_skills || candidateProfile.candidate?.skills || []).length} 项技能
+              </Tag>
             </Paragraph>
-            <Upload
-              beforeUpload={handleResumeUpload}
-              showUploadList={false}
-              accept=".pdf,.doc,.docx"
-            >
-              <Button 
-                size="small" 
-                icon={<UploadOutlined />}
-                loading={uploadMutation.isLoading}
-              >
-                Upload Different Resume
+            <Space>
+              <Upload beforeUpload={handleResumeUpload} showUploadList={false} accept=".pdf,.doc,.docx">
+                <Button size="small" icon={<UploadOutlined />} loading={uploadMutation.isLoading}>
+                  更换简历
+                </Button>
+              </Upload>
+              <Button size="small" icon={<ReloadOutlined />} loading={isLoading} onClick={() => refetch()}>
+                重新推荐
               </Button>
-            </Upload>
+              <Button size="small" icon={<ExperimentOutlined />} onClick={useSampleCandidate}>
+                加载示例候选人
+              </Button>
+            </Space>
           </div>
         </Card>
       )}
@@ -158,43 +189,9 @@ const RecommendationsPage = () => {
         <Card>
           <div style={{ textAlign: 'center', padding: '40px' }}>
             <Spin size="large" />
-            <Title level={4} style={{ marginTop: '16px' }}>
-              Processing Your Resume...
-            </Title>
-            <Paragraph>Analyzing your skills and experience to find the best matches.</Paragraph>
+            <Title level={4} style={{ marginTop: '16px' }}>正在解析简历…</Title>
+            <Paragraph>提取技能、经历与教育背景。</Paragraph>
           </div>
-        </Card>
-      )}
-
-      {candidateProfile && (
-        <Card style={{ marginBottom: '24px' }}>
-          <Title level={3}>Your Profile</Title>
-          <Row gutter={[16, 16]}>
-            <Col xs={24} sm={8}>
-              <div style={{ textAlign: 'center' }}>
-                <Title level={2} style={{ color: '#1890ff', margin: 0 }}>
-                  {candidateProfile.skills?.length || 0}
-                </Title>
-                <Text type="secondary">Skills Identified</Text>
-              </div>
-            </Col>
-            <Col xs={24} sm={8}>
-              <div style={{ textAlign: 'center' }}>
-                <Title level={2} style={{ color: '#52c41a', margin: 0 }}>
-                  {candidateProfile.experience?.length || 0}
-                </Title>
-                <Text type="secondary">Work Experiences</Text>
-              </div>
-            </Col>
-            <Col xs={24} sm={8}>
-              <div style={{ textAlign: 'center' }}>
-                <Title level={2} style={{ color: '#faad14', margin: 0 }}>
-                  {candidateProfile.education?.length || 0}
-                </Title>
-                <Text type="secondary">Education Items</Text>
-              </div>
-            </Col>
-          </Row>
         </Card>
       )}
 
@@ -202,218 +199,60 @@ const RecommendationsPage = () => {
         <Card>
           <div style={{ textAlign: 'center', padding: '40px' }}>
             <Spin size="large" />
-            <Title level={4} style={{ marginTop: '16px' }}>
-              Finding Your Perfect Matches...
-            </Title>
-            <Paragraph>Analyzing thousands of jobs to find the best opportunities for you.</Paragraph>
+            <Title level={4} style={{ marginTop: '16px' }}>正在生成岗位推荐…</Title>
+            <Paragraph>执行 BM25 召回、语义重排、知识图谱差距分析与融合排序。</Paragraph>
           </div>
         </Card>
       )}
 
       {error && (
         <Alert
-          message="Error Loading Recommendations"
-          description="There was an error loading your job recommendations. Please try again."
+          message="推荐加载失败"
+          description={error.message || '推荐服务暂不可用，请检查后端后重试。'}
           type="error"
           showIcon
+          style={{ marginBottom: '16px' }}
         />
       )}
 
-      {recommendations && recommendations.length > 0 && (
+      {!isLoading && !error && candidateProfile && recommendations.length > 0 && (
         <div>
-          <div style={{ marginBottom: '24px', textAlign: 'center' }}>
-            <Title level={3}>
-              Found {recommendations.length} Job Recommendations
-            </Title>
-            <Paragraph>
-              These jobs are ranked by how well they match your profile and preferences.
-            </Paragraph>
+          <div style={{ marginBottom: '16px', textAlign: 'center' }}>
+            <Title level={3}>找到 {recommendations.length} 个推荐岗位</Title>
+            <Paragraph>按融合最终得分排序，点击卡片可展开五因子得分明细。</Paragraph>
           </div>
-
-          {recommendations.map((match, index) => (
-            <Card 
-              key={match.job_id} 
-              style={{ marginBottom: '16px' }}
-              hoverable
-            >
-              <Row gutter={[24, 16]}>
-                <Col xs={24} lg={16}>
-                  <div style={{ marginBottom: '16px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div>
-                        <Title level={4} style={{ margin: 0, marginBottom: '4px' }}>
-                          Job #{index + 1}
-                        </Title>
-                        <Text type="secondary">Job ID: {match.job_id}</Text>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <Tag 
-                          color={getOverallFitColor(match.overall_fit)}
-                          style={{ fontSize: '12px', padding: '4px 12px' }}
-                        >
-                          {match.overall_fit.toUpperCase()} FIT
-                        </Tag>
-                        <div style={{ marginTop: '8px' }}>
-                          <Text strong style={{ color: getMatchScoreColor(match.match_score) }}>
-                            {Math.round(match.match_score * 100)}% Match
-                          </Text>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <Row gutter={[16, 16]}>
-                    <Col xs={24} sm={12}>
-                      <Card size="small" title="Match Analysis">
-                        <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <Text>Skills Match:</Text>
-                            <Text strong>{Math.round(match.match_score * 100)}%</Text>
-                          </div>
-                          <Progress 
-                            percent={Math.round(match.match_score * 100)} 
-                            size="small"
-                            strokeColor={getMatchScoreColor(match.match_score)}
-                          />
-                          
-                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <Text>Experience Match:</Text>
-                            <Text strong>{Math.round(match.experience_match * 100)}%</Text>
-                          </div>
-                          <Progress 
-                            percent={Math.round(match.experience_match * 100)} 
-                            size="small"
-                            strokeColor={getMatchScoreColor(match.experience_match)}
-                          />
-                        </Space>
-                      </Card>
-                    </Col>
-                    
-                    <Col xs={24} sm={12}>
-                      <Card size="small" title="Requirements Check">
-                        <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <Text>Location Match:</Text>
-                            {match.location_match ? (
-                              <CheckCircleOutlined style={{ color: '#52c41a' }} />
-                            ) : (
-                              <CloseCircleOutlined style={{ color: '#f5222d' }} />
-                            )}
-                          </div>
-                          
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <Text>Salary Match:</Text>
-                            {match.salary_match ? (
-                              <CheckCircleOutlined style={{ color: '#52c41a' }} />
-                            ) : (
-                              <CloseCircleOutlined style={{ color: '#f5222d' }} />
-                            )}
-                          </div>
-                          
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <Text>Visa Sponsorship:</Text>
-                            {match.visa_match ? (
-                              <CheckCircleOutlined style={{ color: '#52c41a' }} />
-                            ) : (
-                              <CloseCircleOutlined style={{ color: '#f5222d' }} />
-                            )}
-                          </div>
-                        </Space>
-                      </Card>
-                    </Col>
-                  </Row>
-
-                  {match.matching_skills && match.matching_skills.length > 0 && (
-                    <div style={{ marginTop: '16px' }}>
-                      <Text strong>Matching Skills:</Text>
-                      <div style={{ marginTop: '8px' }}>
-                        {match.matching_skills.slice(0, 8).map((skill) => (
-                          <Tag key={skill} color="green" style={{ margin: '2px' }}>
-                            {skill}
-                          </Tag>
-                        ))}
-                        {match.matching_skills.length > 8 && (
-                          <Tag>+{match.matching_skills.length - 8} more</Tag>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {match.missing_skills && match.missing_skills.length > 0 && (
-                    <div style={{ marginTop: '16px' }}>
-                      <Text strong>Skills to Develop:</Text>
-                      <div style={{ marginTop: '8px' }}>
-                        {match.missing_skills.slice(0, 5).map((skill) => (
-                          <Tag key={skill} color="orange" style={{ margin: '2px' }}>
-                            {skill}
-                          </Tag>
-                        ))}
-                        {match.missing_skills.length > 5 && (
-                          <Tag>+{match.missing_skills.length - 5} more</Tag>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </Col>
-                
-                <Col xs={24} lg={8}>
-                  <div style={{ textAlign: 'center' }}>
-                    <Space direction="vertical" size="large" style={{ width: '100%' }}>
-                      <div>
-                        <Title level={2} style={{ 
-                          color: getMatchScoreColor(match.match_score),
-                          margin: 0
-                        }}>
-                          {Math.round(match.match_score * 100)}%
-                        </Title>
-                        <Text type="secondary">Overall Match</Text>
-                      </div>
-                      
-                      <Button 
-                        type="primary" 
-                        size="large" 
-                        icon={<StarOutlined />}
-                        style={{ width: '100%' }}
-                      >
-                        View Job Details
-                      </Button>
-                      
-                      <Button 
-                        size="large" 
-                        icon={<HeartOutlined />}
-                        style={{ width: '100%' }}
-                      >
-                        Save Job
-                      </Button>
-                    </Space>
-                  </div>
-                </Col>
-              </Row>
-            </Card>
+          {recommendations.map((result, index) => (
+            <FusionScoreCard
+              key={result.job_id}
+              result={result}
+              rank={index + 1}
+              dataSources={REAL_FACTORS}
+            />
           ))}
         </div>
       )}
 
-      {recommendations && recommendations.length === 0 && (
+      {!isLoading && !error && candidateProfile && recommendations.length === 0 && (
         <Card>
           <div style={{ textAlign: 'center', padding: '40px' }}>
-            <InfoCircleOutlined style={{ fontSize: '48px', color: '#1890ff', marginBottom: '16px' }} />
-            <Title level={3}>No Recommendations Found</Title>
-            <Paragraph>
-              We couldn't find any jobs that match your current profile. 
-              Try uploading a more detailed resume or adjusting your search criteria.
+            <Empty description="暂无匹配岗位" />
+            <Paragraph style={{ marginTop: '12px' }}>
+              当前简历未匹配到岗位，可尝试更换简历或加载示例候选人。
             </Paragraph>
-            <Space>
-              <Button type="primary" href="/upload-resume">
-                Upload New Resume
-              </Button>
-              <Button href="/search">
-                Browse All Jobs
-              </Button>
-            </Space>
+            <Button icon={<ExperimentOutlined />} onClick={useSampleCandidate}>
+              加载示例候选人
+            </Button>
           </div>
         </Card>
       )}
+
+      <Row justify="center" style={{ marginTop: '16px' }}>
+        <Col>
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            数据来源：POST /api/v1/fusion/recommend（sample 链路：真实后端计算）
+          </Text>
+        </Col>
+      </Row>
     </div>
   );
 };
