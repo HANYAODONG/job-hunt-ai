@@ -1,4 +1,4 @@
-﻿import {
+import {
   dashboardData,
   diagnosisData,
   discoveryCandidates,
@@ -41,18 +41,25 @@ const mockOnly = async (fallback) => fallback;
 
 export const getTalentOverview = () => mockOnly(dashboardData);
 export const getDiscoveryCandidates = () => mockOnly(discoveryCandidates);
-export const getMarketChangeCandidates = () => mockOnly(marketChangeCandidates);
-export const reviewDiscoveryCandidate = (id, decision) => mockOnly(
-  { id, decision, status: decision === 'publish' ? '已发布' : '已退回' }
-);
-export const getCapabilityGraph = () => 
-  fetch('/api/v1/graph').then(res => res.json());
 export const reviewDiscoveryCandidate = (id, decision) => mockOnly({
   id,
   decision,
   status: decision === 'publish' ? 'published' : 'rejected',
 });
-export const getCapabilityGraph = () => mockOnly(graphData);
+
+export const getCapabilityGraph = (year) => {
+  const url = year ? `/api/v1/graph?year=${year}` : '/api/v1/graph';
+  return fetch(url)
+    .then(res => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    })
+    .catch(() => {
+      console.warn('图谱接口不可用，使用 Mock 数据');
+      return mockOnly(graphData);
+    });
+};
+
 export const getRoleEvolution = () => mockOnly(evolutionData);
 
 const fitLabels = {
