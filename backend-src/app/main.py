@@ -18,6 +18,7 @@ from .api.endpoints.bm25 import router as bm25_router
 from .api.endpoints.semantic import router as semantic_router
 from .api.endpoints.fusion import router as fusion_router
 from .api.endpoints import graph  # 新增
+from .api.endpoints.jd_update import router as jd_update_router
 
 # Configure logging
 logging.basicConfig(
@@ -70,6 +71,7 @@ app.include_router(bm25_router, prefix="/api/v1/bm25", tags=["chinese-bm25"])
 app.include_router(semantic_router, prefix="/api/v1/semantic", tags=["semantic-reranking"])
 app.include_router(fusion_router, prefix="/api/v1/fusion", tags=["fusion"])
 app.include_router(graph.router, prefix="/api/v1", tags=["graph"])  # 新增
+app.include_router(jd_update_router, prefix="/api/v1/jd-update", tags=["jd-update"])
 
 # Health check endpoint
 @app.get("/health")

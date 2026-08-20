@@ -5,6 +5,9 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
+# Use npmmirror for China mainland network
+RUN npm config set registry https://registry.npmmirror.com
+
 # Install dependencies
 RUN npm install
 
