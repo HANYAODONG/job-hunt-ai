@@ -17,7 +17,7 @@ def extract_from_jobs():
     """从岗位数据中抽取技能"""
     extractor = SkillExtractor()
     
-    input_path = Path("artifacts/dataset_iteration_04/jobs.jsonl")
+    input_path = Path("artifacts/dataset_iteration_05/jobs.jsonl")
     output_path = Path("skills_output_jobs.csv")
     
     if not input_path.exists():
@@ -48,7 +48,7 @@ def extract_from_resumes():
     """从简历数据中抽取技能"""
     extractor = SkillExtractor()
     
-    input_path = Path("artifacts/dataset_iteration_04/candidate_profiles.jsonl")
+    input_path = Path("artifacts/dataset_iteration_05/candidate_profiles.jsonl")
     output_path = Path("skills_output_resumes.csv")
     
     if not input_path.exists():

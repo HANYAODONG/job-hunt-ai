@@ -45,7 +45,8 @@ export const getMarketChangeCandidates = () => mockOnly(marketChangeCandidates);
 export const reviewDiscoveryCandidate = (id, decision) => mockOnly(
   { id, decision, status: decision === 'publish' ? '已发布' : '已退回' }
 );
-export const getCapabilityGraph = () => mockOnly(graphData);
+export const getCapabilityGraph = () => 
+  fetch('/api/v1/graph').then(res => res.json());
 export const getRoleEvolution = () => mockOnly(evolutionData);
 const fitLabels = {
   excellent: '高度匹配',

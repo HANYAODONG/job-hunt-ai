@@ -1,4 +1,6 @@
 import logging
+import json
+from pathlib import Path
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional
@@ -105,6 +107,29 @@ async def analyze_gap(request: GapAnalysisRequest):
         job_family_match = 0.0
         if job_family and target_job_family and job_family == target_job_family:
             job_family_match = 1.0
+        
+        # ===== 写入 kg_features.jsonl（用于工作流4联调） =====
+        try:
+            feature_file = Path("artifacts/skill_graph/kg_features.jsonl")
+            feature_file.parent.mkdir(parents=True, exist_ok=True)
+            
+            feature_record = {
+                "query_id": candidate_id,
+                "job_id": job_id,
+                "matched_skills": matched,
+                "missing_skills": missing,
+                "skill_coverage": round(coverage, 2),
+                "job_family_match": job_family_match,
+                "graph_relatedness": round(graph_relatedness, 4),
+                "evidence_paths": evidence_paths
+            }
+            
+            with open(feature_file, 'a', encoding='utf-8') as f:
+                f.write(json.dumps(feature_record, ensure_ascii=False) + '\n')
+            logger.info(f"已写入 kg_features.jsonl: {candidate_id} -> {job_id}")
+        except Exception as e:
+            logger.warning(f"写入 kg_features.jsonl 失败: {e}")
+        # ===== 写入逻辑结束 =====
         
         return GapAnalysisResponse(
             query_id=candidate_id,
