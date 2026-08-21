@@ -15,7 +15,13 @@ import { getJobById, getJobRecommendations, getMarketTrends, uploadResume } from
 import {
   analyzeKnowledgeGraphGap,
   getMarketRuntime,
+  getTalentCandidates,
+  getTalentCandidateExplanation,
+  getTalentJobs,
+  getTalentMarketStats,
   ingestMarketCsv,
+  patchTalentCandidateStage,
+  putTalentJob,
   rerankSemantic,
   searchBm25,
 } from './intelligenceApi';
@@ -29,8 +35,8 @@ export const TALENT_API_CAPABILITIES = Object.freeze({
   fusionRanking: 'live',
   capabilityGraph: 'mock-only',
   learningPlan: 'mock-only',
-  recruitment: 'mock-only',
-  candidatePipeline: 'mock-only',
+  recruitment: 'live-with-fallback',
+  candidatePipeline: 'live-with-fallback',
   marketSignals: 'partial-live',
   marketDataIngestion: 'live',
   governance: 'mock-only',
@@ -291,13 +297,77 @@ export const getEvaluationReport = () => mockOnly(evaluationData);
 export const getRoleCatalog = () => mockOnly(roleCatalogData);
 export const getLearningPlan = () => mockOnly(learningPlanData);
 export const getLiveMarketTrend = (skill) => getMarketTrends(skill);
-export const getMarketRuntimeStatus = () => getMarketRuntime();
+export const getMarketRuntimeStatus = async () => {
+  const [runtimeResult, datasetResult] = await Promise.allSettled([
+    getMarketRuntime(),
+    getTalentMarketStats(),
+  ]);
+  const runtime = runtimeResult.status === 'fulfilled'
+    ? runtimeResult.value
+    : { available: false, ingestion: null, bm25: null };
+  return {
+    ...runtime,
+    dataset: datasetResult.status === 'fulfilled' ? datasetResult.value : null,
+    available: runtime.available || datasetResult.status === 'fulfilled',
+  };
+};
 export const importMarketCsv = (file) => ingestMarketCsv(file);
-export const getRecruitmentJobs = () => mockOnly(recruitmentJobsData);
-export const saveRecruitmentJob = (job) => mockOnly(job);
-export const getJobCandidates = (jobId) => mockOnly(recruitmentCandidatesData[jobId] || []);
-export const updateCandidateStage = (jobId, candidateId, status) => mockOnly({
-  jobId,
-  candidateId,
-  status,
-});
+export const getRecruitmentJobs = async (options = {}) => {
+  try {
+    return await getTalentJobs(options);
+  } catch (error) {
+    return {
+      items: recruitmentJobsData.map((job) => ({ ...job, dataSource: 'mock-fallback' })),
+      total: recruitmentJobsData.length,
+      source: 'mock-fallback',
+      warning: error.message,
+    };
+  }
+};
+export const saveRecruitmentJob = async (job) => {
+  try {
+    return await putTalentJob(job);
+  } catch (error) {
+    if (job.dataSource !== 'mock-fallback') throw error;
+    return { ...job, dataSource: 'mock-fallback', warning: error.message };
+  }
+};
+export const getJobCandidates = async (jobId, options = {}) => {
+  try {
+    return await getTalentCandidates(jobId, options);
+  } catch (error) {
+    const items = (recruitmentCandidatesData[jobId] || []).map((candidate) => ({
+      ...candidate,
+      dataSource: 'mock-fallback',
+    }));
+    return {
+      items,
+      total_candidates: items.length,
+      method: 'mock-fallback',
+      source: 'mock-fallback',
+      stage_counts: {},
+      retrieval_stats: {
+        total_profiles: items.length,
+        initial_recall_count: items.length,
+        eligible_count: items.length,
+        filtered_out_count: 0,
+        threshold: options.minScore ?? 55,
+        page: 1,
+        page_size: items.length,
+        total_pages: 1,
+        took_ms: 0,
+      },
+      warning: error.message,
+    };
+  }
+};
+export const getCandidateExplanation = (jobId, candidateId, useLlm = true, minScore = 55) => (
+  getTalentCandidateExplanation(jobId, candidateId, useLlm, minScore)
+);
+export const updateCandidateStage = async (jobId, candidateId, status) => {
+  try {
+    return await patchTalentCandidateStage(jobId, candidateId, status);
+  } catch (error) {
+    return { jobId, candidateId, status, source: 'local-session', warning: error.message };
+  }
+};

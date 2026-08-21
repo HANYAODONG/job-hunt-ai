@@ -182,11 +182,18 @@ class ChineseBM25Service:
         )
         return document
 
-    def iter_actions(self, input_path: Path) -> Iterable[Dict[str, Any]]:
+    def iter_actions(
+        self,
+        input_path: Path,
+        limit: Optional[int] = None,
+    ) -> Iterable[Dict[str, Any]]:
+        emitted = 0
         with input_path.open("r", encoding="utf-8") as handle:
             for line_number, line in enumerate(handle, start=1):
                 if not line.strip():
                     continue
+                if limit is not None and emitted >= limit:
+                    break
                 try:
                     row = json.loads(line)
                 except json.JSONDecodeError as exc:
@@ -194,6 +201,7 @@ class ChineseBM25Service:
                 document = self.prepare_document(row)
                 if not document["job_id"]:
                     raise ValueError(f"Missing job_id at line {line_number}")
+                emitted += 1
                 yield {
                     "_op_type": "index",
                     "_index": self.index_name,
@@ -201,7 +209,12 @@ class ChineseBM25Service:
                     "_source": document,
                 }
 
-    def bulk_index(self, input_path: Path, batch_size: int = 500) -> Dict[str, Any]:
+    def bulk_index(
+        self,
+        input_path: Path,
+        batch_size: int = 500,
+        limit: Optional[int] = None,
+    ) -> Dict[str, Any]:
         self.client.indices.put_settings(
             index=self.index_name,
             settings={"index": {"refresh_interval": "-1"}},
@@ -212,7 +225,7 @@ class ChineseBM25Service:
         try:
             for success, result in helpers.streaming_bulk(
                 self.client,
-                self.iter_actions(input_path),
+                self.iter_actions(input_path, limit=limit),
                 chunk_size=batch_size,
                 max_retries=3,
                 initial_backoff=1,
@@ -236,6 +249,7 @@ class ChineseBM25Service:
         return {
             "index_name": self.index_name,
             "input_path": str(input_path),
+            "requested_limit": limit,
             "succeeded": succeeded,
             "failed": failed,
             "errors": errors,

@@ -66,6 +66,86 @@ export const getMarketRuntime = async () => {
   };
 };
 
+export const getTalentJobs = async (options = {}) => {
+  try {
+    const response = await api.get('/talent/recruitment/jobs', {
+      params: {
+        query: options.query || '',
+        status: options.status || undefined,
+        source_type: options.sourceType ?? 'enterprise',
+        limit: options.limit || 50,
+        offset: options.offset || 0,
+      },
+    });
+    return response.data;
+  } catch (error) {
+    throw new Error(detail(error, '企业岗位池读取失败'));
+  }
+};
+
+export const putTalentJob = async (job) => {
+  try {
+    const response = await api.put(`/talent/recruitment/jobs/${encodeURIComponent(job.id)}`, {
+      values: job,
+    });
+    return response.data;
+  } catch (error) {
+    throw new Error(detail(error, '招聘 JD 保存失败'));
+  }
+};
+
+export const getTalentCandidates = async (jobId, options = {}) => {
+  try {
+    const response = await api.get(
+      `/talent/recruitment/jobs/${encodeURIComponent(jobId)}/candidates`,
+      {
+        params: {
+          min_score: options.minScore ?? 55,
+          page: options.page || 1,
+          page_size: options.pageSize || 50,
+          include_below_threshold: options.includeBelowThreshold || false,
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    throw new Error(detail(error, '候选人匹配结果读取失败'));
+  }
+};
+
+export const getTalentCandidateExplanation = async (jobId, candidateId, useLlm = true, minScore = 55) => {
+  try {
+    const response = await api.post(
+      `/talent/recruitment/jobs/${encodeURIComponent(jobId)}/candidates/${encodeURIComponent(candidateId)}/explanation`,
+      { use_llm: useLlm, min_score: minScore }
+    );
+    return response.data;
+  } catch (error) {
+    throw new Error(detail(error, '候选人 RAG 解释生成失败'));
+  }
+};
+
+export const patchTalentCandidateStage = async (jobId, candidateId, status) => {
+  try {
+    const response = await api.patch(
+      `/talent/recruitment/jobs/${encodeURIComponent(jobId)}/candidates/${encodeURIComponent(candidateId)}/stage`,
+      { status }
+    );
+    return response.data;
+  } catch (error) {
+    throw new Error(detail(error, '候选人筛选状态保存失败'));
+  }
+};
+
+export const getTalentMarketStats = async () => {
+  try {
+    const response = await api.get('/talent/market/stats');
+    return response.data;
+  } catch (error) {
+    throw new Error(detail(error, '标准岗位统计读取失败'));
+  }
+};
+
 export const ingestMarketCsv = async (file) => {
   try {
     const formData = new FormData();

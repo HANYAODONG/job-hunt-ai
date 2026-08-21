@@ -20,6 +20,8 @@ const statusClass = { '招聘中': 'live', '草稿': 'draft', '已暂停': 'paus
 const RecruitmentJobsPage = () => {
   const { message } = AntdApp.useApp();
   const [jobs, setJobs] = useState([]);
+  const [jobTotal, setJobTotal] = useState(0);
+  const [dataSource, setDataSource] = useState('loading');
   const [selectedId, setSelectedId] = useState(null);
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('全部状态');
@@ -29,11 +31,14 @@ const RecruitmentJobsPage = () => {
   const [newJob, setNewJob] = useState({ title: '', department: '', location: '', openings: 1 });
 
   useEffect(() => {
-    getRecruitmentJobs().then((items) => {
-      setJobs(items);
-      setSelectedId(items[0]?.id || null);
+    getRecruitmentJobs().then((result) => {
+      setJobs(result.items);
+      setJobTotal(result.total);
+      setDataSource(result.source);
+      setSelectedId(result.items[0]?.id || null);
+      if (result.warning) message.warning('后端未连接，当前展示 Mock 回退数据');
     });
-  }, []);
+  }, [message]);
 
   const visibleJobs = useMemo(() => jobs.filter((job) => {
     const matchesQuery = `${job.title} ${job.department} ${job.id}`.toLowerCase().includes(query.toLowerCase());
@@ -49,21 +54,29 @@ const RecruitmentJobsPage = () => {
   const updateDraft = (key, value) => setDraft((current) => ({ ...current, [key]: value }));
 
   const saveDraft = async () => {
-    const saved = await saveRecruitmentJob({ ...draft, updatedAt: '刚刚' });
-    setJobs((current) => current.map((job) => job.id === saved.id ? saved : job));
-    setDraft(saved);
-    setEditing(false);
-    message.success('JD 修改已保存为新修订');
+    try {
+      const saved = await saveRecruitmentJob({ ...draft, updatedAt: '刚刚' });
+      setJobs((current) => current.map((job) => job.id === saved.id ? saved : job));
+      setDraft(saved);
+      setEditing(false);
+      message.success(saved.warning ? '仅在当前 Mock 页面中更新' : 'JD 修改已持久化保存');
+    } catch (error) {
+      message.error(error.message || 'JD 保存失败');
+    }
   };
 
   const changeStatus = async () => {
     const nextStatus = selected.status === '招聘中' ? '已暂停' : '招聘中';
-    const saved = await saveRecruitmentJob({ ...selected, status: nextStatus, publishedAt: nextStatus === '招聘中' && selected.publishedAt === '尚未发布' ? '今天' : selected.publishedAt, updatedAt: '刚刚' });
-    setJobs((current) => current.map((job) => job.id === saved.id ? saved : job));
-    message.success(nextStatus === '招聘中' ? '招聘 JD 已发布' : '招聘已暂停');
+    try {
+      const saved = await saveRecruitmentJob({ ...selected, status: nextStatus, publishedAt: nextStatus === '招聘中' && selected.publishedAt === '尚未发布' ? '今天' : selected.publishedAt, updatedAt: '刚刚' });
+      setJobs((current) => current.map((job) => job.id === saved.id ? saved : job));
+      message.success(nextStatus === '招聘中' ? '招聘 JD 已发布' : '招聘已暂停');
+    } catch (error) {
+      message.error(error.message || '招聘状态保存失败');
+    }
   };
 
-  const createJob = () => {
+  const createJob = async () => {
     if (!newJob.title.trim() || !newJob.department.trim()) {
       message.warning('请填写岗位名称和所属部门');
       return;
@@ -86,25 +99,35 @@ const RecruitmentJobsPage = () => {
       bonusSkills: [],
       revisions: [{ version: 'v0.1', date: '今天', note: '创建招聘 JD 草稿' }],
       marketSuggestion: null,
+      dataSource: dataSource === 'mock-fallback' ? 'mock-fallback' : 'live-standard-dataset',
     };
-    setJobs((current) => [created, ...current]);
-    setSelectedId(id);
-    setCreateOpen(false);
-    setNewJob({ title: '', department: '', location: '', openings: 1 });
-    message.success('JD 草稿已创建');
+    try {
+      const saved = await saveRecruitmentJob(created);
+      setJobs((current) => [saved, ...current]);
+      setJobTotal((current) => current + 1);
+      setSelectedId(id);
+      setCreateOpen(false);
+      setNewJob({ title: '', department: '', location: '', openings: 1 });
+      message.success(saved.warning ? 'Mock 草稿已在当前页面创建' : 'JD 草稿已持久化创建');
+    } catch (error) {
+      message.error(error.message || 'JD 草稿创建失败');
+    }
   };
 
   if (!jobs.length) return <div className="page-loading"><Skeleton active paragraph={{ rows: 12 }} /></div>;
 
   return <div className="workbench-page recruitment-page">
-    <PageHeading eyebrow="RECRUITMENT JD POOL" title="我的招聘" description="维护企业实际发布的招聘 JD，并记录每次人工调整、发布状态和市场更新建议。">
+    <PageHeading eyebrow="RECRUITMENT JD POOL" title="我的招聘" description="读取标准企业岗位池，维护 JD 人工调整、发布状态和市场更新建议。">
+      <span className={`market-runtime-badge ${dataSource === 'mock-fallback' ? 'offline' : 'live'}`}>
+        {dataSource === 'mock-fallback' ? 'Mock 回退' : '标准数据已连接'}
+      </span>
       <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>新建 JD</Button>
     </PageHeading>
 
     <div className="recruitment-toolbar">
       <Input prefix={<SearchOutlined />} placeholder="搜索岗位、部门或 JD 编号" value={query} onChange={(event) => setQuery(event.target.value)} allowClear />
       <Select value={status} onChange={setStatus} options={['全部状态', '招聘中', '草稿', '已暂停'].map((value) => ({ value }))} />
-      <span>{visibleJobs.length} 个招聘 JD · {jobs.reduce((sum, job) => sum + job.applications, 0)} 份投递</span>
+      <span>当前显示 {visibleJobs.length} 个 · 企业岗位池共 {jobTotal} 个</span>
     </div>
 
     <section className="recruitment-workspace">
@@ -114,7 +137,7 @@ const RecruitmentJobsPage = () => {
           <span><i className={`job-status-dot ${statusClass[job.status]}`} />{job.status}<small>{job.id}</small></span>
           <strong>{job.title}</strong>
           <small>{job.department} · {job.location}</small>
-          <footer><b>{job.applications} 份投递</b>{job.newApplications > 0 && <em>{job.newApplications} 新</em>}</footer>
+          <footer><b>{job.sourceType === 'enterprise' ? '企业岗位' : job.sourceType}</b><em>{job.publishedAt}</em></footer>
         </button>)}</div>
       </aside>
 
@@ -131,7 +154,7 @@ const RecruitmentJobsPage = () => {
         <section className="recruitment-facts">
           <div><span>招聘状态</span><strong className={`job-state-text ${statusClass[selected.status]}`}>{selected.status}</strong></div>
           <div><span>招聘人数</span>{editing ? <InputNumber min={1} value={draft.openings} onChange={(value) => updateDraft('openings', value)} /> : <strong>{selected.openings} 人</strong>}</div>
-          <div><span>累计投递</span><strong>{selected.applications}</strong></div>
+          <div><span>候选结果</span><strong>进入匹配页计算</strong></div>
           <div><span>当前修订</span><strong>{selected.version}</strong></div>
         </section>
 
