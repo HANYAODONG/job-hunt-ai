@@ -4,9 +4,23 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { CSS2DObject, CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 
-const ARM_COLORS = ['#ef7baa', '#59d3c6', '#aa8cf3', '#dfb563'];
+const ARM_COLORS = [
+  '#ef7baa', // 算法
+  '#59d3c6', // 大模型
+  '#aa8cf3', // 后端
+  '#dfb563', // 前端
+  '#f28b8b', // 数据
+  '#7bc8f0', // 运维
+  '#f5a623', // 安全
+  '#7ed3a8', // 硬件
+  '#d4a0d4', // 测试
+  '#a0a0a0', // 其他
+];
+
+// 扩展半径数组，支持 10 个大类
+const DOMAIN_RADII = [3.2, 3.7, 4.05, 3.45, 3.0, 3.8, 4.2, 3.6, 3.3, 3.9];
+
 const OVERVIEW_CAMERA = { x: 0, y: 4.65, z: 11.4 };
-const DOMAIN_RADII = [3.2, 3.7, 4.05, 3.45];
 
 const seededRandom = (seed) => {
   let value = seed >>> 0;
@@ -266,9 +280,10 @@ const createBackgroundGeometry = () => {
   return geometry;
 };
 
-const anchorForDomain = (index) => {
-  const radius = DOMAIN_RADII[index] || 3.5;
-  const angle = index / 4 * Math.PI * 2 + radius * 1.16;
+// 动态计算 domain 位置，支持任意数量的大类
+const anchorForDomain = (index, totalDomains = 10) => {
+  const radius = DOMAIN_RADII[index % DOMAIN_RADII.length] || 3.5;
+  const angle = (index / totalDomains) * Math.PI * 2 + radius * 1.16;
   return new THREE.Vector3(Math.cos(angle) * radius, 0, Math.sin(angle) * radius);
 };
 
@@ -513,9 +528,12 @@ const GalaxyScene = ({ tree, mode, focusDomainId, focusFamilyId, selectedId, onN
     scene.add(galaxyGroup);
     resources.push(halo.geometry, galaxyGeometry, galaxyMaterial);
 
+    // 计算总大类数
+    const totalDomains = (tree.children || []).length;
+
     (tree.children || []).forEach((domain, index) => {
       const color = ARM_COLORS[index % ARM_COLORS.length];
-      const anchor = anchorForDomain(index);
+      const anchor = anchorForDomain(index, totalDomains);
       const starGroup = addInteractiveStar({
         parent: galaxyGroup,
         node: domain,
