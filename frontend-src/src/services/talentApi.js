@@ -1,4 +1,4 @@
-﻿import {
+import {
   dashboardData,
   diagnosisData,
   discoveryCandidates,
@@ -47,6 +47,7 @@ const mockOnly = async (fallback) => fallback;
 
 export const getTalentOverview = () => mockOnly(dashboardData);
 export const getDiscoveryCandidates = () => mockOnly(discoveryCandidates);
+export const getMarketChangeCandidates = () => mockOnly(marketChangeCandidates);
 export const reviewDiscoveryCandidate = (id, decision) => mockOnly({
   id,
   decision,
