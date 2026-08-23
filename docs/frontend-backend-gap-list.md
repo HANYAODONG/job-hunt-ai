@@ -15,8 +15,8 @@ Updated after merging PR #15/#16/#17.
 | Market runtime stats | `talentApi.getMarketRuntimeStatus` | partial-live | Uses backend stats, but trend candidates are still mock. |
 | Graph visualization | `/graph`, `getCapabilityGraph` | mock-only | Needs real nodes/edges graph API. |
 | Learning plan | `/learning`, `getLearningPlan` | mock-only | Needs learning-path generation API. |
-| Recruitment jobs | `/recruitment`, `getRecruitmentJobs` | mock-only | Needs enterprise job list/detail/update APIs. |
-| Candidate pipeline | `/candidates`, `getJobCandidates` | mock-only | Needs job-to-candidate matching and candidate-stage APIs. |
+| Recruitment jobs | `/recruitment`, `getRecruitmentJobs` | live with fallback | Reads 12,675 enterprise jobs and supports runtime detail/status edits through `/api/v1/talent/jobs`. |
+| Candidate pipeline | `/candidates`, `getJobCandidates` | live with fallback | Reads 30,200 candidate profiles, returns explainable baseline scores, and persists candidate stages through `/api/v1/talent/jobs/{job_id}/candidates`. |
 | Dashboard overview | `/`, `getTalentOverview` | mock-only | Needs aggregate dashboard API if required for final demo. |
 | Governance / evaluation | `/governance`, `/evaluation` | mock-only | Low priority unless final frontend keeps these pages. |
 
@@ -77,29 +77,19 @@ This can be generated from diagnosis gaps plus optional LLM explanation later.
 
 ### `/recruitment`
 
-Still mock-only.
+Connected to the artifact-backed talent API with mock fallback.
 
-Needed backend output:
-
-- Job list
-- Job detail
-- Job status update
-- Job skill requirements
-- Job source and update timestamp
-
-The new JD update module from PR #16 may support part of this, but the page service is not wired to it yet.
+- Job list, detail, skill requirements, source, and update timestamp come from the standardized enterprise dataset.
+- Runtime edits and status updates are supported, but are not written back to the source dataset.
+- The JD update module remains available independently for incremental update workflows.
 
 ### `/candidates`
 
-Still mock-only.
+Connected to the artifact-backed talent API with mock fallback.
 
-Needed backend output:
-
-- Candidate list by job ID
-- Candidate match score
-- Matched skills and missing skills
-- Explanation or screening reason
-- Candidate stage update
+- Candidate list, matched/missing skills, screening reason, and stage update are available.
+- Current ranking is an explainable baseline: skill overlap 65%, role-family/category consistency 25%, and experience 10%.
+- Replace the baseline with BM25, BGE-M3, Neo4j, and Fusion results after their IDs and score contracts are aligned.
 
 ### `/signals`
 
@@ -127,7 +117,7 @@ They still use older search/recommendation APIs. Do not migrate all of them at o
 2. Verify `/diagnosis` full chain with uploaded resume.
 3. Wire `/signals` to the new JD update module where possible.
 4. Add real graph API for `/graph`.
-5. Add recruitment/candidate APIs for `/recruitment` and `/candidates`.
+5. Replace the candidate baseline with aligned BM25, BGE-M3, Neo4j, and Fusion results.
 6. Add learning-path API for `/learning`.
 
 ---

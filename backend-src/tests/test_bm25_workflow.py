@@ -71,6 +71,24 @@ class BM25WorkflowTests(unittest.TestCase):
         self.assertEqual(document["job_family"], "后端开发工程师")
         self.assertIn("Python", document["all_text"])
 
+    def test_sample_action_limit_keeps_stable_job_ids(self):
+        import json
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "jobs.jsonl"
+            path.write_text(
+                "\n".join(
+                    json.dumps({"job_id": f"JOB{index:03d}", "title": "测试岗位"}, ensure_ascii=False)
+                    for index in range(3)
+                ),
+                encoding="utf-8",
+            )
+            actions = list(ChineseBM25Service(FakeElasticsearch()).iter_actions(path, limit=2))
+
+        self.assertEqual([action["_id"] for action in actions], ["JOB000", "JOB001"])
+        self.assertEqual(len(actions), 2)
+
     def test_search_builds_weighted_query_and_compact_hits(self):
         client = FakeElasticsearch()
         service = ChineseBM25Service(client)

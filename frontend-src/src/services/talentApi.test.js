@@ -16,7 +16,13 @@ jest.mock('./api', () => ({
 jest.mock('./intelligenceApi', () => ({
   analyzeKnowledgeGraphGap: jest.fn(),
   getMarketRuntime: jest.fn(),
+  getTalentCandidates: jest.fn(),
+  getTalentCandidateExplanation: jest.fn(),
+  getTalentJobs: jest.fn(),
+  getTalentMarketStats: jest.fn(),
   ingestMarketCsv: jest.fn(),
+  patchTalentCandidateStage: jest.fn(),
+  putTalentJob: jest.fn(),
   rerankSemantic: jest.fn(),
   searchBm25: jest.fn(),
 }));
@@ -31,13 +37,13 @@ describe('diagnoseCandidate', () => {
     delete process.env.REACT_APP_USE_RESUME_MOCK;
   });
 
-  it('keeps unsupported workbench contracts explicit', () => {
+  it('reports the live and fallback boundaries of workbench contracts', () => {
     expect(TALENT_API_CAPABILITIES).toMatchObject({
       resumeDiagnosis: 'live',
       fusionRanking: 'live',
       marketSignals: 'partial-live',
-      recruitment: 'mock-only',
-      candidatePipeline: 'mock-only',
+      recruitment: 'live-with-fallback',
+      candidatePipeline: 'live-with-fallback',
     });
   });
 

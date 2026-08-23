@@ -103,7 +103,9 @@ const DiscoveryPage = () => {
   }, [trendSkill]);
 
   const relatedSkills = normalizeRelatedSkills(liveTrend?.related_skills?.[trendSkill]);
-  const indexedJobs = runtime?.bm25?.document_count ?? runtime?.ingestion?.total_jobs_elasticsearch;
+  const indexedJobs = runtime?.bm25?.document_count
+    ?? runtime?.dataset?.total_jobs
+    ?? runtime?.ingestion?.total_jobs_elasticsearch;
 
   const importCsv = async (file) => {
     if (!/\.csv$/i.test(file.name || '')) {
