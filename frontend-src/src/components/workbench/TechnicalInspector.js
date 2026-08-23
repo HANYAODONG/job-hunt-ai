@@ -7,21 +7,46 @@ const tabs = [
   { key: 'history', label: '记录', icon: <HistoryOutlined /> },
 ];
 
-const TechnicalInspector = ({ title, status = 'AI 生成', version = '草稿', confidence = 0, explanation = [], evidence = [], history = [] }) => {
+const toDisplayText = (value) => {
+  if (value == null) return '暂无数据';
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (Array.isArray(value)) return value.map(toDisplayText).join('、');
+  if (typeof value === 'object') {
+    const matched = Array.isArray(value.matched_skills) ? value.matched_skills.join('、') : '';
+    const missing = Array.isArray(value.missing_skills) ? value.missing_skills.join('、') : '';
+    const reason = value.reason ? toDisplayText(value.reason) : '';
+    return [
+      matched && `匹配技能：${matched}`,
+      missing && `待补充技能：${missing}`,
+      reason,
+    ].filter(Boolean).join('；') || JSON.stringify(value);
+  }
+  return String(value);
+};
+
+const TechnicalInspector = ({
+  title,
+  status = 'AI 生成',
+  version = '草稿',
+  confidence = 0,
+  explanation = [],
+  evidence = [],
+  history = [],
+}) => {
   const [active, setActive] = useState('explanation');
 
   return (
-    <aside className="technical-inspector" aria-label={`${title}技术检查器`}>
+    <aside className="technical-inspector" aria-label={`${toDisplayText(title)}技术检查器`}>
       <header className="inspector-header">
         <div>
           <span className="inspector-kicker">TECHNICAL INSPECTOR</span>
-          <h2>{title}</h2>
+          <h2>{toDisplayText(title)}</h2>
         </div>
-        <span className="inspector-status"><i />{status}</span>
+        <span className="inspector-status"><i />{toDisplayText(status)}</span>
       </header>
 
       <div className="inspector-facts">
-        <div><span>版本</span><strong>{version}</strong></div>
+        <div><span>版本</span><strong>{toDisplayText(version)}</strong></div>
         <div><span>置信度</span><strong>{confidence == null ? '未提供' : `${confidence}%`}</strong></div>
       </div>
 
@@ -36,25 +61,35 @@ const TechnicalInspector = ({ title, status = 'AI 生成', version = '草稿', c
       <div className="inspector-body">
         {active === 'explanation' && (
           <div className="inspector-explanation">
-            <p className="inspector-section-label">为什么得到这个结果</p>
-            {explanation.map((item, index) => <div className="reason-row" key={item}><span>{String(index + 1).padStart(2, '0')}</span><p>{item}</p></div>)}
+            <p className="inspector-section-label">为什么得到这个结果？</p>
+            {explanation.map((item, index) => (
+              <div className="reason-row" key={`${index}-${toDisplayText(item)}`}>
+                <span>{String(index + 1).padStart(2, '0')}</span>
+                <p>{toDisplayText(item)}</p>
+              </div>
+            ))}
           </div>
         )}
         {active === 'evidence' && (
           <div className="inspector-evidence">
             <p className="inspector-section-label">原始数据证据</p>
-            {evidence.map((item) => (
-              <article className="evidence-entry" key={`${item.source}-${item.excerpt}`}>
-                <div><strong>{item.source}</strong><span>{item.confidence || '已验证'}</span></div>
-                <p>“{item.excerpt}”</p>
-                <time>{item.collectedAt || '2026-07-25 09:42'}</time>
+            {evidence.map((item, index) => (
+              <article className="evidence-entry" key={`${index}-${toDisplayText(item.source)}-${toDisplayText(item.excerpt)}`}>
+                <div><strong>{toDisplayText(item.source)}</strong><span>{toDisplayText(item.confidence || '已验证')}</span></div>
+                <p>{toDisplayText(item.excerpt)}</p>
+                <time>{toDisplayText(item.collectedAt || '2026-07-25 09:42')}</time>
               </article>
             ))}
           </div>
         )}
         {active === 'history' && (
           <ol className="inspector-history">
-            {history.map((item) => <li key={`${item.time}-${item.label}`}><CheckCircleOutlined /><div><strong>{item.label}</strong><span>{item.time}</span></div></li>)}
+            {history.map((item, index) => (
+              <li key={`${index}-${toDisplayText(item.time)}-${toDisplayText(item.label)}`}>
+                <CheckCircleOutlined />
+                <div><strong>{toDisplayText(item.label)}</strong><span>{toDisplayText(item.time)}</span></div>
+              </li>
+            ))}
           </ol>
         )}
       </div>

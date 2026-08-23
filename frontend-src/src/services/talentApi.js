@@ -79,14 +79,36 @@ const fitLabels = {
 const toPercent = (score) => Math.round(Math.max(0, Math.min(1, Number(score) || 0)) * 100);
 const clampScore = (score) => Math.max(0, Math.min(1, Number(score) || 0));
 
+const toDisplayText = (value) => {
+  if (value == null) return '';
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (Array.isArray(value)) return value.map(toDisplayText).filter(Boolean).join('、');
+  if (typeof value === 'object') {
+    const matched = Array.isArray(value.matched_skills) ? value.matched_skills.map(toDisplayText).filter(Boolean).join('、') : '';
+    const missing = Array.isArray(value.missing_skills) ? value.missing_skills.map(toDisplayText).filter(Boolean).join('、') : '';
+    const reason = value.reason ? toDisplayText(value.reason) : '';
+    return [
+      matched && `匹配技能：${matched}`,
+      missing && `待补充技能：${missing}`,
+      reason,
+    ].filter(Boolean).join('；') || JSON.stringify(value);
+  }
+  return String(value);
+};
+
+const normalizeTextList = (values = []) => (Array.isArray(values) ? values : [values])
+  .map(toDisplayText)
+  .map((value) => value.trim())
+  .filter(Boolean);
+
 const extractSkills = (candidateProfile) => {
   const candidate = candidateProfile.candidate || {};
   return candidateProfile.extracted_skills?.length
-    ? candidateProfile.extracted_skills
-    : (candidate.skills || []).map((skill) => skill.name).filter(Boolean);
+    ? normalizeTextList(candidateProfile.extracted_skills)
+    : normalizeTextList((candidate.skills || []).map((skill) => skill.name || skill));
 };
 
-const makeGapItems = (skills, sourceLabel) => skills.slice(0, 3).map((skill, gapIndex) => ({
+const makeGapItems = (skills, sourceLabel) => normalizeTextList(skills).slice(0, 3).map((skill, gapIndex) => ({
   skill,
   priority: gapIndex < 2 ? 'high' : 'medium',
   current: 0,
@@ -101,8 +123,8 @@ const normalizeLiveDiagnosis = (candidateProfile, recommendations, jobs, pipelin
 
   const matches = recommendations.slice(0, 3).map((recommendation, index) => {
     const job = jobs[index] || {};
-    const matchingSkills = recommendation.matching_skills || [];
-    const missingSkills = recommendation.missing_skills || [];
+    const matchingSkills = normalizeTextList(recommendation.matching_skills);
+    const missingSkills = normalizeTextList(recommendation.missing_skills);
     const score = toPercent(recommendation.match_score);
     const requiredSkillCount = Math.max(1, (job.required_skills || []).length);
     const evidenceCoverage = Math.round((matchingSkills.length / requiredSkillCount) * 100);
@@ -172,8 +194,8 @@ const normalizeFullDiagnosis = (candidateProfile, hits, gapByJobId, fusionResult
   const matches = fusionResults.slice(0, 3).map((result, index) => {
     const hit = hitByJobId.get(result.job_id) || {};
     const gap = gapByJobId.get(result.job_id) || {};
-    const matchingSkills = gap.matched_skills || [];
-    const missingSkills = result.missing_skills || gap.missing_skills || [];
+    const matchingSkills = normalizeTextList(gap.matched_skills);
+    const missingSkills = normalizeTextList(result.missing_skills || gap.missing_skills);
 
     return {
       id: result.job_id,
@@ -182,11 +204,11 @@ const normalizeFullDiagnosis = (candidateProfile, hits, gapByJobId, fusionResult
       company: hit.company || '',
       version: 'current graph version',
       score: toPercent(result.final_score),
-      reason: result.explanation || `Ranked by BM25, semantic rerank, knowledge graph gap analysis, and fusion scoring. Current rank: ${result.rank || index + 1}.`,
+      reason: toDisplayText(result.explanation) || `Ranked by BM25, semantic rerank, knowledge graph gap analysis, and fusion scoring. Current rank: ${result.rank || index + 1}.`,
       gaps: makeGapItems(missingSkills, 'The knowledge graph'),
       matchingSkills,
       evidenceCoverage: toPercent(gap.skill_coverage),
-      evidencePaths: result.evidence_paths || gap.evidence_paths || [],
+      evidencePaths: normalizeTextList(result.evidence_paths || gap.evidence_paths),
       scoreBreakdown: result.score_breakdown || null,
       job: {
         id: result.job_id,
@@ -194,7 +216,7 @@ const normalizeFullDiagnosis = (candidateProfile, hits, gapByJobId, fusionResult
         standard_job: hit.standard_job,
         company_name: hit.company,
         job_family: hit.job_family,
-        required_skills: gap.job_required_skills || hit.skills || [],
+        required_skills: normalizeTextList(gap.job_required_skills || hit.skills),
         description: hit.description,
         requirements: hit.requirements,
         responsibilities: hit.responsibilities,
@@ -271,8 +293,8 @@ const runFullDiagnosisPipeline = async (candidateProfile) => {
       skill_coverage: clampScore(gap.skill_coverage),
       job_family_match: clampScore(gap.job_family_match),
       graph_relatedness: clampScore(gap.graph_relatedness),
-      missing_skills: gap.missing_skills || [],
-      evidence_paths: gap.evidence_paths || [],
+      missing_skills: normalizeTextList(gap.missing_skills),
+      evidence_paths: normalizeTextList(gap.evidence_paths),
     };
   });
   const fusionResult = await rankJobs(candidateId, fusionInputs);
