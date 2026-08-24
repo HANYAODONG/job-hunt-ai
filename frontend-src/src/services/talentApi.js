@@ -335,6 +335,8 @@ export const getLearningPlan = () => mockOnly(learningPlanData);
 const roleEvolutionApiUrl = process.env.REACT_APP_ROLE_EVOLUTION_API_URL;
 const roleEvolutionBaseUrl = roleEvolutionApiUrl || process.env.REACT_APP_API_URL || '/api/v1';
 const roleEvolutionUsesStandaloneApi = Boolean(roleEvolutionApiUrl);
+const roleEvolutionLiveEnabled = process.env.NODE_ENV !== 'test'
+  || Boolean(roleEvolutionApiUrl || process.env.REACT_APP_API_URL);
 
 const roleEvolutionPath = (integratedPath, standalonePath) => (
   roleEvolutionUsesStandaloneApi ? standalonePath : integratedPath
@@ -447,6 +449,7 @@ const roleEvolutionFallback = () => ({
 
 export const getRoleEvolutionWorkspace = async () => {
   const fallback = roleEvolutionFallback();
+  if (!roleEvolutionLiveEnabled) return fallback;
   try {
     const [overview, jobs, reviewItems, optimization, trend, lifecycle, migration] = await Promise.all([
       roleEvolutionRequest(roleEvolutionPath('/jd-update/analytics/overview?domain=company', '/api/analytics/overview?domain=company')),
@@ -486,6 +489,7 @@ export const getRoleEvolutionWorkspace = async () => {
 };
 
 export const submitRoleJd = async (payload) => {
+  if (!roleEvolutionLiveEnabled) return { effectId: 'EV-20260725-01', status: '待审核', ...roleEvolutionFallback().latest, input: payload };
   try {
     if (roleEvolutionUsesStandaloneApi) {
       const result = await roleEvolutionRequest('/api/jobs/submit-one-dry-run?domain=company', { method: 'POST', body: JSON.stringify(payload) });
@@ -503,6 +507,7 @@ export const submitRoleJd = async (payload) => {
 };
 
 export const getLiveEvolution = async (effectId) => {
+  if (!roleEvolutionLiveEnabled) return roleEvolutionFallback().latest;
   try {
     const result = await roleEvolutionRequest(roleEvolutionPath(
       `/jd-update/live-evolution/${encodeURIComponent(effectId)}?domain=company`,
@@ -515,6 +520,7 @@ export const getLiveEvolution = async (effectId) => {
 };
 
 export const getRoleAnalytics = async (params = {}) => {
+  if (!roleEvolutionLiveEnabled) return roleEvolutionFallback().analytics;
   try {
     const query = new URLSearchParams({ domain: 'company', ...params }).toString();
     const endpoint = (integratedPath, standalonePath) => roleEvolutionPath(`${integratedPath}?${query}`, `${standalonePath}?${query}`);
@@ -532,6 +538,7 @@ export const getRoleAnalytics = async (params = {}) => {
 };
 
 export const saveRoleOptimization = async (payload) => {
+  if (!roleEvolutionLiveEnabled) return { status: '已保存', version: 'v1.3', ...payload };
   try {
     return await roleEvolutionRequest(roleEvolutionPath('/jd-update/optimization/overrides?domain=company', '/api/optimization/overrides?domain=company'), { method: 'POST', body: JSON.stringify(payload) });
   } catch {
