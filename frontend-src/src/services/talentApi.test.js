@@ -5,7 +5,13 @@ import {
   searchBm25,
 } from './intelligenceApi';
 import { rankJobs } from './fusionApi';
-import { diagnoseCandidate, TALENT_API_CAPABILITIES } from './talentApi';
+import {
+  diagnoseCandidate,
+  getRoleEvolutionWorkspace,
+  saveRoleOptimization,
+  submitRoleJd,
+  TALENT_API_CAPABILITIES,
+} from './talentApi';
 
 jest.mock('./api', () => ({
   getJobById: jest.fn(),
@@ -45,6 +51,26 @@ describe('diagnoseCandidate', () => {
       recruitment: 'live-with-fallback',
       candidatePipeline: 'live-with-fallback',
     });
+  });
+
+  it('exposes the four role-evolution workspaces with stable fallback data', async () => {
+    const result = await getRoleEvolutionWorkspace();
+
+    expect(result).toEqual(expect.objectContaining({
+      jobs: expect.any(Array),
+      pending: expect.any(Array),
+      latest: expect.objectContaining({ role: expect.any(String), added: expect.any(Array) }),
+      analytics: expect.objectContaining({ versions: expect.any(Array), trend: expect.any(Array) }),
+      optimization: expect.objectContaining({ name: expect.any(String) }),
+    }));
+  });
+
+  it('keeps JD update and optimization payloads usable when the service is offline', async () => {
+    const submitted = await submitRoleJd({ job_title: '测试岗位', month: '2026-08' });
+    const saved = await saveRoleOptimization({ standard_job: '大模型应用工程师', changes: [] });
+
+    expect(submitted).toMatchObject({ effectId: expect.any(String), status: expect.any(String) });
+    expect(saved).toMatchObject({ status: '已保存', standard_job: '大模型应用工程师' });
   });
 
   it('runs and normalizes the complete intelligence pipeline', async () => {

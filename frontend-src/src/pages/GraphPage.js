@@ -53,6 +53,9 @@ const GraphPage = () => {
   const [level, setLevel] = useState('全部层级');
   const [year, setYear] = useState('2026');
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [roleContext] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('roleEvolutionContext') || 'null'); } catch { return null; }
+  });
   const workspaceRef = useRef(null);
 
   useEffect(() => { getCapabilityGraph().then(setData); }, []);
@@ -137,10 +140,11 @@ const GraphPage = () => {
         <header className="graph-hud">
           <div className="graph-hud-title">
             <span className="graph-live-indicator"><i /> LIVE ONTOLOGY</span>
-            <div>
-              <h1>新一代信息技术岗位银河</h1>
-              <p>{year} 市场快照 · {data.summary.domains} 个岗位大类 · {data.summary.families} 个岗位族 · {data.summary.roles} 个核心岗位</p>
-            </div>
+              <div>
+               <h1>新一代信息技术岗位银河</h1>
+               <p>{year} 市场快照 · {data.summary.domains} 个岗位大类 · {data.summary.families} 个岗位族 · {data.summary.roles} 个核心岗位</p>
+               {roleContext && <span className="graph-role-context">当前岗位版本：{roleContext.role} · {roleContext.version}</span>}
+             </div>
           </div>
           <div className="graph-hud-controls">
             <Select

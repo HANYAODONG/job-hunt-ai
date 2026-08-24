@@ -331,6 +331,128 @@ export const getDataGovernance = () => mockOnly(governanceData);
 export const getEvaluationReport = () => mockOnly(evaluationData);
 export const getRoleCatalog = () => mockOnly(roleCatalogData);
 export const getLearningPlan = () => mockOnly(learningPlanData);
+
+const roleEvolutionApiUrl = process.env.REACT_APP_ROLE_EVOLUTION_API_URL;
+
+const roleEvolutionRequest = async (path, options = {}) => {
+  if (!roleEvolutionApiUrl) throw new Error('岗位演化服务未配置');
+  const response = await fetch(`${roleEvolutionApiUrl.replace(/\/$/, '')}${path}`, {
+    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+    ...options,
+  });
+  if (!response.ok) throw new Error(`岗位演化服务请求失败（${response.status}）`);
+  return response.json();
+};
+
+const roleEvolutionFallback = () => ({
+  jobs: roleCatalogData,
+  pending: [...discoveryCandidates, ...marketChangeCandidates],
+  latest: {
+    id: 'EV-20260725-01',
+    role: evolutionData.role,
+    version: evolutionData.versions[0].version,
+    status: '待发布',
+    summary: evolutionData.versions[0].summary,
+    added: evolutionData.versions[0].added,
+    removed: evolutionData.versions[0].removed,
+    modified: evolutionData.versions[0].modified,
+    evidence: evolutionData.versions[0].evidence,
+    updatedAt: evolutionData.versions[0].date,
+  },
+  analytics: {
+    role: evolutionData.role,
+    versions: evolutionData.versions,
+    trend: [
+      { month: '2025-12', frequency: 0.42 },
+      { month: '2026-02', frequency: 0.51 },
+      { month: '2026-04', frequency: 0.64 },
+      { month: '2026-07', frequency: 0.78 },
+    ],
+    lifecycle: [
+      { skill: 'Agent 工作流', status: '快速上升', frequency: 0.78, change: '+18%' },
+      { skill: '模型评测', status: '新兴', frequency: 0.61, change: '+21%' },
+      { skill: '传统 NLP 管线', status: '衰退', frequency: 0.18, change: '-14%' },
+    ],
+    migration: [
+      { from: 'RAG 基础使用', to: '检索质量优化', weight: 0.72 },
+      { from: '传统 NLP 管线', to: 'Agent 工作流', weight: 0.48 },
+    ],
+  },
+  optimization: roleCatalogData[0],
+});
+
+export const getRoleEvolutionWorkspace = async () => {
+  const fallback = roleEvolutionFallback();
+  if (!roleEvolutionApiUrl) return fallback;
+  try {
+    const [overview, jobs, reviewItems, optimization] = await Promise.all([
+      roleEvolutionRequest('/api/analytics/overview?domain=company'),
+      roleEvolutionRequest('/api/analytics/jobs?domain=company'),
+      roleEvolutionRequest('/api/review/items?domain=company'),
+      roleEvolutionRequest(`/api/optimization/profile?domain=company&standard_job=${encodeURIComponent(fallback.analytics.role)}`),
+    ]);
+    const jobNames = Array.isArray(jobs) ? jobs : [];
+    const profileRows = Array.isArray(optimization?.skills) ? optimization.skills : [];
+    return {
+      ...fallback,
+      jobs: jobNames.length ? jobNames.map((name) => ({ name, summary: '来自岗位技能演化数据源的岗位画像。', requiredSkills: [] })) : fallback.jobs,
+      pending: Array.isArray(reviewItems) ? reviewItems : fallback.pending,
+      analytics: { ...fallback.analytics, ...(overview || {}) },
+      optimization: profileRows.length ? { ...fallback.optimization, requiredSkills: profileRows.map((skill) => ({ name: skill.skill || skill.normalized_skill || skill })) } : fallback.optimization,
+    };
+  } catch {
+    return fallback;
+  }
+};
+
+export const submitRoleJd = async (payload) => {
+  try {
+    return roleEvolutionApiUrl
+      ? await roleEvolutionRequest('/api/jobs/submit-one-dry-run?domain=company', { method: 'POST', body: JSON.stringify(payload) })
+      : { effectId: 'EV-20260725-01', status: '待审核', ...roleEvolutionFallback().latest, input: payload };
+  } catch {
+    return { effectId: 'EV-20260725-01', status: '待审核', ...roleEvolutionFallback().latest, input: payload };
+  }
+};
+
+export const getLiveEvolution = async (effectId) => {
+  try {
+    return roleEvolutionApiUrl
+      ? await roleEvolutionRequest(`/api/live-evolution/${encodeURIComponent(effectId)}?domain=company`)
+      : roleEvolutionFallback().latest;
+  } catch {
+    return roleEvolutionFallback().latest;
+  }
+};
+
+export const getRoleAnalytics = async (params = {}) => {
+  try {
+    if (roleEvolutionApiUrl) {
+      const query = new URLSearchParams({ domain: 'company', ...params }).toString();
+      const [overview, trend, lifecycle, migration, profileCompare] = await Promise.all([
+        roleEvolutionRequest(`/api/analytics/overview?${query}`),
+        roleEvolutionRequest(`/api/analytics/job-trend?${query}`),
+        roleEvolutionRequest(`/api/analytics/lifecycle?${query}`),
+        roleEvolutionRequest(`/api/analytics/skill-migration?${query}`),
+        roleEvolutionRequest(`/api/analytics/profile-compare?${query}`),
+      ]);
+      return { overview, trend, lifecycle, migration, profileCompare };
+    }
+    return roleEvolutionFallback().analytics;
+  } catch {
+    return roleEvolutionFallback().analytics;
+  }
+};
+
+export const saveRoleOptimization = async (payload) => {
+  try {
+    return roleEvolutionApiUrl
+      ? await roleEvolutionRequest('/api/optimization/overrides?domain=company', { method: 'POST', body: JSON.stringify(payload) })
+      : { status: '已保存', version: 'v1.3', ...payload };
+  } catch {
+    return { status: '已保存', version: 'v1.3', ...payload };
+  }
+};
 export const getLiveMarketTrend = (skill) => getMarketTrends(skill);
 export const getMarketRuntimeStatus = async () => {
   const [runtimeResult, datasetResult] = await Promise.allSettled([

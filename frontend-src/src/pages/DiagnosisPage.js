@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
-import { Alert, App as AntdApp, Button, Skeleton, Upload } from 'antd';
+import { Alert, App as AntdApp, Button, Skeleton, Tag, Upload } from 'antd';
 import { ArrowRightOutlined, CheckCircleFilled, FilePdfOutlined, InboxOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import PageHeading from '../components/workbench/PageHeading';
 import TechnicalInspector from '../components/workbench/TechnicalInspector';
@@ -33,6 +33,9 @@ const DiagnosisPage = () => {
   const [error, setError] = useState(null);
   const [selectedRoleId, setSelectedRoleId] = useState(null);
   const [selectedGap, setSelectedGap] = useState('Agent 工作流');
+  const [roleContext] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('roleEvolutionContext') || 'null'); } catch { return null; }
+  });
   const pageRef = useRef(null);
 
   useGSAP(() => {
@@ -111,7 +114,9 @@ const DiagnosisPage = () => {
 
   return (
     <div className="workbench-page diagnosis-page-v2" ref={pageRef}>
-      <PageHeading eyebrow="PERSON-ROLE DIAGNOSIS" title="人岗诊断" description="上传简历后自动匹配岗位图谱，确认目标岗位并查看可解释的能力差距。" />
+      <PageHeading eyebrow="PERSON-ROLE DIAGNOSIS" title="人岗诊断" description="上传简历后自动匹配岗位图谱，确认目标岗位并查看可解释的能力差距。">
+        {roleContext && <Tag color="blue">当前岗位版本：{roleContext.role} · {roleContext.version}</Tag>}
+      </PageHeading>
 
       <nav className="diagnosis-flow" aria-label="诊断流程">
         {['上传简历', '确认画像', '自动匹配', '差距诊断'].map((label, index) => <React.Fragment key={label}><span className={analysis || index === 0 ? 'active' : ''}><b>{index + 1}</b>{label}</span>{index < 3 && <i />}</React.Fragment>)}

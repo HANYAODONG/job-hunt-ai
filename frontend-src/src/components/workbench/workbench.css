@@ -1014,6 +1014,7 @@
 .graph-live-indicator i { width: 6px; height: 6px; background: var(--graph-mint); border-radius: 50%; box-shadow: 0 0 0 4px rgba(143, 206, 159, .1); }
 .graph-hud h1 { margin: 0; overflow: hidden; color: var(--graph-ink); font-size: 16px; font-weight: 650; letter-spacing: 0; text-overflow: ellipsis; white-space: nowrap; }
 .graph-hud-title p { margin: 4px 0 0; color: var(--graph-faint); font-size: 9px; }
+.graph-role-context { display: block; margin-top: 5px; color: var(--graph-mint); font-size: 9px; }
 
 .graph-hud-controls { min-width: 0; display: flex; align-items: center; justify-content: flex-end; gap: 7px; }
 .graph-search { width: 230px; }
