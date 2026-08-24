@@ -7,6 +7,7 @@ import pandas as pd
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile
 
 from app.services import analytics_service, government_job_service, job_service
+from app.services.live_update_effect_service import get_live_update_effect
 from app.services.profile_override_service import save_profile_overrides
 from app.models.jd_update import (
     Domain,
@@ -72,6 +73,14 @@ async def import_csv(
 @router.get("/reviews")
 def reviews(domain: Domain = Query("company")) -> list[dict[str, Any]]:
     return _service(domain).get_review_items()
+
+
+@router.get("/live-evolution/{effect_id}")
+def live_evolution(effect_id: str, domain: Domain = Query("company")) -> dict[str, Any]:
+    try:
+        return get_live_update_effect(domain, effect_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.post("/reviews/{item_id}/reject")

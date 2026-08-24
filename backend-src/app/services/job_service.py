@@ -11,6 +11,11 @@ from uuid import uuid4
 import pandas as pd
 
 from .backup_service import create_backup
+from .live_update_effect_service import (
+    build_live_update_effect,
+    capture_current_job_profile,
+    record_live_update_effect,
+)
 from .paths import (
     BASE_DATABASE,
     BASE_EVENT_STREAM,
@@ -127,6 +132,7 @@ def submit_one_dry_run(payload: dict[str, str]) -> dict[str, Any]:
             skill_pool_path=BASE_SKILL_POOL,
             always_queue_job=False,
         )
+        before_profile = capture_current_job_profile("company", preview.route.best_job.name)
         applied = _build_system(progress).process(
             posting,
             write=True,
@@ -136,6 +142,13 @@ def submit_one_dry_run(payload: dict[str, str]) -> dict[str, Any]:
         result_payload = serialize_review_process_result(applied, skill_pool_path=BASE_SKILL_POOL)
         result_payload["progress"] = progress
         result_payload["merge_result"] = _merge_summary(applied)
+        result_payload["live_update_effect"] = _record_live_effect(
+            posting=posting,
+            standard_job=preview.route.best_job.name,
+            standard_category=category,
+            before_profile=before_profile,
+            normalized_skills=applied.normalized_skills,
+        )
         item = store.create_review_item(
             review_id=str(uuid4()),
             review_type="job",
@@ -211,6 +224,7 @@ def confirm_existing(
     posting.routing_job_title = clean_text(item["result"].get("routing_job_title"))
     posting.skills = mentions
     backup = create_backup(f"confirm existing job {item_id}")
+    before_profile = capture_current_job_profile("company", selected_job)
     applied = _build_system([]).process(
         posting,
         write=True,
@@ -220,6 +234,13 @@ def confirm_existing(
     result_payload = serialize_review_process_result(applied, skill_pool_path=BASE_SKILL_POOL)
     result_payload["merge_result"] = _merge_summary(applied)
     result_payload["backup"] = backup
+    result_payload["live_update_effect"] = _record_live_effect(
+        posting=posting,
+        standard_job=selected_job,
+        standard_category=category,
+        before_profile=before_profile,
+        normalized_skills=applied.normalized_skills,
+    )
     return SQLiteJobUpdateStore(BASE_DATABASE).update_review_item(
         item_id,
         status="merged_existing_job",
@@ -510,3 +531,23 @@ def _generate_job_id(month: str, job_title: str) -> str:
 def _progress(messages: list[str], message: str) -> None:
     messages.append(message)
     print(f"[web_job_update] {message}", flush=True)
+
+
+def _record_live_effect(
+    *,
+    posting: JobPosting,
+    standard_job: str,
+    standard_category: str,
+    before_profile: list[dict[str, Any]],
+    normalized_skills: list[Any],
+) -> dict[str, Any]:
+    after_profile = capture_current_job_profile("company", standard_job)
+    effect = build_live_update_effect(
+        standard_job=standard_job,
+        standard_category=standard_category,
+        month=posting.month,
+        before_profile=before_profile,
+        after_profile=after_profile,
+        submitted_skills=[clean_text(skill.normalized_skill) for skill in normalized_skills],
+    )
+    return record_live_update_effect("company", job_id=posting.job_id, effect=effect)
