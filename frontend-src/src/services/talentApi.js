@@ -5,7 +5,6 @@ import {
   evaluationData,
   evolutionData,
   governanceData,
-  graphData,
   learningPlanData,
   marketChangeCandidates,
   roleCatalogData,
@@ -33,7 +32,7 @@ export const TALENT_API_CAPABILITIES = Object.freeze({
   semanticReranking: 'live',
   knowledgeGraphGap: 'live',
   fusionRanking: 'live',
-  capabilityGraph: 'mock-only',
+  capabilityGraph: 'live-with-canonical-fallback',
   learningPlan: 'mock-only',
   recruitment: 'live-with-fallback',
   candidatePipeline: 'live-with-fallback',
@@ -61,9 +60,9 @@ export const getCapabilityGraph = (year) => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.json();
     })
-    .catch(() => {
-      console.warn('Graph API is unavailable; using mock graph data.');
-      return mockOnly(graphData);
+    .catch((error) => {
+      console.error('Graph API is unavailable:', error);
+      throw error;
     });
 };
 
