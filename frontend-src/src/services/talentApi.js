@@ -392,12 +392,15 @@ const normalizeAnalytics = (raw, fallback) => {
     : fallback.trend;
   const lifecycleRows = raw?.lifecycle?.rows || [];
   const lifecycle = lifecycleRows.length
-    ? lifecycleRows.slice(0, 12).map((row) => ({
-      skill: skillName(row),
-      status: row.lifecycle_status || row.snapshot_skill_status || '观察中',
-      frequency: Number(row.current_monthly_skill_frequency || row.monthly_skill_frequency || 0),
-      change: row.mom_frequency_change == null ? '' : `${Number(row.mom_frequency_change) >= 0 ? '+' : ''}${Number(row.mom_frequency_change).toFixed(2)}`,
-    }))
+    ? lifecycleRows
+      .filter((row) => Number(row.current_monthly_skill_frequency || row.monthly_skill_frequency || 0) > 0 || Number(row.recent_3m_skill_count || 0) > 0)
+      .sort((a, b) => Number(b.current_monthly_skill_frequency || b.monthly_skill_frequency || 0) - Number(a.current_monthly_skill_frequency || a.monthly_skill_frequency || 0))
+      .slice(0, 12).map((row) => ({
+        skill: skillName(row),
+        status: row.lifecycle_status || row.snapshot_skill_status || '观察中',
+        frequency: Number(row.current_monthly_skill_frequency || row.monthly_skill_frequency || 0),
+        change: row.mom_frequency_change == null ? '' : `${Number(row.mom_frequency_change) >= 0 ? '+' : ''}${Number(row.mom_frequency_change).toFixed(2)}`,
+      }))
     : fallback.lifecycle;
   const migrationRows = raw?.migration?.spread || [];
   const migration = migrationRows.length
@@ -451,19 +454,21 @@ export const getRoleEvolutionWorkspace = async () => {
   const fallback = roleEvolutionFallback();
   if (!roleEvolutionLiveEnabled) return fallback;
   try {
-    const [overview, jobs, reviewItems, optimization, trend, lifecycle, migration] = await Promise.all([
+    const jobsResponse = await roleEvolutionRequest(roleEvolutionPath('/jd-update/analytics/jobs?domain=company', '/api/analytics/jobs?domain=company'));
+    const jobNames = Array.isArray(jobsResponse) ? jobsResponse : [];
+    const analyticsRole = jobNames.includes(fallback.analytics.role) ? fallback.analytics.role : (jobNames[0] || fallback.analytics.role);
+    const standardJobQuery = `&standard_job=${encodeURIComponent(analyticsRole)}`;
+    const [overview, reviewItems, optimization, trend, lifecycle, migration] = await Promise.all([
       roleEvolutionRequest(roleEvolutionPath('/jd-update/analytics/overview?domain=company', '/api/analytics/overview?domain=company')),
-      roleEvolutionRequest(roleEvolutionPath('/jd-update/analytics/jobs?domain=company', '/api/analytics/jobs?domain=company')),
       roleEvolutionRequest(roleEvolutionPath('/jd-update/reviews?domain=company', '/api/review/items?domain=company')),
       roleEvolutionRequest(roleEvolutionPath(
-        `/jd-update/optimization/profile?domain=company&standard_job=${encodeURIComponent(fallback.analytics.role)}`,
-        `/api/optimization/profile?domain=company&standard_job=${encodeURIComponent(fallback.analytics.role)}`,
+        `/jd-update/optimization/profile?domain=company&standard_job=${encodeURIComponent(analyticsRole)}`,
+        `/api/optimization/profile?domain=company&standard_job=${encodeURIComponent(analyticsRole)}`,
       )),
-      roleEvolutionRequest(roleEvolutionPath('/jd-update/analytics/job-trend?domain=company', '/api/analytics/job-trend?domain=company')),
-      roleEvolutionRequest(roleEvolutionPath('/jd-update/analytics/lifecycle?domain=company', '/api/analytics/lifecycle?domain=company')),
+      roleEvolutionRequest(roleEvolutionPath(`/jd-update/analytics/job-trend?domain=company${standardJobQuery}`, `/api/analytics/job-trend?domain=company${standardJobQuery}`)),
+      roleEvolutionRequest(roleEvolutionPath(`/jd-update/analytics/lifecycle?domain=company${standardJobQuery}`, `/api/analytics/lifecycle?domain=company${standardJobQuery}`)),
       roleEvolutionRequest(roleEvolutionPath('/jd-update/analytics/skill-migration?domain=company', '/api/analytics/skill-migration?domain=company')),
     ]);
-    const jobNames = Array.isArray(jobs) ? jobs : [];
     const profileRows = Array.isArray(optimization?.skills) ? optimization.skills : [];
     const latestReview = Array.isArray(reviewItems) ? reviewItems[0] : null;
     const latest = latestReview ? normalizeProcessResult(latestReview) : fallback.latest;
@@ -474,7 +479,7 @@ export const getRoleEvolutionWorkspace = async () => {
       latest,
       analytics: normalizeAnalytics(
         { trend, lifecycle, migration },
-        { ...fallback.analytics, role: latest.role, ...(overview || {}) },
+        { ...fallback.analytics, role: analyticsRole, ...(overview || {}) },
       ),
       optimization: profileRows.length ? {
         ...fallback.optimization,
