@@ -5,7 +5,13 @@ import {
   searchBm25,
 } from './intelligenceApi';
 import { rankJobs } from './fusionApi';
-import { diagnoseCandidate, TALENT_API_CAPABILITIES } from './talentApi';
+import {
+  diagnoseCandidate,
+  getRoleEvolutionWorkspace,
+  saveRoleOptimization,
+  submitRoleJd,
+  TALENT_API_CAPABILITIES,
+} from './talentApi';
 
 jest.mock('./api', () => ({
   getJobById: jest.fn(),
@@ -45,6 +51,66 @@ describe('diagnoseCandidate', () => {
       recruitment: 'live-with-fallback',
       candidatePipeline: 'live-with-fallback',
     });
+  });
+
+  it('exposes the four role-evolution workspaces with stable fallback data', async () => {
+    const result = await getRoleEvolutionWorkspace();
+
+    expect(result).toEqual(expect.objectContaining({
+      jobs: expect.any(Array),
+      pending: expect.any(Array),
+      latest: expect.objectContaining({ role: expect.any(String), added: expect.any(Array) }),
+      analytics: expect.objectContaining({ versions: expect.any(Array), trend: expect.any(Array) }),
+      optimization: expect.objectContaining({ name: expect.any(String) }),
+    }));
+  });
+
+  it('uses a real job for role-evolution analytics instead of the backend default', async () => {
+    const previousApiUrl = process.env.REACT_APP_API_URL;
+    const previousFetch = global.fetch;
+    process.env.REACT_APP_API_URL = 'http://role-evolution.test/api/v1';
+    const payloads = {
+      '/jd-update/analytics/overview': {},
+      '/jd-update/analytics/jobs': ['大模型应用工程师'],
+      '/jd-update/reviews': [],
+      '/jd-update/optimization/profile': { skills: [] },
+      '/jd-update/analytics/job-trend': {
+        standard_job: '大模型应用工程师',
+        months: ['2026-07'],
+        series: [{ points: [{ frequency: 0.8 }] }],
+      },
+      '/jd-update/analytics/lifecycle': {
+        rows: [
+          { skill: '旧技能', lifecycle_status: '废弃技能', current_monthly_skill_frequency: 0 },
+          { skill: '核心技能', lifecycle_status: '稳定核心技能', current_monthly_skill_frequency: 0.8 },
+        ],
+      },
+      '/jd-update/analytics/skill-migration': { spread: [] },
+    };
+    global.fetch = jest.fn(async (url) => {
+      const key = Object.keys(payloads).find((path) => url.includes(path));
+      return { ok: true, json: async () => payloads[key] || {} };
+    });
+
+    jest.resetModules();
+    const { getRoleEvolutionWorkspace: getLiveWorkspace } = require('./talentApi');
+    const result = await getLiveWorkspace();
+
+    expect(result.analytics.role).toBe('大模型应用工程师');
+    expect(result.analytics.lifecycle[0]).toMatchObject({ skill: '核心技能', frequency: 0.8 });
+    expect(global.fetch.mock.calls.some(([url]) => url.includes('analytics/job-trend') && url.includes('standard_job=%E5%A4%A7%E6%A8%A1%E5%9E%8B%E5%BA%94%E7%94%A8%E5%B7%A5%E7%A8%8B%E5%B8%88'))).toBe(true);
+
+    global.fetch = previousFetch;
+    if (previousApiUrl === undefined) delete process.env.REACT_APP_API_URL;
+    else process.env.REACT_APP_API_URL = previousApiUrl;
+  });
+
+  it('keeps JD update and optimization payloads usable when the service is offline', async () => {
+    const submitted = await submitRoleJd({ job_title: '测试岗位', month: '2026-08' });
+    const saved = await saveRoleOptimization({ standard_job: '大模型应用工程师', changes: [] });
+
+    expect(submitted).toMatchObject({ effectId: expect.any(String), status: expect.any(String) });
+    expect(saved).toMatchObject({ status: '已保存', standard_job: '大模型应用工程师' });
   });
 
   it('runs and normalizes the complete intelligence pipeline', async () => {

@@ -16,7 +16,7 @@ import PersonalizedRecommendationsPage from './pages/PersonalizedRecommendations
 import FusionDemoPage from './pages/FusionDemoPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
-import DiscoveryPage from './pages/DiscoveryPage';
+import RoleEvolutionCenterPage from './pages/RoleEvolutionCenterPage';
 import GraphPage from './pages/GraphPage';
 import DiagnosisPage from './pages/DiagnosisPage';
 import LearningPlanPage from './pages/LearningPlanPage';
@@ -70,7 +70,7 @@ function App() {
                   <Route index element={<WorkspaceHomeRedirect />} />
                   <Route path="recruitment" element={<RecruitmentJobsPage />} />
                   <Route path="candidates" element={<CandidateMatchingPage />} />
-                  <Route path="signals" element={<DiscoveryPage />} />
+                  <Route path="signals" element={<RoleEvolutionCenterPage />} />
                   <Route path="discovery" element={<Navigate replace to="/signals" />} />
                   <Route path="roles" element={<Navigate replace to="/graph" />} />
                   <Route path="graph" element={<GraphPage />} />

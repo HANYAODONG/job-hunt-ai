@@ -26,7 +26,7 @@ gsap.registerPlugin(useGSAP);
 const enterpriseItems = [
   { key: '/recruitment', icon: <FileTextOutlined />, label: '我的招聘' },
   { key: '/candidates', icon: <TeamOutlined />, label: '候选匹配', badge: 5 },
-  { key: '/signals', icon: <RadarChartOutlined />, label: '岗位市场雷达', badge: 18 },
+  { key: '/signals', icon: <RadarChartOutlined />, label: '岗位演化中心', badge: 18 },
   { key: '/graph', icon: <ClusterOutlined />, label: '全景图谱' },
 ];
 
@@ -154,7 +154,7 @@ const WorkbenchLayout = () => {
   };
   const commandItems = navItems.map((item) => ({
     ...item,
-    meta: item.key === '/graph' ? 'Capability graph' : item.key === '/diagnosis' ? 'Person-role diagnosis' : item.key === '/learning' ? 'Learning plan' : item.key === '/signals' ? 'Market evolution' : item.key === '/recruitment' ? 'Job postings' : 'Candidate review',
+    meta: item.key === '/graph' ? 'Capability graph' : item.key === '/diagnosis' ? 'Person-role diagnosis' : item.key === '/learning' ? 'Learning plan' : item.key === '/signals' ? 'Role evolution center' : item.key === '/recruitment' ? 'Job postings' : 'Candidate review',
   }));
   const matchingCommands = commandItems.filter((item) => `${item.label} ${item.meta}`.toLowerCase().includes(commandQuery.toLowerCase()));
   const executeCommand = (key) => {

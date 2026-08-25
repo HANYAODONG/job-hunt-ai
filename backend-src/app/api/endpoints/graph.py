@@ -2,10 +2,12 @@ import logging
 from fastapi import APIRouter
 from collections import Counter
 from app.services.knowledge_graph_service import KnowledgeGraphService
+from app.services.talent_data_service import TalentDataService
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 kg_service = KnowledgeGraphService()
+talent_data_service = TalentDataService()
 
 # 每个岗位族最多展示的岗位数（控制在总节点 1000 左右）
 MAX_ROLES_PER_FAMILY = 10
@@ -120,16 +122,22 @@ async def get_capability_graph():
 
             if not records:
                 logger.warning("图谱中没有找到岗位数据")
-                return _empty_graph()
+                return _graph_from_canonical_jobs()
 
             families_map = {}
             roles = []
+            skill_names = set()
+            relationship_count = 0
 
             for record in records:
                 job_id = record.get("id")
                 title = record.get("title") or job_id
                 job_family = record.get("job_family") or "未分类"
                 skills = record.get("skills") or []
+                if isinstance(skills, list):
+                    normalized_skills = [str(skill).strip() for skill in skills if str(skill).strip()]
+                    skill_names.update(normalized_skills)
+                    relationship_count += len(normalized_skills)
 
                 roles.append({
                     "id": job_id,
@@ -196,7 +204,9 @@ async def get_capability_graph():
             summary = {
                 "domains": len(domains_map),
                 "families": len(families_map),
-                "roles": len(roles)
+                "roles": len(roles),
+                "skills": len(skill_names),
+                "relationships": relationship_count,
             }
 
             all_skills = []
@@ -219,7 +229,106 @@ async def get_capability_graph():
 
     except Exception as e:
         logger.error(f"获取图谱数据失败: {e}")
+        return _graph_from_canonical_jobs()
+
+
+def _graph_from_canonical_jobs():
+    """Build the same tree shape from the canonical JSONL when Neo4j is offline."""
+    try:
+        result = talent_data_service.list_jobs(limit=100000, offset=0)
+        jobs = result.get("items", [])
+    except Exception as exc:
+        logger.error("读取标准岗位数据失败: %s", exc)
         return _empty_graph()
+
+    if not jobs:
+        return _empty_graph()
+
+    families_map = {}
+    roles = []
+    skill_names = set()
+    relationship_count = 0
+    for job in jobs:
+        job_id = str(job.get("id") or job.get("job_id") or "")
+        if not job_id:
+            continue
+        family = str(job.get("jobFamily") or job.get("roleVersion") or "未分类")
+        skills = [item.get("name") if isinstance(item, dict) else str(item) for item in (job.get("requiredSkills") or [])]
+        normalized_skills = [str(skill).strip() for skill in skills if str(skill).strip()]
+        skill_names.update(normalized_skills)
+        relationship_count += len(normalized_skills)
+        roles.append({
+            "id": job_id,
+            "label": str(job.get("title") or family),
+            "type": "role",
+            "detail": f"{family} · {job.get('standardCategory') or '标准岗位'}",
+            "count": 1,
+            "growth": "+0%",
+            "skills": [skill for skill in skills if skill][:8],
+        })
+        families_map.setdefault(family, []).append(job_id)
+
+    domains_map = {}
+    for family_name, job_ids in families_map.items():
+        domain = FAMILY_TO_DOMAIN.get(family_name, "其他")
+        domains_map.setdefault(domain, {})[family_name] = job_ids
+
+    tree = {
+        "id": "root",
+        "label": "岗位银河",
+        "type": "root",
+        "count": len(roles),
+        "growth": "+0%",
+        "detail": f"当前图谱包含 {len(roles)} 个标准岗位，覆盖 {len(families_map)} 个岗位族，{len(domains_map)} 个岗位大类。",
+        "skills": ["岗位分类", "能力映射", "动态演化"],
+        "children": [],
+    }
+    role_by_id = {role["id"]: role for role in roles}
+    for domain_name, families in domains_map.items():
+        domain_node = {
+            "id": f"domain_{domain_name}",
+            "label": domain_name,
+            "type": "domain",
+            "count": sum(len(ids) for ids in families.values()),
+            "growth": "+0%",
+            "detail": f"{domain_name}，包含 {len(families)} 个岗位族",
+            "skills": [],
+            "children": [],
+        }
+        for family_name, job_ids in families.items():
+            family_roles = [role_by_id[job_id] for job_id in job_ids if job_id in role_by_id][:MAX_ROLES_PER_FAMILY]
+            domain_node["children"].append({
+                "id": f"family_{family_name}",
+                "label": family_name,
+                "type": "family",
+                "count": len(job_ids),
+                "display_count": len(family_roles),
+                "total": len(job_ids),
+                "growth": "+0%",
+                "detail": f"{family_name}，包含 {len(job_ids)} 个岗位（展示前 {len(family_roles)} 个）",
+                "skills": [],
+                "children": family_roles,
+            })
+        tree["children"].append(domain_node)
+
+    skills = [skill for role in roles for skill in role["skills"]]
+    top_skills = [skill for skill, _ in Counter(skills).most_common(10)]
+    stacks = ["大模型技术栈", "数据智能技术栈", "智能终端技术栈"]
+    if any("模型" in skill or "LLM" in skill or "Agent" in skill for skill in top_skills):
+        stacks.insert(0, "人工智能技术栈")
+    return {
+        "tree": tree,
+        "summary": {
+            "domains": len(domains_map),
+            "families": len(families_map),
+            "roles": len(roles),
+            "skills": len(skill_names),
+            "relationships": relationship_count,
+        },
+        "stacks": stacks,
+        "jobs": [role["label"] for role in roles[:10]],
+        "source": result.get("source", "canonical_dataset"),
+    }
 
 
 def _empty_graph():
@@ -234,7 +343,7 @@ def _empty_graph():
             "skills": [],
             "children": []
         },
-        "summary": {"domains": 0, "families": 0, "roles": 0},
+        "summary": {"domains": 0, "families": 0, "roles": 0, "skills": 0, "relationships": 0},
         "stacks": [],
         "jobs": []
     }

@@ -1,7 +1,7 @@
 const { createProxyMiddleware } = require('http-proxy-middleware');
 
 module.exports = function (app) {
-  const target = process.env.API_PROXY_TARGET || 'http://localhost:18088';
+  const target = process.env.API_PROXY_TARGET || 'http://localhost:8000';
 
   // 只把后端请求代理到 API 服务，前端页面路由留给 React Router
   app.use(
