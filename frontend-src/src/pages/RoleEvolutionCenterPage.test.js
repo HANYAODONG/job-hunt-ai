@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { App as AntdApp } from 'antd';
 import { MemoryRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from 'react-query';
 import RoleEvolutionCenterPage from './RoleEvolutionCenterPage';
 import { getRoleEvolutionWorkspace } from '../services/talentApi';
 
@@ -25,12 +26,21 @@ const workspace = {
 };
 
 describe('RoleEvolutionCenterPage', () => {
+  const renderPage = () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    return render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter><AntdApp><RoleEvolutionCenterPage /></AntdApp></MemoryRouter>
+      </QueryClientProvider>,
+    );
+  };
+
   beforeEach(() => {
     getRoleEvolutionWorkspace.mockResolvedValue(workspace);
   });
 
   it('shows the four core role-evolution views', async () => {
-    render(<MemoryRouter><AntdApp><RoleEvolutionCenterPage /></AntdApp></MemoryRouter>);
+    renderPage();
 
     expect(await screen.findByText('岗位演化中心')).toBeTruthy();
     expect(screen.getByRole('button', { name: /单条 JD 更新/ })).toBeTruthy();
@@ -40,7 +50,7 @@ describe('RoleEvolutionCenterPage', () => {
   });
 
   it('switches from JD input to the analytics view without losing context', async () => {
-    render(<MemoryRouter><AntdApp><RoleEvolutionCenterPage /></AntdApp></MemoryRouter>);
+    renderPage();
     await screen.findByText('提交一条岗位 JD');
 
     fireEvent.click(screen.getByRole('button', { name: /时序分析/ }));

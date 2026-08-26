@@ -142,7 +142,7 @@ const createStarMaterial = (color) => new THREE.ShaderMaterial({
 });
 
 const createGalaxyGeometry = () => {
-  const count = 52000;
+  const count = 36000;
   const positions = new Float32Array(count * 3);
   const colors = new Float32Array(count * 3);
   const sizes = new Float32Array(count);
@@ -213,7 +213,7 @@ const createGalaxyGeometry = () => {
 };
 
 const createHaloGeometry = () => {
-  const count = 2200;
+  const count = 1400;
   const positions = new Float32Array(count * 3);
   const colors = new Float32Array(count * 3);
   const sizes = new Float32Array(count);
@@ -246,7 +246,7 @@ const createHaloGeometry = () => {
 };
 
 const createBackgroundGeometry = () => {
-  const count = 5000;
+  const count = 3200;
   const positions = new Float32Array(count * 3);
   const colors = new Float32Array(count * 3);
   const sizes = new Float32Array(count);
@@ -280,8 +280,18 @@ const createBackgroundGeometry = () => {
   return geometry;
 };
 
-// 动态计算 domain 位置，支持任意数量的大类
+// Keep overview labels readable when the taxonomy has more categories than one orbit can hold.
 const anchorForDomain = (index, totalDomains = 10) => {
+  if (totalDomains > ARM_COLORS.length) {
+    const innerCount = Math.ceil(totalDomains / 2);
+    const isOuterRing = index >= innerCount;
+    const ringCount = isOuterRing ? totalDomains - innerCount : innerCount;
+    const ringIndex = isOuterRing ? index - innerCount : index;
+    const radius = isOuterRing ? 5.25 : 3.25;
+    const angleOffset = isOuterRing ? Math.PI / ringCount : 0;
+    const angle = (ringIndex / ringCount) * Math.PI * 2 + angleOffset;
+    return new THREE.Vector3(Math.cos(angle) * radius, 0, Math.sin(angle) * radius);
+  }
   const radius = DOMAIN_RADII[index % DOMAIN_RADII.length] || 3.5;
   const angle = (index / totalDomains) * Math.PI * 2 + radius * 1.16;
   return new THREE.Vector3(Math.cos(angle) * radius, 0, Math.sin(angle) * radius);
@@ -291,6 +301,7 @@ const createLabel = (node, className, eyebrow) => {
   const element = document.createElement('div');
   element.className = `galaxy-object-label ${className}`;
   element.dataset.nodeId = node.id;
+  if (node.is_single_role) element.classList.add('is-single-role');
   if (eyebrow) {
     const level = document.createElement('span');
     level.textContent = eyebrow;
@@ -300,7 +311,9 @@ const createLabel = (node, className, eyebrow) => {
   label.textContent = node.label;
   element.appendChild(label);
   const meta = document.createElement('small');
-  meta.textContent = `${node.count} 岗位 · ${node.growth}`;
+  meta.textContent = node.is_single_role && node.taxonomy_status
+    ? `${node.count} 岗位 · ${node.taxonomy_status}`
+    : `${node.count} 岗位 · ${node.growth}`;
   element.appendChild(meta);
   return new CSS2DObject(element);
 };
@@ -315,16 +328,22 @@ const createOrbit = (radius, color, opacity = 0.28) => {
   return new THREE.LineLoop(geometry, material);
 };
 
-const addInteractiveStar = ({ parent, node, color, glowTexture, position, size, labelClass, eyebrow, interactiveObjects, nodeObjects, starMaterials }) => {
+const addInteractiveStar = ({ parent, node, color, glowTexture, position, size, labelClass, eyebrow, interactiveObjects, nodeObjects, starMaterials, starMaterialCache }) => {
   const group = new THREE.Group();
   group.position.copy(position);
   parent.add(group);
 
+  const materialKey = new THREE.Color(color).getHexString();
+  let starMaterial = starMaterialCache.get(materialKey);
+  if (!starMaterial) {
+    starMaterial = createStarMaterial(color);
+    starMaterialCache.set(materialKey, starMaterial);
+    starMaterials.push(starMaterial);
+  }
   const star = new THREE.Mesh(
     new THREE.IcosahedronGeometry(size, size > 0.1 ? 4 : 2),
-    createStarMaterial(color),
+    starMaterial,
   );
-  starMaterials.push(star.material);
   star.userData = { nodeId: node.id, baseScale: 1, nodeType: node.type };
   group.add(star);
 
@@ -353,14 +372,14 @@ const addInteractiveStar = ({ parent, node, color, glowTexture, position, size, 
   return group;
 };
 
-const buildDomainSystem = ({ domain, domainIndex, color, glowTexture, interactiveObjects, nodeObjects, animatedBodies, resources, starMaterials }) => {
+const buildDomainSystem = ({ domain, domainIndex, color, glowTexture, interactiveObjects, nodeObjects, animatedBodies, resources, starMaterials, starMaterialCache }) => {
   const system = new THREE.Group();
   system.name = `domain-system-${domain.id}`;
   system.visible = false;
   system.scale.setScalar(0.001);
   system.rotation.x = 0.08;
 
-  addInteractiveStar({
+  const center = addInteractiveStar({
     parent: system,
     node: domain,
     color,
@@ -368,11 +387,13 @@ const buildDomainSystem = ({ domain, domainIndex, color, glowTexture, interactiv
     position: new THREE.Vector3(),
     size: 0.16,
     labelClass: 'galaxy-system-star-label',
-    eyebrow: '一级岗位 · 恒星',
+    eyebrow: '一级分类 · 恒星',
     interactiveObjects,
     nodeObjects,
     starMaterials,
+    starMaterialCache,
   });
+  system.userData.centralGlow = center.children.find((child) => child.isSprite);
 
   (domain.children || []).forEach((family, familyIndex) => {
     const orbitRadius = 1.15 + familyIndex * 0.82;
@@ -392,10 +413,11 @@ const buildDomainSystem = ({ domain, domainIndex, color, glowTexture, interactiv
       position: new THREE.Vector3(Math.cos(familyAngle) * orbitRadius, 0, Math.sin(familyAngle) * orbitRadius),
       size: 0.1 + familyIndex * 0.012,
       labelClass: 'galaxy-planet-label',
-      eyebrow: '二级岗位',
+      eyebrow: '岗位方向',
       interactiveObjects,
       nodeObjects,
       starMaterials,
+      starMaterialCache,
     });
     animatedBodies.push({ object: familyPivot, speed: 0.035 - familyIndex * 0.006, phase: 0 });
   });
@@ -403,7 +425,7 @@ const buildDomainSystem = ({ domain, domainIndex, color, glowTexture, interactiv
   return system;
 };
 
-const buildFamilySystem = ({ family, familyIndex, color, glowTexture, interactiveObjects, nodeObjects, animatedBodies, resources, starMaterials }) => {
+const buildFamilySystem = ({ family, familyIndex, color, glowTexture, interactiveObjects, nodeObjects, animatedBodies, resources, starMaterials, starMaterialCache }) => {
   const system = new THREE.Group();
   system.name = `family-system-${family.id}`;
   system.visible = false;
@@ -411,7 +433,7 @@ const buildFamilySystem = ({ family, familyIndex, color, glowTexture, interactiv
   system.rotation.set(0.12, 0, familyIndex % 2 ? 0.13 : -0.13);
 
   const familyColor = new THREE.Color(color).lerp(new THREE.Color('#f0d7ad'), 0.12 + familyIndex * 0.07).getStyle();
-  addInteractiveStar({
+  const center = addInteractiveStar({
     parent: system,
     node: family,
     color: familyColor,
@@ -419,11 +441,13 @@ const buildFamilySystem = ({ family, familyIndex, color, glowTexture, interactiv
     position: new THREE.Vector3(),
     size: 0.075,
     labelClass: 'galaxy-system-star-label galaxy-family-center-label',
-    eyebrow: '二级岗位 · 中心行星',
+    eyebrow: '岗位方向 · 中心行星',
     interactiveObjects,
     nodeObjects,
     starMaterials,
+    starMaterialCache,
   });
+  system.userData.centralGlow = center.children.find((child) => child.isSprite);
 
   const roles = family.children || [];
   const roleCount = Math.max(roles.length, 1);
@@ -456,6 +480,7 @@ const buildFamilySystem = ({ family, familyIndex, color, glowTexture, interactiv
       interactiveObjects,
       nodeObjects,
       starMaterials,
+      starMaterialCache,
     });
     animatedBodies.push({ object: rolePivot, speed: 0.07 + roleIndex * 0.018, phase: roleAngle });
   });
@@ -476,8 +501,8 @@ const GalaxyScene = ({ tree, mode, focusDomainId, focusFamilyId, selectedId, onN
     const mount = mountRef.current;
     if (!mount || !tree) return undefined;
 
-    const pixelRatio = Math.min(window.devicePixelRatio || 1, 1.6);
-    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: 'high-performance' });
+    const pixelRatio = Math.min(window.devicePixelRatio || 1, 1.35);
+    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: pixelRatio <= 1.15, powerPreference: 'high-performance' });
     renderer.setPixelRatio(pixelRatio);
     renderer.setClearColor(0x000000, 0);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -508,9 +533,12 @@ const GalaxyScene = ({ tree, mode, focusDomainId, focusFamilyId, selectedId, onN
     const nodeObjects = new Map();
     const animatedBodies = [];
     const starMaterials = [];
+    const starMaterialCache = new Map();
     const domainAnchors = new Map();
     const domainSystems = new Map();
     const familySystems = new Map();
+    const familyDescriptors = new Map();
+    const systems = [];
 
     const backgroundGeometry = createBackgroundGeometry();
     const backgroundMaterial = createPointMaterial(pixelRatio, 0.92, 'background');
@@ -536,27 +564,51 @@ const GalaxyScene = ({ tree, mode, focusDomainId, focusFamilyId, selectedId, onN
       const anchor = anchorForDomain(index, totalDomains);
       const starGroup = addInteractiveStar({
         parent: galaxyGroup,
-        node: domain,
-        color,
-        glowTexture: glowTextures[index],
+      node: domain,
+      color,
+      glowTexture: glowTextures[index % glowTextures.length],
         position: anchor,
         size: 0.065,
         labelClass: 'galaxy-domain-label',
-        eyebrow: '一级岗位',
+        eyebrow: '一级分类',
         interactiveObjects,
         nodeObjects,
         starMaterials,
+        starMaterialCache,
       });
       domainAnchors.set(domain.id, starGroup);
-      const domainSystem = buildDomainSystem({ domain, domainIndex: index, color, glowTexture: glowTextures[index], interactiveObjects, nodeObjects, animatedBodies, resources, starMaterials });
+      const domainSystem = buildDomainSystem({ domain, domainIndex: index, color, glowTexture: glowTextures[index % glowTextures.length], interactiveObjects, nodeObjects, animatedBodies, resources, starMaterials, starMaterialCache });
       domainSystems.set(domain.id, domainSystem);
+      systems.push(domainSystem);
       scene.add(domainSystem);
       (domain.children || []).forEach((family, familyIndex) => {
-        const familySystem = buildFamilySystem({ family, familyIndex, color, glowTexture: glowTextures[index], interactiveObjects, nodeObjects, animatedBodies, resources, starMaterials });
-        familySystems.set(family.id, familySystem);
-        scene.add(familySystem);
+        familyDescriptors.set(family.id, {
+          family,
+          familyIndex,
+          color,
+          glowTexture: glowTextures[index % glowTextures.length],
+        });
       });
     });
+
+    const ensureFamilySystem = (familyId) => {
+      if (familySystems.has(familyId)) return familySystems.get(familyId);
+      const descriptor = familyDescriptors.get(familyId);
+      if (!descriptor) return null;
+      const familySystem = buildFamilySystem({
+        ...descriptor,
+        interactiveObjects,
+        nodeObjects,
+        animatedBodies,
+        resources,
+        starMaterials,
+        starMaterialCache,
+      });
+      familySystems.set(familyId, familySystem);
+      systems.push(familySystem);
+      scene.add(familySystem);
+      return familySystem;
+    };
 
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
@@ -614,7 +666,14 @@ const GalaxyScene = ({ tree, mode, focusDomainId, focusFamilyId, selectedId, onN
     const clock = new THREE.Clock();
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     let frameId;
+    let isIntersecting = true;
+    let isDocumentVisible = !document.hidden;
+    const scheduleFrame = () => {
+      if (!frameId && isIntersecting && isDocumentVisible) frameId = window.requestAnimationFrame(renderFrame);
+    };
     const renderFrame = () => {
+      frameId = null;
+      if (!isIntersecting || !isDocumentVisible) return;
       const elapsed = clock.getElapsedTime();
       galaxyMaterial.uniforms.uTime.value = elapsed;
       backgroundMaterial.uniforms.uTime.value = elapsed * 0.42;
@@ -625,9 +684,9 @@ const GalaxyScene = ({ tree, mode, focusDomainId, focusFamilyId, selectedId, onN
         background.rotation.x = Math.sin(elapsed * 0.025) * 0.018;
       }
       animatedBodies.forEach((body) => { body.object.rotation.y = body.phase + elapsed * body.speed; });
-      [...domainSystems.values(), ...familySystems.values()].forEach((system) => {
+      systems.forEach((system) => {
         if (system.visible) {
-          const centralGlow = system.children[0]?.children?.find((child) => child.isSprite);
+          const centralGlow = system.userData.centralGlow;
           if (centralGlow) {
             const baseScale = centralGlow.userData.baseScale || 1;
             centralGlow.scale.setScalar(baseScale * (1 + Math.sin(elapsed * 1.2) * 0.035));
@@ -637,8 +696,20 @@ const GalaxyScene = ({ tree, mode, focusDomainId, focusFamilyId, selectedId, onN
       controls.update();
       renderer.render(scene, camera);
       labelRenderer.render(scene, camera);
-      frameId = window.requestAnimationFrame(renderFrame);
+      scheduleFrame();
     };
+    const onVisibilityChange = () => {
+      isDocumentVisible = !document.hidden;
+      scheduleFrame();
+    };
+    const visibilityObserver = 'IntersectionObserver' in window
+      ? new IntersectionObserver(([entry]) => {
+        isIntersecting = entry.isIntersecting;
+        scheduleFrame();
+      }, { threshold: 0.01 })
+      : null;
+    visibilityObserver?.observe(mount);
+    document.addEventListener('visibilitychange', onVisibilityChange);
     renderFrame();
 
     engineRef.current = {
@@ -649,7 +720,8 @@ const GalaxyScene = ({ tree, mode, focusDomainId, focusFamilyId, selectedId, onN
       backgroundMaterial,
       domainAnchors,
       domainSystems,
-      familySystems,
+      ensureFamilySystem,
+      systems,
       nodeObjects,
       currentSystem: null,
       reduceMotion,
@@ -658,6 +730,8 @@ const GalaxyScene = ({ tree, mode, focusDomainId, focusFamilyId, selectedId, onN
 
     return () => {
       observer.disconnect();
+      visibilityObserver?.disconnect();
+      document.removeEventListener('visibilitychange', onVisibilityChange);
       window.cancelAnimationFrame(frameId);
       renderer.domElement.removeEventListener('pointermove', onPointerMove);
       renderer.domElement.removeEventListener('pointerleave', onPointerLeave);
@@ -688,12 +762,13 @@ const GalaxyScene = ({ tree, mode, focusDomainId, focusFamilyId, selectedId, onN
       backgroundMaterial,
       domainAnchors,
       domainSystems,
-      familySystems,
+      ensureFamilySystem,
+      systems,
       reduceMotion,
     } = engine;
     const motionScale = reduceMotion ? 0 : 1;
     const timeline = gsap.timeline({ defaults: { ease: 'power2.inOut' } });
-    const allSystems = [...domainSystems.values(), ...familySystems.values()];
+    const allSystems = systems;
     const previousSystem = engine.currentSystem;
 
     const beginTransition = () => {
@@ -763,7 +838,7 @@ const GalaxyScene = ({ tree, mode, focusDomainId, focusFamilyId, selectedId, onN
 
     const anchorObject = domainAnchors.get(focusDomainId);
     const targetSystem = mode === 'family'
-      ? familySystems.get(focusFamilyId)
+      ? ensureFamilySystem(focusFamilyId)
       : domainSystems.get(focusDomainId);
     if (!anchorObject || !targetSystem) return undefined;
 

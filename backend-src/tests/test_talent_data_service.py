@@ -139,6 +139,31 @@ class TalentDataServiceTests(unittest.TestCase):
         self.assertEqual([item["name"] for item in saved["requiredSkills"]], ["Python", "FastAPI"])
         self.assertEqual(candidates["items"][0]["status"], "入围")
 
+    def test_standard_role_jobs_use_saved_jd_overrides(self):
+        graph_service = TalentDataService(self.jobs_path, self.profiles_path, self.state_path)
+        # Prime the independent graph-side state cache before the edit.
+        graph_service.list_standard_role_jobs("软件研发", "服务端与通用开发", "后端开发工程师", limit=10)
+        self.service.save_job(
+            "JOB001",
+            {
+                "summary": "更新后的岗位说明",
+                "requiredSkills": [{"name": "Python", "level": 95}, {"name": "FastAPI", "level": 85}],
+            },
+        )
+
+        result = self.service.list_standard_role_jobs(
+            "软件研发", "服务端与通用开发", "后端开发工程师", limit=10,
+        )
+
+        self.assertEqual(result["total"], 1)
+        self.assertEqual(result["items"][0]["summary"], "更新后的岗位说明")
+        self.assertEqual([item["name"] for item in result["items"][0]["requiredSkills"]], ["Python", "FastAPI"])
+
+        graph_service.invalidate_runtime_state_cache()
+        refreshed = graph_service.list_standard_role_records()
+        role_record = next(item for item in refreshed if item["standard_role"] == "后端开发工程师")
+        self.assertEqual(role_record["skills"], ["Python", "FastAPI"])
+
 
 if __name__ == "__main__":
     unittest.main()

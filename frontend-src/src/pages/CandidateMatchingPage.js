@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useQuery, useQueryClient } from 'react-query';
 import {
   App as AntdApp,
   Button,
@@ -44,20 +45,22 @@ const defaultStats = {
   total_pages: 1,
   took_ms: 0,
 };
+const emptyJobs = [];
+const explanationModeLabel = (mode) => ({
+  deepseek_grounded_rag_v1: 'DeepSeek 证据分析',
+  grounded_fallback: '本地证据分析',
+  legacy: '规则证据分析',
+  'legacy-fallback': '本地规则分析',
+}[mode] || '证据分析');
 
 const CandidateMatchingPage = () => {
   const { message } = AntdApp.useApp();
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedJobId = searchParams.get('job');
-  const [jobs, setJobs] = useState([]);
-  const [dataSource, setDataSource] = useState('loading');
   const [jobId, setJobId] = useState(requestedJobId);
-  const [candidates, setCandidates] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
   const [stageFilter, setStageFilter] = useState('全部');
-  const [matchMethod, setMatchMethod] = useState('');
-  const [retrievalStats, setRetrievalStats] = useState(defaultStats);
-  const [stageCounts, setStageCounts] = useState({});
   const [threshold, setThreshold] = useState(55);
   const [thresholdDraft, setThresholdDraft] = useState(55);
   const [suggestedThreshold, setSuggestedThreshold] = useState(55);
@@ -65,22 +68,23 @@ const CandidateMatchingPage = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
   const [includeBelowThreshold, setIncludeBelowThreshold] = useState(false);
-  const [matchingLoading, setMatchingLoading] = useState(false);
   const [ragResult, setRagResult] = useState(null);
   const [ragLoading, setRagLoading] = useState(false);
   const candidateListRef = useRef(null);
 
+  const { data: jobsResult, isLoading: jobsLoading } = useQuery('recruitment-jobs', getRecruitmentJobs, {
+    staleTime: 5 * 60 * 1000,
+    cacheTime: 30 * 60 * 1000,
+  });
+  const jobs = useMemo(() => jobsResult?.items || emptyJobs, [jobsResult]);
+
   useEffect(() => {
-    getRecruitmentJobs().then((result) => {
-      const items = result.items;
-      setJobs(items);
-      setDataSource(result.source);
-      const nextId = items.some((job) => job.id === requestedJobId)
-        ? requestedJobId
-        : items.find((job) => job.status === '招聘中')?.id || items[0]?.id;
-      setJobId(nextId);
-    });
-  }, [requestedJobId]);
+    if (!jobs.length) return;
+    const nextId = jobs.some((job) => job.id === requestedJobId)
+      ? requestedJobId
+      : jobs.find((job) => job.status === '招聘中')?.id || jobs[0]?.id;
+    setJobId((current) => current && jobs.some((job) => job.id === current) ? current : nextId);
+  }, [jobs, requestedJobId]);
 
   useEffect(() => {
     if (jobId && requestedJobId !== jobId) {
@@ -88,44 +92,41 @@ const CandidateMatchingPage = () => {
     }
   }, [jobId, requestedJobId, setSearchParams]);
 
-  useEffect(() => {
-    if (!jobId) return;
-    let active = true;
-    setMatchingLoading(true);
-    getJobCandidates(jobId, {
-      minScore: threshold,
-      page,
-      pageSize,
-      includeBelowThreshold,
-    }).then((result) => {
-      if (!active) return;
-      const stats = result.retrieval_stats || defaultStats;
-      const recommendation = Number(stats.recommended_threshold ?? 55);
-      setSuggestedThreshold(recommendation);
-      if (!thresholdTouched && recommendation !== threshold) {
-        setThreshold(recommendation);
-        setThresholdDraft(recommendation);
-        setPage(1);
-        return;
-      }
-      setCandidates(result.items);
-      setRetrievalStats(stats);
-      setStageCounts(result.stage_counts || {});
-      setMatchMethod(result.method);
-      setDataSource(result.source);
-      const serverPage = result.retrieval_stats?.page;
-      if (serverPage && serverPage !== page) setPage(serverPage);
-      setSelectedId((current) => result.items.some((item) => item.id === current)
-        ? current
-        : result.items[0]?.id || null);
-      candidateListRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-    }).catch((error) => {
-      if (active) message.error(error.message || '候选召回失败');
-    }).finally(() => {
-      if (active) setMatchingLoading(false);
-    });
-    return () => { active = false; };
-  }, [includeBelowThreshold, jobId, message, page, pageSize, threshold, thresholdTouched]);
+  const candidatesQuery = useQuery(
+    ['job-candidates', jobId, threshold, page, pageSize, includeBelowThreshold],
+    () => getJobCandidates(jobId, { minScore: threshold, page, pageSize, includeBelowThreshold }),
+    {
+      enabled: Boolean(jobId),
+      keepPreviousData: true,
+      staleTime: 3 * 60 * 1000,
+      cacheTime: 30 * 60 * 1000,
+      onSuccess: (result) => {
+        const stats = result.retrieval_stats || defaultStats;
+        const recommendation = Number(stats.recommended_threshold ?? 55);
+        setSuggestedThreshold(recommendation);
+        if (!thresholdTouched && recommendation !== threshold) {
+          setThreshold(recommendation);
+          setThresholdDraft(recommendation);
+          setPage(1);
+          return;
+        }
+        const serverPage = stats.page;
+        if (serverPage && serverPage !== page) setPage(serverPage);
+        setSelectedId((current) => result.items.some((item) => item.id === current)
+          ? current
+          : result.items[0]?.id || null);
+        candidateListRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+      },
+      onError: (error) => message.error(error.message || '候选召回失败'),
+    },
+  );
+
+  const candidates = candidatesQuery.data?.items || null;
+  const dataSource = candidatesQuery.data?.source || jobsResult?.source || 'loading';
+  const retrievalStats = candidatesQuery.data?.retrieval_stats || defaultStats;
+  const stageCounts = candidatesQuery.data?.stage_counts || {};
+  const matchMethod = candidatesQuery.data?.method || '';
+  const matchingLoading = candidatesQuery.isLoading || candidatesQuery.isFetching;
 
   const job = jobs.find((item) => item.id === jobId);
   const visibleCandidates = useMemo(() => (candidates || []).filter(
@@ -139,7 +140,6 @@ const CandidateMatchingPage = () => {
   }, [selectedId]);
 
   const selectJob = (value) => {
-    setCandidates(null);
     setJobId(value);
     setPage(1);
     setStageFilter('全部');
@@ -168,9 +168,12 @@ const CandidateMatchingPage = () => {
       return;
     }
     const result = await updateCandidateStage(jobId, selected.id, nextStatus);
-    setCandidates((current) => current.map((candidate) => (
-      candidate.id === selected.id ? { ...candidate, status: nextStatus } : candidate
-    )));
+    queryClient.setQueriesData(['job-candidates', jobId], (current) => current ? {
+      ...current,
+      items: current.items.map((candidate) => candidate.id === selected.id
+        ? { ...candidate, status: nextStatus }
+        : candidate),
+    } : current);
     message.success(result.warning
       ? `${selected.name} 已在当前页面更新，后端未持久化`
       : `${selected.name} 已更新为“${nextStatus}”`);
@@ -196,7 +199,7 @@ const CandidateMatchingPage = () => {
     return false;
   };
 
-  if (!jobs.length || candidates === null) {
+  if (jobsLoading || !jobs.length || candidates === null) {
     return <div className="page-loading"><Skeleton active paragraph={{ rows: 12 }} /></div>;
   }
 
@@ -343,11 +346,11 @@ const CandidateMatchingPage = () => {
 
         <section className="candidate-rag-section">
           <header>
-            <div><span>GROUNDED RAG EXPLANATION</span><strong>岗位匹配解释</strong></div>
+            <div><span>证据解释</span><strong>岗位匹配解释</strong></div>
             <Button icon={<BulbOutlined />} loading={ragLoading} onClick={generateRagExplanation}>生成证据解释</Button>
           </header>
           {ragResult ? <div className="rag-result">
-            <div className="rag-conclusion"><span>{ragResult.mode}</span><strong>{ragResult.conclusion}</strong><p>{ragResult.summary}</p></div>
+            <div className="rag-conclusion"><span>{explanationModeLabel(ragResult.mode)}</span><strong>{ragResult.conclusion}</strong><p>{ragResult.summary}</p></div>
             <div><span>匹配证据</span>{ragResult.matched_evidence.map((item) => <p key={item}>{item}</p>)}</div>
             <div><span>风险与差距</span>{[...(ragResult.skill_gaps || []), ...(ragResult.risks || [])].map((item) => <p key={item}>{item}</p>)}</div>
             <div><span>建议面试问题</span>{ragResult.interview_questions.map((item) => <p key={item}>{item}</p>)}</div>

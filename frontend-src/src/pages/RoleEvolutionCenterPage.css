@@ -10,8 +10,10 @@
 .role-evolution-tabs strong, .role-evolution-tabs span { display: block; }
 .role-evolution-tabs strong { font-size: 14px; margin-bottom: 5px; }
 .role-evolution-tabs span { color: #7a838e; font-size: 12px; line-height: 1.4; }
-.role-evolution-grid { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(320px, .85fr); gap: 16px; align-items: start; }
-.role-evolution-panel { border: 1px solid #e1e5ea; background: #fff; padding: 22px; min-width: 0; }
+.role-evolution-grid { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(320px, .85fr); gap: 16px; align-items: stretch; }
+.role-evolution-panel { height: 100%; box-sizing: border-box; border: 1px solid #e1e5ea; background: #fff; padding: 22px; min-width: 0; }
+.role-evolution-grid > .role-evolution-panel { display: flex; flex-direction: column; }
+.role-evolution-form footer, .role-evolution-optimization footer { margin-top: auto; padding-top: 20px; }
 .role-evolution-panel > header, .role-evolution-analytics-toolbar, .role-evolution-skill-editor > header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
 .role-evolution-panel header span, .role-evolution-analytics-toolbar > div > span { color: #6874a1; font-size: 11px; letter-spacing: .08em; font-weight: 700; }
 .role-evolution-panel h2, .role-evolution-analytics-toolbar h2 { margin: 5px 0 0; color: #1c222a; font-size: 21px; }
@@ -82,5 +84,5 @@
 .role-evolution-check-list span { display: flex; flex-direction: column; gap: 3px; color: #68717d; font-size: 12px; }
 .role-evolution-check-list strong { color: #26303a; font-size: 13px; }
 .role-evolution-publish-note { padding: 13px; margin-bottom: 18px; color: #68717d; background: #f7f9fb; font-size: 12px; line-height: 1.6; }
-@media (max-width: 960px) { .role-evolution-overview, .role-evolution-tabs { grid-template-columns: repeat(2, 1fr); } .role-evolution-grid, .role-evolution-analytics-grid { grid-template-columns: 1fr; } }
+@media (max-width: 960px) { .role-evolution-overview, .role-evolution-tabs { grid-template-columns: repeat(2, 1fr); } .role-evolution-grid, .role-evolution-analytics-grid { grid-template-columns: 1fr; } .role-evolution-panel { height: auto; } }
 @media (max-width: 640px) { .role-evolution-overview, .role-evolution-tabs, .role-evolution-form-grid, .role-evolution-change-columns, .role-evolution-effect-header { grid-template-columns: 1fr; } .role-evolution-panel, .role-evolution-analytics { padding: 16px; } .role-evolution-form footer, .role-evolution-optimization footer { align-items: flex-start; flex-direction: column; } .role-evolution-action-row .ant-btn { width: 100%; } }

@@ -1,31 +1,30 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Navigate, Routes, Route, useOutletContext } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from 'react-query';
 import { App as AntdApp, ConfigProvider } from 'antd';
 import 'antd/dist/reset.css';
 import './App.css';
+import { CandidateProvider } from './contexts/CandidateContext';
+import { AuthProvider } from './contexts/AuthContext';
+import { routeLoaders } from './routeLoaders';
 
 // Components
 import WorkbenchLayout from './components/workbench/WorkbenchLayout';
-import HomePage from './pages/HomePage';
-import SearchPage from './pages/SearchPage';
-import JobDetailsPage from './pages/JobDetailsPage';
-import ResumeUploadPage from './pages/ResumeUploadPage';
-import RecommendationsPage from './pages/RecommendationsPage';
-import PersonalizedRecommendationsPage from './pages/PersonalizedRecommendationsPage';
-import FusionDemoPage from './pages/FusionDemoPage';
-import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
-import RoleEvolutionCenterPage from './pages/RoleEvolutionCenterPage';
-import GraphPage from './pages/GraphPage';
-import DiagnosisPage from './pages/DiagnosisPage';
-import LearningPlanPage from './pages/LearningPlanPage';
-import RecruitmentJobsPage from './pages/RecruitmentJobsPage';
-import CandidateMatchingPage from './pages/CandidateMatchingPage';
-
-// Context
-import { CandidateProvider } from './contexts/CandidateContext';
-import { AuthProvider } from './contexts/AuthContext';
+const HomePage = lazy(routeLoaders['/legacy-home']);
+const SearchPage = lazy(routeLoaders['/search']);
+const JobDetailsPage = lazy(routeLoaders['/job']);
+const ResumeUploadPage = lazy(routeLoaders['/upload-resume']);
+const RecommendationsPage = lazy(routeLoaders['/recommendations']);
+const PersonalizedRecommendationsPage = lazy(routeLoaders['/personalized-recommendations']);
+const FusionDemoPage = lazy(routeLoaders['/fusion-demo']);
+const LoginPage = lazy(routeLoaders['/login']);
+const RegisterPage = lazy(routeLoaders['/register']);
+const RoleEvolutionCenterPage = lazy(routeLoaders['/signals']);
+const GraphPage = lazy(routeLoaders['/graph']);
+const DiagnosisPage = lazy(routeLoaders['/diagnosis']);
+const LearningPlanPage = lazy(routeLoaders['/learning']);
+const RecruitmentJobsPage = lazy(routeLoaders['/recruitment']);
+const CandidateMatchingPage = lazy(routeLoaders['/candidates']);
 
 // Create a client
 const queryClient = new QueryClient({
@@ -33,6 +32,8 @@ const queryClient = new QueryClient({
     queries: {
       retry: 1,
       refetchOnWindowFocus: false,
+      staleTime: 60 * 1000,
+      cacheTime: 30 * 60 * 1000,
     },
   },
 });
@@ -65,8 +66,9 @@ function App() {
           <AuthProvider>
             <CandidateProvider>
               <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-              <Routes>
-                <Route path="/" element={<WorkbenchLayout />}>
+              <Suspense fallback={<div className="route-loading" role="status">正在加载工作台...</div>}>
+                <Routes>
+                  <Route path="/" element={<WorkbenchLayout />}>
                   <Route index element={<WorkspaceHomeRedirect />} />
                   <Route path="recruitment" element={<RecruitmentJobsPage />} />
                   <Route path="candidates" element={<CandidateMatchingPage />} />
@@ -88,8 +90,9 @@ function App() {
                   <Route path="fusion-demo" element={<FusionDemoPage />} />
                   <Route path="login" element={<LoginPage />} />
                   <Route path="register" element={<RegisterPage />} />
-                </Route>
-              </Routes>
+                  </Route>
+                </Routes>
+              </Suspense>
               </Router>
             </CandidateProvider>
           </AuthProvider>

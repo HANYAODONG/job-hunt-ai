@@ -66,6 +66,19 @@ export const getCapabilityGraph = (year) => {
     });
 };
 
+export const getCapabilityRoleJobs = async ({ category, direction, role, limit = 8, offset = 0 }) => {
+  const params = new URLSearchParams({
+    category: category || '',
+    direction: direction || '',
+    role: role || '',
+    limit: String(limit),
+    offset: String(offset),
+  });
+  const response = await fetch(`/api/v1/graph/role-jobs?${params.toString()}`);
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return response.json();
+};
+
 export const getRoleEvolution = () => mockOnly(evolutionData);
 
 const fitLabels = {

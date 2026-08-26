@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
 from ...services.talent_data_service import TalentDataService
+from .graph import invalidate_capability_graph_cache
 
 
 router = APIRouter()
@@ -52,7 +53,9 @@ def get_recruitment_job(job_id: str):
 @router.put("/recruitment/jobs/{job_id}")
 def save_recruitment_job(job_id: str, body: JobUpdate):
     try:
-        return service.save_job(job_id, body.values)
+        saved = service.save_job(job_id, body.values)
+        invalidate_capability_graph_cache()
+        return saved
     except (OSError, ValueError) as exc:
         raise HTTPException(status_code=500, detail=f"Failed to save job: {exc}") from exc
 
