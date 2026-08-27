@@ -165,3 +165,48 @@ They still use older search/recommendation APIs. Do not migrate all of them at o
 - 前端：`http://localhost:18080`。
 - 测试页：`/fusion-demo`（统一推荐模式）、`/recommendations`（上传简历 + 示例候选人）、`/diagnosis`（上传 PDF）。
 - 记录文件：`F:\揭榜挂帅\网页测试记录_第五轮.md`（进行中）。
+
+---
+
+# 第六轮更新（2026-08-26）— 纪雨涵
+
+> 依据：`F:\揭榜挂帅\分工6-任务书验收收尾.md`。环境全新重建（main `7b0ba1d`，Docker `up --build`，四服务 healthy），三个数据压缩包已解压。
+> 完整测试报告：`F:\揭榜挂帅\网页测试记录_第六轮_任务书验收.md`。
+
+## 各页面第六轮实测状态
+
+| 页面 | 状态 | 真实接口（实测） | 说明 |
+| --- | --- | --- | --- |
+| `/fusion-demo` | ✅ live | `GET /fusion/weights/layered`、`POST /fusion/recommend` | 输入查询后 10 条结果 + 解释 + 缺失技能（sample 链路真实后端计算） |
+| `/recommendations` | ✅ live | `POST /fusion/recommend` | 示例候选人入口可用 |
+| `/diagnosis` | ⚠️ live 但**完整链路降级** | `POST /jobs/upload-resume`、`POST /bm25/search`、`POST /semantic/rerank`、`POST /kg/analyze` | 上传真实 PDF 后全接口 200，但 **BM25 与 KG job_id 不对齐**，KG 差距分析无法完成 → 降级到旧推荐接口（**P1**） |
+| `/graph` | ✅ live（数据） / ❌ 年份未接 | `GET /api/v1/graph` | 真实 tree（12675 岗位、9 domain、69 family）。**年份切换未对接**：前端不传 year、后端无 year 参数、growth 硬编码 +0%（**P1，组长第一优先**）。`stackDomainMap` 用 mock id → 技术栈导航失效（智能终端映射待魏昊朗确认） |
+| `/signals` | ✅ live（企业模式） | `GET /jd-update/analytics/jobs`、`/overview`、`/reviews`、`/optimization/profile`、`/analytics/job-trend`、`/lifecycle`、`/skill-migration` | RoleEvolutionCenter（PR #21），真实数据（大模型应用工程师 v1.2、证据 27） |
+| `/recruitment` | ✅ live（企业模式） | `GET /talent/recruitment/jobs` | 12675 岗位，显示 50 条，JOB00001 后端开发工程师岗 |
+| `/candidates` | ✅ live（企业模式） | `GET /talent/recruitment/jobs`、`GET .../jobs/{job_id}/candidates` | 30200 候选池、三路并集 27420；**无参自动选 JOB00001**，完整加载 |
+| `/learning` | ❌ mock | - | 缺口（叶骑瑞） |
+| `/search` | ⚠️ 旧接口 | 旧 `/jobs/search` | 英文市场 legacy，暂不迁移 |
+| `/upload-resume` | ✅ 入口 | - | 上传流程已并入 /diagnosis |
+
+## 新增关键问题（第六轮实测确认）
+
+### P1-1 诊断完整链路降级：BM25 与 KG 的 job_id 不对齐
+- 现象：`/diagnosis` 上传简历后显示"完整智能匹配流水线已降级：BM25 job ids are not aligned with knowledge graph job ids"，KG 差距分析无法完成，结果退回旧推荐接口。
+- 归属：魏昊朗（KG 数据源）∪ 甘可欣（BM25 索引）。**可复现**：/diagnosis 上传任意简历。
+
+### P1-2 动态图谱年份切换未对接（组长点名第一优先）
+- 前端 `getCapabilityGraph()` 不传 year；后端 `/api/v1/graph` 无 year 参数；growth 全部 `+0%`。数据存在（job_update.db 版本化、政府 CSV 2024_2026），缺接线。
+- 归属：魏昊朗（后端按年快照 + 前端传参）。**可复现**：/graph 切年份数据不变。
+
+### P1-3 企业端岗位详情 404
+- `/jobs/{job_id}` 从 **ES** 查，企业岗位（JOB00001）在企业数据集不在 ES → `/job/JOB00001` 404。
+- 归属：接口数据源需统一（详情接口改用 talent_data_service 或把企业岗位索引进 ES）——需韩耀栋协调。**可复现**：/recruitment 点任一岗位。
+
+### P2 /graph 技术栈导航失效（映射待确认）
+- `stackDomainMap` 用 mock 时代 id（ai/data/intelligent-system），真实 domain id 为 `domain_XXX`。大模型→domain_大模型、数据智能→domain_数据 已确定；智能终端→哪一岗位类待魏昊朗确认。
+
+## 协作 / 环境备注
+
+- **角色门控**（设计特性）：默认求职者模式，`/recruitment` `/candidates` `/signals` 被重定向到 `/diagnosis`；右上角切"企业"后跳 `/recruitment`。
+- **数据就绪**：`artifacts/dataset_iteration_05/`（345MB）、`company_large_v2/job_update.db`（178MB）、`gov data/base/government_job_update.db` + `government_jobs_2024_2026_tech_final.csv` 已解压（占位 manifest 已删）。
+- **测试脚本**：`F:\揭榜挂帅\_puppeteer_test\test_docker.js`（12 页）、`test_role.js`（企业模式）、`diag_route.js`。截图：`_puppeteer_test/phase6/`。
