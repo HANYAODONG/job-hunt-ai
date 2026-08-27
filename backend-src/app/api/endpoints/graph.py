@@ -1,277 +1,67 @@
-import logging
+import hashlib
+import time
+from collections import Counter, defaultdict
+
 from fastapi import APIRouter
-from collections import Counter
-from app.services.knowledge_graph_service import KnowledgeGraphService
+
+from app.services.role_taxonomy import (
+    DIRECTIONS_BY_CATEGORY,
+    get_canonical_taxonomy,
+)
 from app.services.talent_data_service import TalentDataService
 
-logger = logging.getLogger(__name__)
+
 router = APIRouter()
-kg_service = KnowledgeGraphService()
 talent_data_service = TalentDataService()
-
-# 每个岗位族最多展示的岗位数（控制在总节点 1000 左右）
-MAX_ROLES_PER_FAMILY = 10
-
-# 岗位族 → 一级大类 映射表（9 个大类）
-FAMILY_TO_DOMAIN = {
-    # 1. 算法
-    "算法工程师": "算法",
-    "推荐算法工程师": "算法",
-    "广告算法工程师": "算法",
-    "搜索算法工程师": "算法",
-    "控制算法工程师": "算法",
-    "风控算法工程师": "算法",
-    "数据挖掘算法工程师": "算法",
-    "机器人算法工程师": "算法",
-    "算法研究员": "算法",
-    # 2. 大模型
-    "大模型应用工程师": "大模型",
-    "大模型算法工程师": "大模型",
-    "多模态算法工程师": "大模型",
-    "AIGC算法工程师": "大模型",
-    "NLP算法工程师": "大模型",
-    "语音算法工程师": "大模型",
-    "计算机视觉算法工程师": "大模型",
-    "机器学习算法工程师": "大模型",
-    "AI应用工程师": "大模型",
-    "AI安全工程师": "大模型",
-    # 3. 后端
-    "后端开发工程师": "后端",
-    "Java开发工程师": "后端",
-    "Python开发工程师": "后端",
-    "Go开发工程师": "后端",
-    "全栈开发工程师": "后端",
-    "软件开发工程师": "后端",
-    "系统软件工程师": "后端",
-    "软件架构师": "后端",
-    "音视频工程师": "后端",
-    "图形图像工程师": "后端",
-    # 4. 前端
-    "前端开发工程师": "前端",
-    "客户端开发工程师": "前端",
-    "Android开发工程师": "前端",
-    "iOS开发工程师": "前端",
-    "移动开发工程师": "前端",
-    # 5. 数据
-    "数据分析师": "数据",
-    "数据工程师": "数据",
-    "数据开发工程师": "数据",
-    "数据治理工程师": "数据",
-    "数据平台工程师": "数据",
-    "数据仓库工程师": "数据",
-    "大数据开发工程师": "数据",
-    # 6. 运维
-    "运维工程师": "运维",
-    "DevOps工程师": "运维",
-    "云计算工程师": "运维",
-    "网络工程师": "运维",
-    "数据库工程师": "运维",
-    "技术支持工程师": "运维",
-    "解决方案工程师": "运维",
-    "AI产品经理": "运维",
-    # 7. 安全
-    "网络安全工程师": "安全",
-    "信息安全工程师": "安全",
-    "安全工程师": "安全",
-    # 8. 硬件
-    "硬件工程师": "硬件",
-    "嵌入式软件工程师": "硬件",
-    "驱动开发工程师": "硬件",
-    "芯片设计工程师": "硬件",
-    "芯片验证工程师": "硬件",
-    "芯片测试工程师": "硬件",
-    "结构工程师": "硬件",
-    "电源工程师": "硬件",
-    "热设计工程师": "硬件",
-    "服务器工程师": "硬件",
-    "通信工程师": "硬件",
-    # 9. 测试
-    "测试开发工程师": "测试",
-    "测试工程师": "测试",
-    "大模型测试工程师": "测试",
-    "质量工程师": "测试",
-
-    "C++开发工程师": "后端",
-    "AI Infra工程师": "运维",
-    "自动驾驶算法工程师": "算法",
-    "机器人软件工程师": "硬件",
-
-    # 兜底：未分类的岗位族归到"其他"
-    "未分类": "其他",
-}
+GRAPH_CACHE_TTL_SECONDS = 60
+SPARSE_DIRECTION_POSTING_THRESHOLD = 100
+_graph_cache = None
+_graph_cache_at = 0.0
 
 
-@router.get("/graph")
-async def get_capability_graph():
-    """
-    从 Neo4j 查询岗位层级数据，组装成前端 GraphPage 需要的树形结构
-    每个岗位族最多返回 10 个具体岗位，总节点控制在 1000 左右
-    """
-    try:
-        with kg_service.neo4j.get_session() as session:
-            query = """
-            MATCH (j:Job)
-            WHERE j.job_family IS NOT NULL AND j.job_family <> ''
-            RETURN j.id AS id,
-                   j.title AS title,
-                   j.job_family AS job_family,
-                   j.required_skills AS skills
-            """
-            result = session.run(query)
-            records = list(result)
-
-            if not records:
-                logger.warning("图谱中没有找到岗位数据")
-                return _graph_from_canonical_jobs()
-
-            families_map = {}
-            roles = []
-            skill_names = set()
-            relationship_count = 0
-
-            for record in records:
-                job_id = record.get("id")
-                title = record.get("title") or job_id
-                job_family = record.get("job_family") or "未分类"
-                skills = record.get("skills") or []
-                if isinstance(skills, list):
-                    normalized_skills = [str(skill).strip() for skill in skills if str(skill).strip()]
-                    skill_names.update(normalized_skills)
-                    relationship_count += len(normalized_skills)
-
-                roles.append({
-                    "id": job_id,
-                    "label": title,
-                    "type": "role",
-                    "detail": f"{job_family} 岗位",
-                    "count": 1,
-                    "growth": "+0%",
-                    "skills": skills[:5] if isinstance(skills, list) else []
-                })
-
-                if job_family not in families_map:
-                    families_map[job_family] = []
-                families_map[job_family].append(job_id)
-
-            # 按 domain 分组
-            domains_map = {}
-            for family_name, job_ids in families_map.items():
-                domain = FAMILY_TO_DOMAIN.get(family_name, "其他")
-                if domain not in domains_map:
-                    domains_map[domain] = {}
-                domains_map[domain][family_name] = job_ids
-
-            # 组装树形结构
-            tree = {
-                "id": "root",
-                "label": "岗位银河",
-                "type": "root",
-                "count": len(roles),
-                "growth": "+0%",
-                "detail": f"当前图谱包含 {len(roles)} 个岗位，覆盖 {len(families_map)} 个岗位族，{len(domains_map)} 个岗位大类。",
-                "skills": ["岗位分类", "能力映射", "动态演化"],
-                "children": []
-            }
-
-            for domain_name, families in domains_map.items():
-                domain_node = {
-                    "id": f"domain_{domain_name}",
-                    "label": domain_name if domain_name else "未命名大类",
-                    "type": "domain",
-                    "count": sum(len(job_ids) for job_ids in families.values()),
-                    "growth": "+0%",
-                    "detail": f"{domain_name}，包含 {len(families)} 个岗位族",
-                    "skills": [],
-                    "children": []
-                }
-                for family_name, job_ids in families.items():
-                    family_roles = [r for r in roles if r["id"] in job_ids][:MAX_ROLES_PER_FAMILY]
-                    family_node = {
-                        "id": f"family_{family_name}",
-                        "label": family_name if family_name else "未命名岗位族",
-                        "type": "family",
-                        "count": len(job_ids),
-                        "display_count": len(family_roles),
-                        "total": len(job_ids),
-                        "growth": "+0%",
-                        "detail": f"{family_name}，包含 {len(job_ids)} 个岗位（展示前 {len(family_roles)} 个）",
-                        "skills": [],
-                        "children": family_roles
-                    }
-                    domain_node["children"].append(family_node)
-                tree["children"].append(domain_node)
-
-            summary = {
-                "domains": len(domains_map),
-                "families": len(families_map),
-                "roles": len(roles),
-                "skills": len(skill_names),
-                "relationships": relationship_count,
-            }
-
-            all_skills = []
-            for role in roles:
-                all_skills.extend(role.get("skills", []))
-            skill_counter = Counter(all_skills)
-            top_skills = [skill for skill, _ in skill_counter.most_common(10)]
-
-            stacks = ["大模型技术栈", "数据智能技术栈", "智能终端技术栈"]
-            if top_skills:
-                if any('模型' in s or 'LLM' in s or 'Agent' in s for s in top_skills[:5]):
-                    stacks.insert(0, "人工智能技术栈")
-
-            return {
-                "tree": tree,
-                "summary": summary,
-                "stacks": stacks,
-                "jobs": [r["label"] for r in roles[:10]]
-            }
-
-    except Exception as e:
-        logger.error(f"获取图谱数据失败: {e}")
-        return _graph_from_canonical_jobs()
+def _node_id(kind: str, *parts: str) -> str:
+    digest = hashlib.sha1("\x1f".join(parts).encode("utf-8")).hexdigest()[:12]
+    return f"{kind}_{digest}"
 
 
-def _graph_from_canonical_jobs():
-    """Build the same tree shape from the canonical JSONL when Neo4j is offline."""
-    try:
-        result = talent_data_service.list_jobs(limit=100000, offset=0)
-        jobs = result.get("items", [])
-    except Exception as exc:
-        logger.error("读取标准岗位数据失败: %s", exc)
-        return _empty_graph()
+def _top_skills(counter: Counter[str], limit: int = 6) -> list[str]:
+    return [skill for skill, _ in counter.most_common(limit)]
 
-    if not jobs:
-        return _empty_graph()
 
-    families_map = {}
-    roles = []
-    skill_names = set()
+def _sorted_categories(categories: set[str]) -> list[str]:
+    known = [category for category in DIRECTIONS_BY_CATEGORY if category in categories]
+    return known + sorted(categories - set(known))
+
+
+def build_standard_role_graph(records: list[dict]) -> dict:
+    """Aggregate job postings into category -> direction -> standard role."""
+    roles: dict[tuple[str, str, str], dict] = {}
+    category_skills: defaultdict[str, Counter[str]] = defaultdict(Counter)
+    direction_skills: defaultdict[tuple[str, str], Counter[str]] = defaultdict(Counter)
+    distinct_skills: set[str] = set()
     relationship_count = 0
-    for job in jobs:
-        job_id = str(job.get("id") or job.get("job_id") or "")
-        if not job_id:
-            continue
-        family = str(job.get("jobFamily") or job.get("roleVersion") or "未分类")
-        skills = [item.get("name") if isinstance(item, dict) else str(item) for item in (job.get("requiredSkills") or [])]
-        normalized_skills = [str(skill).strip() for skill in skills if str(skill).strip()]
-        skill_names.update(normalized_skills)
-        relationship_count += len(normalized_skills)
-        roles.append({
-            "id": job_id,
-            "label": str(job.get("title") or family),
-            "type": "role",
-            "detail": f"{family} · {job.get('standardCategory') or '标准岗位'}",
-            "count": 1,
-            "growth": "+0%",
-            "skills": [skill for skill in skills if skill][:8],
-        })
-        families_map.setdefault(family, []).append(job_id)
 
-    domains_map = {}
-    for family_name, job_ids in families_map.items():
-        domain = FAMILY_TO_DOMAIN.get(family_name, "其他")
-        domains_map.setdefault(domain, {})[family_name] = job_ids
+    for record in records:
+        category = str(record.get("standard_category") or "").strip()
+        role = str(record.get("standard_role") or record.get("job_family") or "").strip()
+        if not category or not role:
+            continue
+        canonical_category, inferred_direction = get_canonical_taxonomy(category, role)
+        direction = str(record.get("standard_direction") or inferred_direction).strip()
+        skills = [str(skill).strip() for skill in record.get("skills") or [] if str(skill).strip()]
+        key = (canonical_category, direction, role)
+        role_data = roles.setdefault(key, {"count": 0, "skills": Counter(), "needs_review": 0})
+        role_data["count"] += 1
+        role_data["skills"].update(skills)
+        role_data["needs_review"] += int(bool(record.get("needs_review")))
+        category_skills[canonical_category].update(skills)
+        direction_skills[(canonical_category, direction)].update(skills)
+        distinct_skills.update(skills)
+        relationship_count += len(skills)
+
+    grouped: defaultdict[str, defaultdict[str, list[tuple[str, dict]]]] = defaultdict(lambda: defaultdict(list))
+    for (category, direction, role), role_data in roles.items():
+        grouped[category][direction].append((role, role_data))
 
     tree = {
         "id": "root",
@@ -279,71 +69,130 @@ def _graph_from_canonical_jobs():
         "type": "root",
         "count": len(roles),
         "growth": "+0%",
-        "detail": f"当前图谱包含 {len(roles)} 个标准岗位，覆盖 {len(families_map)} 个岗位族，{len(domains_map)} 个岗位大类。",
-        "skills": ["岗位分类", "能力映射", "动态演化"],
+        "detail": f"当前图谱包含 {len(roles)} 个标准岗位，来自 {sum(item['count'] for item in roles.values())} 条招聘数据。",
+        "skills": ["标准岗位分类", "能力映射", "岗位演化"],
         "children": [],
     }
-    role_by_id = {role["id"]: role for role in roles}
-    for domain_name, families in domains_map.items():
-        domain_node = {
-            "id": f"domain_{domain_name}",
-            "label": domain_name,
+
+    family_count = 0
+    for category in _sorted_categories(set(grouped)):
+        directions = grouped[category]
+        category_total = sum(data["count"] for role_list in directions.values() for _, data in role_list)
+        category_node = {
+            "id": _node_id("category", category),
+            "label": category,
             "type": "domain",
-            "count": sum(len(ids) for ids in families.values()),
+            "count": category_total,
             "growth": "+0%",
-            "detail": f"{domain_name}，包含 {len(families)} 个岗位族",
-            "skills": [],
+            "detail": f"一级标准分类，包含 {len(directions)} 个岗位方向与 {sum(len(items) for items in directions.values())} 个标准岗位。",
+            "skills": _top_skills(category_skills[category]),
             "children": [],
         }
-        for family_name, job_ids in families.items():
-            family_roles = [role_by_id[job_id] for job_id in job_ids if job_id in role_by_id][:MAX_ROLES_PER_FAMILY]
-            domain_node["children"].append({
-                "id": f"family_{family_name}",
-                "label": family_name,
+        for direction in sorted(directions):
+            role_items = sorted(directions[direction], key=lambda item: (-item[1]["count"], item[0]))
+            family_total = sum(data["count"] for _, data in role_items)
+            role_count = len(role_items)
+            is_single_role = role_count == 1
+            taxonomy_status = (
+                "当前数据暂不足以细分"
+                if is_single_role and family_total < SPARSE_DIRECTION_POSTING_THRESHOLD
+                else "单岗位方向"
+                if is_single_role
+                else "多岗位方向"
+            )
+            category_node["children"].append({
+                "id": _node_id("direction", category, direction),
+                "label": direction,
                 "type": "family",
-                "count": len(job_ids),
-                "display_count": len(family_roles),
-                "total": len(job_ids),
+                "count": family_total,
+                "role_count": role_count,
+                "is_single_role": is_single_role,
+                "taxonomy_status": taxonomy_status,
                 "growth": "+0%",
-                "detail": f"{family_name}，包含 {len(job_ids)} 个岗位（展示前 {len(family_roles)} 个）",
-                "skills": [],
-                "children": family_roles,
+                "detail": (
+                    f"岗位方向，当前数据包含 1 个标准岗位、{family_total} 条招聘数据；"
+                    f"{taxonomy_status}。"
+                    if is_single_role
+                    else f"岗位方向，包含 {role_count} 个标准岗位。"
+                ),
+                "skills": _top_skills(direction_skills[(category, direction)]),
+                "children": [
+                    {
+                        "id": _node_id("role", category, direction, role),
+                        "label": role,
+                        "type": "role",
+                        "standard_category": category,
+                        "standard_direction": direction,
+                        "standard_role": role,
+                        "count": data["count"],
+                        "growth": "+0%",
+                        "detail": (
+                            f"标准岗位，汇总 {data['count']} 条招聘数据。"
+                            if not data["needs_review"]
+                            else f"临时标准岗位，汇总 {data['count']} 条待补充分类的岗位数据。"
+                        ),
+                        "skills": _top_skills(data["skills"], 5),
+                        "needs_review": bool(data["needs_review"]),
+                    }
+                    for role, data in role_items
+                ],
             })
-        tree["children"].append(domain_node)
+            family_count += 1
+        tree["children"].append(category_node)
 
-    skills = [skill for role in roles for skill in role["skills"]]
-    top_skills = [skill for skill, _ in Counter(skills).most_common(10)]
-    stacks = ["大模型技术栈", "数据智能技术栈", "智能终端技术栈"]
-    if any("模型" in skill or "LLM" in skill or "Agent" in skill for skill in top_skills):
-        stacks.insert(0, "人工智能技术栈")
+    stacks = [category for category in ("算法与智能", "AI应用", "软件研发", "数据智能", "基础设施") if category in grouped]
     return {
         "tree": tree,
         "summary": {
-            "domains": len(domains_map),
-            "families": len(families_map),
+            "domains": len(tree["children"]),
+            "families": family_count,
             "roles": len(roles),
-            "skills": len(skill_names),
+            "job_postings": sum(data["count"] for data in roles.values()),
+            "needs_review": sum(data["needs_review"] for data in roles.values()),
+            "single_role_families": sum(
+                1 for domain in tree["children"] for family in domain["children"] if family["is_single_role"]
+            ),
+            "sparse_single_role_families": sum(
+                1 for domain in tree["children"] for family in domain["children"]
+                if family["taxonomy_status"] == "当前数据暂不足以细分"
+            ),
+            "skills": len(distinct_skills),
             "relationships": relationship_count,
         },
         "stacks": stacks,
-        "jobs": [role["label"] for role in roles[:10]],
-        "source": result.get("source", "canonical_dataset"),
+        "jobs": [role for _, _, role in sorted(roles)],
+        "source": "canonical_standard_role_taxonomy",
     }
 
 
-def _empty_graph():
-    return {
-        "tree": {
-            "id": "root",
-            "label": "岗位银河",
-            "type": "root",
-            "count": 0,
-            "growth": "+0%",
-            "detail": "暂无岗位数据，请先导入岗位。",
-            "skills": [],
-            "children": []
-        },
-        "summary": {"domains": 0, "families": 0, "roles": 0, "skills": 0, "relationships": 0},
-        "stacks": [],
-        "jobs": []
-    }
+@router.get("/graph")
+async def get_capability_graph():
+    """Return a cached standard-role taxonomy, never raw recruitment titles."""
+    global _graph_cache, _graph_cache_at
+    now = time.monotonic()
+    if _graph_cache is not None and now - _graph_cache_at < GRAPH_CACHE_TTL_SECONDS:
+        return _graph_cache
+    _graph_cache = build_standard_role_graph(talent_data_service.list_standard_role_records())
+    _graph_cache_at = now
+    return _graph_cache
+
+
+@router.get("/graph/role-jobs")
+async def get_standard_role_jobs(
+    category: str,
+    direction: str,
+    role: str,
+    limit: int = 20,
+    offset: int = 0,
+):
+    """Return the current JD views behind one third-level graph node."""
+    limit = max(1, min(limit, 100))
+    offset = max(0, offset)
+    return talent_data_service.list_standard_role_jobs(category, direction, role, limit, offset)
+
+
+def invalidate_capability_graph_cache():
+    global _graph_cache, _graph_cache_at
+    _graph_cache = None
+    _graph_cache_at = 0.0
+    talent_data_service.invalidate_runtime_state_cache()

@@ -19,6 +19,8 @@ MERGE (job:Job {id: row.id})
 SET job.title = row.title,
     job.description = row.description,
     job.job_family = row.job_family,
+    job.standard_category = row.standard_category,
+    job.standard_role = row.standard_role,
     job.required_skills = row.skills,
     job.source = row.source
 WITH job, row
@@ -49,6 +51,8 @@ def load_jobs(path: Path) -> list[dict]:
                     "title": str(item.get("title") or item.get("standard_job") or job_id),
                     "description": str(item.get("description") or ""),
                     "job_family": str(item.get("job_family") or item.get("standard_job") or "未分类"),
+                    "standard_category": str(item.get("standard_category") or ""),
+                    "standard_role": str(item.get("standard_job") or item.get("job_family") or ""),
                     "skills": skills,
                     "source": str(item.get("source") or "canonical_dataset"),
                 })

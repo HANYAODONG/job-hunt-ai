@@ -1397,8 +1397,11 @@
 .galaxy-object-label small { color: oklch(61% .025 205); font-size: 8px; white-space: nowrap; }
 .galaxy-object-label::before { position: absolute; top: 50%; right: calc(100% + 7px); width: 19px; height: 1px; background: currentColor; opacity: .32; content: ''; }
 .galaxy-object-label.is-selected { color: oklch(98% .012 92); transform: translate(15px, -50%) scale(1.04); }
-.galaxy-domain-label { opacity: 0; }
-.galaxy-domain-label strong { font-size: 12px; }
+.galaxy-domain-label { min-width: 0; opacity: 0; transform: translate(8px, -50%); }
+.galaxy-domain-label::before,
+.galaxy-domain-label span,
+.galaxy-domain-label small { display: none; }
+.galaxy-domain-label strong { font-size: 11px; }
 .galaxy-navigation-scene[data-mode='overview'] .galaxy-domain-label { opacity: .86; }
 .galaxy-navigation-scene[data-mode='overview'] .galaxy-domain-label.is-hovered,
 .galaxy-navigation-scene[data-mode='overview'] .galaxy-domain-label.is-selected { opacity: 1; }
@@ -1408,6 +1411,8 @@
 .galaxy-system-star-label small { font-size: 9px; }
 .galaxy-family-center-label strong { font-size: 13px; }
 .galaxy-planet-label { opacity: .78; }
+.galaxy-planet-label.is-single-role { opacity: .62; }
+.galaxy-planet-label.is-single-role small { color: oklch(70% .07 82); }
 .galaxy-planet-label strong { font-size: 11px; }
 .galaxy-satellite-label { min-width: auto; opacity: 0; transform: translate(8px, -50%); }
 .galaxy-satellite-label::before, .galaxy-satellite-label span, .galaxy-satellite-label small { display: none; }
@@ -1459,6 +1464,8 @@
   border-radius: 6px;
   box-shadow: 0 20px 48px rgba(0, 0, 0, .3);
   animation: galaxy-inspector-in 520ms 720ms cubic-bezier(.16, 1, .3, 1) both;
+  max-height: calc(100% - 44px);
+  overflow-y: auto;
 }
 .galaxy-inspector > header { display: flex; align-items: center; justify-content: space-between; }
 .galaxy-inspector > header > span { display: flex; align-items: center; gap: 7px; color: oklch(72% .12 182); font-size: 8px; font-weight: 750; }
@@ -1479,6 +1486,23 @@
 .galaxy-inspector > footer span { display: grid; gap: 3px; }
 .galaxy-inspector > footer strong { color: oklch(75% .025 205); font-size: 8px; }
 .galaxy-inspector > footer small { color: oklch(48% .025 205); font-size: 7px; }
+.galaxy-jd-section { margin-top: 18px; padding-top: 13px; border-top: 1px solid oklch(25% .022 205); }
+.galaxy-jd-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.galaxy-jd-heading small, .galaxy-jd-more { color: oklch(47% .025 205); font-size: 7px; }
+.galaxy-jd-state { margin-top: 10px !important; color: oklch(59% .025 205) !important; }
+.galaxy-jd-list { display: grid; gap: 7px; margin-top: 10px; }
+.galaxy-jd-list details { background: rgba(16, 31, 33, .82); border: 1px solid oklch(27% .03 195); border-radius: 4px; }
+.galaxy-jd-list summary { display: grid; gap: 3px; padding: 9px 10px; cursor: pointer; list-style-position: inside; }
+.galaxy-jd-list summary::marker { color: oklch(65% .08 165); }
+.galaxy-jd-list summary strong { color: oklch(88% .018 205); font-size: 9px; font-weight: 650; line-height: 1.35; }
+.galaxy-jd-list summary small { color: oklch(50% .025 205); font-size: 7px; }
+.galaxy-jd-detail { display: block !important; margin: 0 !important; padding: 0 10px 10px; }
+.galaxy-jd-detail p { margin: 0 0 10px; color: oklch(64% .025 205); font-size: 8px; line-height: 1.6; white-space: pre-line; }
+.galaxy-jd-detail > span { display: block; margin-top: 8px; color: oklch(49% .027 205); font-size: 7px; font-weight: 750; }
+.galaxy-jd-detail ul { display: grid; gap: 4px; margin: 6px 0 0 15px; padding: 0; color: oklch(64% .025 205); font-size: 8px; line-height: 1.45; }
+.galaxy-jd-skills { display: flex !important; flex-wrap: wrap; gap: 4px !important; margin-top: 6px !important; }
+.galaxy-jd-skills b { padding: 4px 5px !important; font-size: 7px !important; }
+.galaxy-jd-more { display: block; margin-top: 9px; }
 
 .galaxy-topology-legend {
   position: absolute;
@@ -1508,4 +1532,47 @@
 
 @media (prefers-reduced-motion: reduce) {
   .galaxy-inspector { animation: none; }
+}
+
+/* Keep the inspector readable and bounded: summaries stay compact, JD details
+   are opt-in through the native disclosure rows. */
+.galaxy-inspector {
+  width: min(380px, calc(100% - 32px));
+  padding: 22px;
+  max-height: calc(100% - 32px);
+  scrollbar-width: thin;
+  scrollbar-color: oklch(36% .035 205) transparent;
+}
+.galaxy-inspector > header > span { font-size: 10px; }
+.galaxy-inspector h2 { margin-top: 14px; font-size: 24px; line-height: 1.2; }
+.galaxy-inspector > p { color: oklch(78% .025 205); font-size: 12px; line-height: 1.65; }
+.galaxy-inspector-metrics { margin: 16px 0 20px; }
+.galaxy-inspector-metrics > span { padding: 13px 9px; }
+.galaxy-inspector-metrics small { color: oklch(70% .025 205); font-size: 9px; }
+.galaxy-inspector-metrics strong { font-size: 17px; }
+.galaxy-inspector > section { margin-top: 16px; }
+.galaxy-inspector > section > span { color: oklch(70% .025 205); font-size: 10px; }
+.galaxy-inspector > section > div { gap: 7px; margin-top: 9px; }
+.galaxy-inspector > section b { padding: 6px 8px; font-size: 10px; }
+.galaxy-jd-section { margin-top: 20px; padding-top: 16px; }
+.galaxy-jd-heading small, .galaxy-jd-more { font-size: 9px; }
+.galaxy-jd-list { display: grid !important; grid-template-columns: minmax(0, 1fr); width: 100%; gap: 8px; margin-top: 12px; }
+.galaxy-jd-list details { overflow: hidden; }
+.galaxy-jd-list details { width: 100%; min-width: 0; box-sizing: border-box; }
+.galaxy-jd-list summary { min-height: 68px; box-sizing: border-box; padding: 11px 12px; }
+.galaxy-jd-list summary strong { font-size: 11px; }
+.galaxy-jd-list summary small { color: oklch(68% .025 205); font-size: 9px; }
+.galaxy-jd-detail { max-height: 250px; overflow-y: auto; padding: 0 12px 12px; scrollbar-width: thin; scrollbar-color: oklch(36% .035 205) transparent; }
+.galaxy-jd-detail p { color: oklch(76% .025 205); display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 4; font-size: 10px; line-height: 1.6; }
+.galaxy-jd-detail > span { color: oklch(70% .025 205); font-size: 9px; }
+.galaxy-jd-detail ul { color: oklch(76% .025 205); font-size: 10px; line-height: 1.5; }
+.galaxy-jd-skills b { font-size: 9px !important; }
+
+@media (max-width: 1320px) {
+  .galaxy-inspector { width: min(350px, calc(100% - 32px)); }
+}
+
+@media (max-width: 760px) {
+  .galaxy-inspector { top: 12px; right: 12px; bottom: 12px; width: calc(100% - 24px); max-height: none; padding: 18px; }
+  .galaxy-inspector h2 { font-size: 21px; }
 }

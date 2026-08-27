@@ -71,6 +71,7 @@ class Settings(BaseSettings):
     SEMANTIC_INDEX_PATH: Optional[str] = "artifacts/semantic_index/jobs_embeddings.npy"
     SEMANTIC_INDEX_IDS: Optional[str] = "artifacts/semantic_index/jobs_embedding_ids.json"
     DISABLE_EXTERNAL_SERVICES: bool = False
+    DISABLE_ELASTICSEARCH: bool = False
     
     class Config:
         env_file = (Path(__file__).resolve().parents[3] / ".env").as_posix()

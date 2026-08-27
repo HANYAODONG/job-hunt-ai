@@ -365,8 +365,14 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .active-stage-detail > p { max-width: 65ch; margin: 0 0 18px; color: var(--wf-muted); font-size: 12px; line-height: 1.7; }
 .active-stage-detail > section { display: grid; }.active-stage-detail > section > span { margin-bottom: 8px; color: var(--wf-faint); font-size: 9px; }
 .active-stage-detail label { min-height: 42px; display: flex; align-items: center; gap: 9px; border-top: 1px solid var(--wf-line); color: var(--wf-ink); font-size: 11px; }.active-stage-detail input { accent-color: var(--wf-primary); }
-.active-stage-detail > footer { display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: center; margin-top: 18px; padding: 14px; color: var(--wf-primary); background: var(--wf-surface-quiet); border: 1px solid var(--wf-line); }
+.active-stage-detail > footer { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 12px; align-items: center; margin-top: 22px; padding: 15px 16px; color: var(--wf-primary); background: #f3faf7; border: 1px solid #cfe5da; border-radius: 6px; }
 .active-stage-detail footer > div { display: grid; gap: 3px; }.active-stage-detail footer span { color: var(--wf-faint); font-size: 9px; }.active-stage-detail footer strong { color: var(--wf-ink); font-size: 11px; }
+.active-stage-detail > footer .ant-btn,
+.active-stage-detail > footer .ant-btn > span { color: #fff !important; }
+.active-stage-detail > footer > .anticon { display: grid; place-items: center; width: 34px; height: 34px; color: #16735f; background: #dcefe6; border-radius: 5px; font-size: 17px; }
+.active-stage-detail > footer span { color: #52766b !important; font-size: 10px; font-weight: 650; }
+.active-stage-detail > footer strong { color: #173c34 !important; font-size: 13px; font-weight: 680; line-height: 1.35; }
+.active-stage-detail > footer .ant-btn { min-height: 36px; padding-inline: 15px; font-size: 14px; font-weight: 650; }
 
 @media (max-width: 1260px) {
   .signal-review-workspace, .role-catalog-workspace { grid-template-columns: 240px minmax(430px, 1fr); }

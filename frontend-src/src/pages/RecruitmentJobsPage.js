@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useQuery, useQueryClient } from 'react-query';
 import { App as AntdApp, Button, Input, InputNumber, Modal, Select, Skeleton } from 'antd';
 import {
   ArrowRightOutlined,
@@ -13,15 +14,15 @@ import {
 import { Link } from 'react-router-dom';
 import PageHeading from '../components/workbench/PageHeading';
 import { getRecruitmentJobs, saveRecruitmentJob } from '../services/talentApi';
+import { notifyGraphDataChanged } from '../services/graphSync';
 import '../components/workbench/recruitment.css';
 
 const statusClass = { '招聘中': 'live', '草稿': 'draft', '已暂停': 'paused' };
+const emptyJobs = [];
 
 const RecruitmentJobsPage = () => {
   const { message } = AntdApp.useApp();
-  const [jobs, setJobs] = useState([]);
-  const [jobTotal, setJobTotal] = useState(0);
-  const [dataSource, setDataSource] = useState('loading');
+  const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState(null);
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('全部状态');
@@ -30,15 +31,19 @@ const RecruitmentJobsPage = () => {
   const [createOpen, setCreateOpen] = useState(false);
   const [newJob, setNewJob] = useState({ title: '', department: '', location: '', openings: 1 });
 
-  useEffect(() => {
-    getRecruitmentJobs().then((result) => {
-      setJobs(result.items);
-      setJobTotal(result.total);
-      setDataSource(result.source);
-      setSelectedId(result.items[0]?.id || null);
+  const { data: jobsResult, isLoading } = useQuery('recruitment-jobs', getRecruitmentJobs, {
+    staleTime: 5 * 60 * 1000,
+    cacheTime: 30 * 60 * 1000,
+    onSuccess: (result) => {
+      setSelectedId((current) => current && result.items.some((job) => job.id === current)
+        ? current
+        : result.items[0]?.id || null);
       if (result.warning) message.warning('后端未连接，当前展示 Mock 回退数据');
-    });
-  }, [message]);
+    },
+  });
+  const jobs = useMemo(() => jobsResult?.items || emptyJobs, [jobsResult]);
+  const jobTotal = jobsResult?.total || 0;
+  const dataSource = jobsResult?.source || 'loading';
 
   const visibleJobs = useMemo(() => jobs.filter((job) => {
     const matchesQuery = `${job.title} ${job.department} ${job.id}`.toLowerCase().includes(query.toLowerCase());
@@ -53,12 +58,22 @@ const RecruitmentJobsPage = () => {
 
   const updateDraft = (key, value) => setDraft((current) => ({ ...current, [key]: value }));
 
+  const notifyGraphRefresh = (saved) => {
+    queryClient.invalidateQueries(['capability-graph']);
+    queryClient.invalidateQueries(['capability-role-jobs']);
+    notifyGraphDataChanged({ jobId: saved.id, reason: 'jd-updated' });
+  };
+
   const saveDraft = async () => {
     try {
       const saved = await saveRecruitmentJob({ ...draft, updatedAt: '刚刚' });
-      setJobs((current) => current.map((job) => job.id === saved.id ? saved : job));
+      queryClient.setQueryData('recruitment-jobs', (current) => current ? {
+        ...current,
+        items: current.items.map((job) => job.id === saved.id ? saved : job),
+      } : current);
       setDraft(saved);
       setEditing(false);
+      notifyGraphRefresh(saved);
       message.success(saved.warning ? '仅在当前 Mock 页面中更新' : 'JD 修改已持久化保存');
     } catch (error) {
       message.error(error.message || 'JD 保存失败');
@@ -69,7 +84,11 @@ const RecruitmentJobsPage = () => {
     const nextStatus = selected.status === '招聘中' ? '已暂停' : '招聘中';
     try {
       const saved = await saveRecruitmentJob({ ...selected, status: nextStatus, publishedAt: nextStatus === '招聘中' && selected.publishedAt === '尚未发布' ? '今天' : selected.publishedAt, updatedAt: '刚刚' });
-      setJobs((current) => current.map((job) => job.id === saved.id ? saved : job));
+      queryClient.setQueryData('recruitment-jobs', (current) => current ? {
+        ...current,
+        items: current.items.map((job) => job.id === saved.id ? saved : job),
+      } : current);
+      notifyGraphRefresh(saved);
       message.success(nextStatus === '招聘中' ? '招聘 JD 已发布' : '招聘已暂停');
     } catch (error) {
       message.error(error.message || '招聘状态保存失败');
@@ -103,8 +122,12 @@ const RecruitmentJobsPage = () => {
     };
     try {
       const saved = await saveRecruitmentJob(created);
-      setJobs((current) => [saved, ...current]);
-      setJobTotal((current) => current + 1);
+      queryClient.setQueryData('recruitment-jobs', (current) => current ? {
+        ...current,
+        items: [saved, ...current.items],
+        total: (current.total || current.items.length) + 1,
+      } : current);
+      notifyGraphRefresh(saved);
       setSelectedId(id);
       setCreateOpen(false);
       setNewJob({ title: '', department: '', location: '', openings: 1 });
@@ -114,7 +137,7 @@ const RecruitmentJobsPage = () => {
     }
   };
 
-  if (!jobs.length) return <div className="page-loading"><Skeleton active paragraph={{ rows: 12 }} /></div>;
+  if (isLoading || !jobs.length) return <div className="page-loading"><Skeleton active paragraph={{ rows: 12 }} /></div>;
 
   return <div className="workbench-page recruitment-page">
     <PageHeading eyebrow="RECRUITMENT JD POOL" title="我的招聘" description="读取标准企业岗位池，维护 JD 人工调整、发布状态和市场更新建议。">

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useQuery, useQueryClient } from 'react-query';
 import { App as AntdApp, Button, Card, Input, Progress, Select, Space, Tag, Timeline } from 'antd';
 import {
   ArrowRightOutlined,
@@ -58,7 +59,7 @@ const Metric = ({ label, value, detail }) => (
 const RoleEvolutionCenterPage = () => {
   const { message } = AntdApp.useApp();
   const navigate = useNavigate();
-  const [data, setData] = useState(null);
+  const queryClient = useQueryClient();
   const [activeView, setActiveView] = useState('jd-update');
   const [form, setForm] = useState(initialForm);
   const [submitting, setSubmitting] = useState(false);
@@ -68,13 +69,17 @@ const RoleEvolutionCenterPage = () => {
   const [editedSkills, setEditedSkills] = useState([]);
   const [newSkill, setNewSkill] = useState('');
 
-  const loadWorkspace = () => getRoleEvolutionWorkspace().then((result) => {
-    setData(result);
-    setSelectedRole((current) => result.jobs.some((job) => job.name === current) ? current : result.optimization?.name || result.analytics.role);
-    setEditedSkills(safeList(result.optimization?.requiredSkills).map((skill) => typeof skill === 'string' ? skill : skill.name));
-  });
+  const { data, isLoading, refetch: refreshWorkspace } = useQuery(
+    'role-evolution-workspace',
+    getRoleEvolutionWorkspace,
+    { staleTime: 5 * 60 * 1000, cacheTime: 30 * 60 * 1000 },
+  );
 
-  useEffect(() => { loadWorkspace(); }, []);
+  useEffect(() => {
+    if (!data) return;
+    setSelectedRole((current) => data.jobs.some((job) => job.name === current) ? current : data.optimization?.name || data.analytics.role);
+    setEditedSkills(safeList(data.optimization?.requiredSkills).map((skill) => typeof skill === 'string' ? skill : skill.name));
+  }, [data]);
 
   const selectedJob = useMemo(() => data?.jobs?.find((job) => job.name === selectedRole) || data?.optimization, [data, selectedRole]);
   const latest = submitted || data?.latest;
@@ -104,7 +109,10 @@ const RoleEvolutionCenterPage = () => {
     try {
       const result = await saveRoleOptimization({ standard_job: selectedRole, changes: editedSkills.map((skill) => ({ normalized_skill: skill })) });
       message.success(`${result.version || '新版本'} 已保存，等待发布确认`);
-      setData((current) => current ? { ...current, optimization: { ...current.optimization, requiredSkills: editedSkills.map((name) => ({ name })) } } : current);
+      queryClient.setQueryData('role-evolution-workspace', (current) => current ? {
+        ...current,
+        optimization: { ...current.optimization, requiredSkills: editedSkills.map((name) => ({ name })) },
+      } : current);
     } catch (error) {
       message.error(error.message || '岗位优化保存失败');
     } finally {
@@ -118,12 +126,12 @@ const RoleEvolutionCenterPage = () => {
     navigate(path);
   };
 
-  if (!data) return <div className="workbench-page role-evolution-page"><div className="page-loading">正在加载岗位演化工作区...</div></div>;
+  if (isLoading || !data) return <div className="workbench-page role-evolution-page"><div className="page-loading">正在加载岗位演化工作区...</div></div>;
 
   return (
     <div className="workbench-page role-evolution-page">
       <PageHeading eyebrow="ROLE EVOLUTION CENTER" title="岗位演化中心" description="从一条市场 JD 出发，追踪岗位能力变化、版本证据与人工维护结果。">
-        <Button icon={<ReloadOutlined />} onClick={loadWorkspace}>刷新工作区</Button>
+        <Button icon={<ReloadOutlined />} onClick={() => refreshWorkspace()}>刷新工作区</Button>
         <Button type="primary" icon={<PlusOutlined />} onClick={() => openView('jd-update')}>更新一条 JD</Button>
       </PageHeading>
 

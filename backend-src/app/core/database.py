@@ -91,7 +91,9 @@ class Neo4jClient:
             self.driver.close()
 
 # Global instances
-es_client = ElasticsearchClient(disabled=settings.DISABLE_EXTERNAL_SERVICES)
+es_client = ElasticsearchClient(
+    disabled=settings.DISABLE_EXTERNAL_SERVICES or settings.DISABLE_ELASTICSEARCH
+)
 neo4j_client = Neo4jClient(disabled=settings.DISABLE_EXTERNAL_SERVICES)
 
 def get_elasticsearch() -> Elasticsearch:

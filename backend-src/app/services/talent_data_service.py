@@ -141,6 +141,11 @@ class TalentDataService:
         )
         temp_path.replace(self.state_path)
 
+    def invalidate_runtime_state_cache(self) -> None:
+        """Force other service instances to reread persisted JD overrides."""
+        with self._lock:
+            self._state = None
+
     @staticmethod
     def _required_experience(job: dict[str, Any]) -> int:
         text = " ".join(
@@ -255,6 +260,97 @@ class TalentDataService:
     def get_job(self, job_id: str) -> dict[str, Any] | None:
         raw = self._load_state()["custom_jobs"].get(job_id) or self._load_jobs().get(job_id)
         return self._job_view(raw) if raw else None
+
+    def list_standard_role_records(self) -> list[dict[str, Any]]:
+        """Return normalized records used by the three-level role taxonomy."""
+        records: list[dict[str, Any]] = []
+        jobs_by_id = {**self._load_jobs(), **self._load_state()["custom_jobs"]}
+        for job in jobs_by_id.values():
+            # Build the graph from the same merged view used by the recruitment UI.
+            # This makes saved JD skill overrides visible to the taxonomy refresh.
+            view = self._job_view(job)
+            category, direction, role, needs_review = self._normalized_standard_role(job)
+            records.append({
+                "standard_category": category,
+                "standard_role": role,
+                "standard_direction": direction,
+                "skills": _list(view.get("requiredSkills")),
+                "needs_review": needs_review,
+                "job_id": view["id"],
+            })
+        return records
+
+    @staticmethod
+    def _normalized_standard_role(job: dict[str, Any]) -> tuple[str, str, str, bool]:
+        from app.services.role_taxonomy import (
+            get_standard_role_taxonomy,
+            infer_government_tech_role,
+            refine_standard_role,
+        )
+
+        category = str(job.get("standard_category") or "").strip()
+        role = str(job.get("standard_job") or job.get("job_family") or "").strip()
+        direction = str(job.get("standard_direction") or "").strip()
+        needs_review = False
+        if not category or not role:
+            existing_taxonomy = get_standard_role_taxonomy(role) if role else None
+            if existing_taxonomy:
+                category, direction = existing_taxonomy
+            else:
+                metadata = job.get("search_metadata") if isinstance(job.get("search_metadata"), dict) else {}
+                category, direction, role = infer_government_tech_role(metadata.get("tech_filter_categories"))
+                # Keep the evidence-derived direction so government technical posts
+                # participate in the same two-level family structure as enterprise jobs.
+            needs_review = True
+        role = refine_standard_role(
+            category,
+            role,
+            title=str(job.get("title") or ""),
+            skills=job.get("required_skills") or job.get("skills"),
+            description=str(job.get("description") or ""),
+        )
+        if role != str(job.get("standard_job") or job.get("job_family") or "").strip():
+            direction = ""
+        return category, direction, role, needs_review
+
+    def list_standard_role_jobs(
+        self,
+        category: str,
+        direction: str,
+        role: str,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> dict[str, Any]:
+        """Return live JD views belonging to one standard-role node."""
+        from app.services.role_taxonomy import get_canonical_taxonomy
+
+        requested_category = str(category or "").strip()
+        requested_direction = str(direction or "").strip()
+        requested_role = str(role or "").strip()
+        jobs_by_id = {**self._load_jobs(), **self._load_state()["custom_jobs"]}
+        matched: list[dict[str, Any]] = []
+
+        for raw_job in jobs_by_id.values():
+            raw_category, raw_direction, raw_role, _ = self._normalized_standard_role(raw_job)
+            canonical_category, inferred_direction = get_canonical_taxonomy(raw_category, raw_role)
+            normalized_direction = raw_direction or inferred_direction
+            if raw_role != requested_role:
+                continue
+            if canonical_category != requested_category or normalized_direction != requested_direction:
+                continue
+            matched.append(self._job_view(raw_job))
+
+        matched.sort(key=lambda item: (str(item.get("title") or ""), str(item.get("id") or "")))
+        return {
+            "items": matched[offset : offset + limit],
+            "total": len(matched),
+            "limit": limit,
+            "offset": offset,
+            "standardCategory": requested_category,
+            "standardDirection": requested_direction,
+            "standardRole": requested_role,
+            "source": "live-standard-dataset",
+        }
 
     def save_job(self, job_id: str, values: dict[str, Any]) -> dict[str, Any]:
         with self._lock:

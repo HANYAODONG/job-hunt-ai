@@ -15,6 +15,7 @@ import {
   UserOutlined,
 } from '@ant-design/icons';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { preloadRoute } from '../../routeLoaders';
 import './workbench.css';
 import './workflow.css';
 import './v0-upgrade.css';
@@ -132,6 +133,7 @@ const WorkbenchLayout = () => {
   }, { scope: routeRef, dependencies: [location.pathname, workspaceRole], revertOnUpdate: true });
 
   const handleNavigate = (key) => navigate(key);
+  const warmRoute = (key) => { preloadRoute(key); };
   const changeWorkspaceRole = (role) => {
     setWorkspaceRole(role);
     navigate(role === 'enterprise' ? '/recruitment' : '/diagnosis');
@@ -206,7 +208,8 @@ const WorkbenchLayout = () => {
             className={item.key === selectedKey ? 'active' : ''}
             aria-current={item.key === selectedKey ? 'page' : undefined}
             onClick={() => handleNavigate(item.key)}
-            onMouseEnter={() => setTabHover(index)}
+            onMouseEnter={() => { setTabHover(index); warmRoute(item.key); }}
+            onFocus={() => warmRoute(item.key)}
           >
             {item.icon}<span>{item.label}</span>{item.badge && <b>{item.badge}</b>}
           </button>)}
@@ -239,7 +242,7 @@ const WorkbenchLayout = () => {
           </header>
           <div className="command-section-label">QUICK NAVIGATION</div>
           <div className="command-results">
-            {matchingCommands.map((item, index) => <button key={item.key} type="button" className={index === activeCommandIndex ? 'active' : ''} onMouseEnter={() => setActiveCommandIndex(index)} onClick={() => executeCommand(item.key)}>
+            {matchingCommands.map((item, index) => <button key={item.key} type="button" className={index === activeCommandIndex ? 'active' : ''} onMouseEnter={() => { setActiveCommandIndex(index); warmRoute(item.key); }} onFocus={() => warmRoute(item.key)} onClick={() => executeCommand(item.key)}>
               <span className="command-result-icon">{item.icon}</span><span><strong>{item.label}</strong><small>{item.meta}</small></span><span className="command-result-enter">Enter</span>
             </button>)}
             {!matchingCommands.length && <div className="command-empty">没有匹配的页面或操作</div>}
