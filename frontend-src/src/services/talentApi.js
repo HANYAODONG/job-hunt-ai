@@ -578,6 +578,28 @@ export const getMarketRuntimeStatus = async () => {
   };
 };
 export const importMarketCsv = (file) => ingestMarketCsv(file);
+
+export const getJdQualitySample = async ({ limit = 30, useLlm = false, llmLimit = 5 } = {}) => {
+  const query = new URLSearchParams({
+    limit: String(limit),
+    use_llm: String(useLlm),
+    llm_limit: String(llmLimit),
+  });
+  const response = await fetch(`/api/v1/jd-quality/sample?${query.toString()}`);
+  if (!response.ok) throw new Error(`JD quality audit failed: HTTP ${response.status}`);
+  return response.json();
+};
+
+export const auditJdQualityBatch = async ({ jobs = [], useLlm = false, llmLimit = 5 } = {}) => {
+  const response = await fetch('/api/v1/jd-quality/batch', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ jobs, use_llm: useLlm, llm_limit: llmLimit }),
+  });
+  if (!response.ok) throw new Error(`JD quality batch audit failed: HTTP ${response.status}`);
+  return response.json();
+};
+
 export const getRecruitmentJobs = async (options = {}) => {
   try {
     return await getTalentJobs(options);

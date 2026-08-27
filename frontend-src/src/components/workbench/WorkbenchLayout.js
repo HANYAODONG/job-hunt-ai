@@ -10,6 +10,7 @@ import {
   FileSearchOutlined,
   FileTextOutlined,
   RadarChartOutlined,
+  SafetyCertificateOutlined,
   SearchOutlined,
   TeamOutlined,
   UserOutlined,
@@ -28,6 +29,7 @@ const enterpriseItems = [
   { key: '/recruitment', icon: <FileTextOutlined />, label: '我的招聘' },
   { key: '/candidates', icon: <TeamOutlined />, label: '候选匹配', badge: 5 },
   { key: '/signals', icon: <RadarChartOutlined />, label: '岗位演化中心', badge: 18 },
+  { key: '/jd-quality', icon: <SafetyCertificateOutlined />, label: 'JD 质检' },
   { key: '/graph', icon: <ClusterOutlined />, label: '全景图谱' },
 ];
 
@@ -62,7 +64,7 @@ const WorkbenchLayout = () => {
 
   useEffect(() => {
     localStorage.setItem('workspaceRole', workspaceRole);
-    const enterpriseOnlyRoutes = ['/recruitment', '/candidates', '/signals', '/discovery', '/evolution'];
+    const enterpriseOnlyRoutes = ['/recruitment', '/candidates', '/signals', '/jd-quality', '/discovery', '/evolution'];
     const candidateOnlyRoutes = ['/diagnosis', '/learning'];
     if (!enterpriseMode && enterpriseOnlyRoutes.includes(location.pathname)) navigate('/diagnosis', { replace: true });
     if (enterpriseMode && candidateOnlyRoutes.includes(location.pathname)) navigate('/recruitment', { replace: true });
@@ -156,7 +158,7 @@ const WorkbenchLayout = () => {
   };
   const commandItems = navItems.map((item) => ({
     ...item,
-    meta: item.key === '/graph' ? 'Capability graph' : item.key === '/diagnosis' ? 'Person-role diagnosis' : item.key === '/learning' ? 'Learning plan' : item.key === '/signals' ? 'Role evolution center' : item.key === '/recruitment' ? 'Job postings' : 'Candidate review',
+    meta: item.key === '/graph' ? 'Capability graph' : item.key === '/diagnosis' ? 'Person-role diagnosis' : item.key === '/learning' ? 'Learning plan' : item.key === '/signals' ? 'Role evolution center' : item.key === '/jd-quality' ? 'JD quality audit' : item.key === '/recruitment' ? 'Job postings' : 'Candidate review',
   }));
   const matchingCommands = commandItems.filter((item) => `${item.label} ${item.meta}`.toLowerCase().includes(commandQuery.toLowerCase()));
   const executeCommand = (key) => {

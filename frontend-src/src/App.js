@@ -20,6 +20,7 @@ const FusionDemoPage = lazy(routeLoaders['/fusion-demo']);
 const LoginPage = lazy(routeLoaders['/login']);
 const RegisterPage = lazy(routeLoaders['/register']);
 const RoleEvolutionCenterPage = lazy(routeLoaders['/signals']);
+const JdQualityPage = lazy(routeLoaders['/jd-quality']);
 const GraphPage = lazy(routeLoaders['/graph']);
 const DiagnosisPage = lazy(routeLoaders['/diagnosis']);
 const LearningPlanPage = lazy(routeLoaders['/learning']);
@@ -73,6 +74,7 @@ function App() {
                   <Route path="recruitment" element={<RecruitmentJobsPage />} />
                   <Route path="candidates" element={<CandidateMatchingPage />} />
                   <Route path="signals" element={<RoleEvolutionCenterPage />} />
+                  <Route path="jd-quality" element={<JdQualityPage />} />
                   <Route path="discovery" element={<Navigate replace to="/signals" />} />
                   <Route path="roles" element={<Navigate replace to="/graph" />} />
                   <Route path="graph" element={<GraphPage />} />

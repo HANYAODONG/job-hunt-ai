@@ -4,6 +4,7 @@ export const routeLoaders = Object.freeze({
   '/recruitment': () => import('./pages/RecruitmentJobsPage'),
   '/candidates': () => import('./pages/CandidateMatchingPage'),
   '/signals': () => import('./pages/RoleEvolutionCenterPage'),
+  '/jd-quality': () => import('./pages/JdQualityPage'),
   '/graph': () => import('./pages/GraphPage'),
   '/diagnosis': () => import('./pages/DiagnosisPage'),
   '/learning': () => import('./pages/LearningPlanPage'),
