@@ -47,6 +47,7 @@ DEFAULT_LABELS = REPO_ROOT / "artifacts" / "dataset_iteration_05" / "label_pairs
 DEFAULT_BM25 = REPO_ROOT / "artifacts" / "bm25" / "bm25_top200.jsonl"
 DEFAULT_TEXT2VEC = REPO_ROOT / "artifacts" / "semantic_text2vec" / "semantic_rerank_top200.jsonl"
 DEFAULT_BGE = REPO_ROOT / "artifacts" / "semantic_bge" / "semantic_rerank_top200.jsonl"
+DEFAULT_FUSION = REPO_ROOT / "artifacts" / "fusion_ranking" / "fusion_full.jsonl"
 DEFAULT_OUT = REPO_ROOT / "artifacts" / "semantic_text2vec" / "eval_report.json"
 
 
@@ -295,8 +296,9 @@ def compare_all(
     ks: List[int],
     positive_grade: int,
     output_path: Path,
+    fusion_path: Path = DEFAULT_FUSION,
 ) -> Dict[str, Any]:
-    """三模型对比：BM25 vs BM25+text2vec vs BM25+BGE-M3。"""
+    """四方案对比：BM25 vs BM25+text2vec vs BM25+BGE-M3 vs BM25+BGE-M3+技能覆盖。"""
     labels = load_labels(labels_path)
 
     configs = [
@@ -317,6 +319,12 @@ def compare_all(
             "path": bge_path,
             "score_field": "semantic_score",
             "rank_field": "semantic_rank",
+        },
+        {
+            "name": "BM25 + BGE-M3 + 技能覆盖",
+            "path": fusion_path,
+            "score_field": "final_score",
+            "rank_field": "rank",
         },
     ]
 
@@ -368,6 +376,7 @@ def compare_all(
             for m in metric_names:
                 row[m] = r["metrics"].get(m)
             res = r["resources"]
+            row["样本规模"] = r["metrics"].get("evaluated_queries")
             row["编码耗时(s)"] = res.get("encode_time_sec")
             row["查询编码(ms)"] = res.get("avg_query_encode_ms")
             row["峰值内存(MB)"] = res.get("peak_memory_mb")
@@ -387,7 +396,7 @@ def compare_all(
     print(f"正样本阈值: grade >= {positive_grade}")
     print("-" * 80)
 
-    headers = ["模型"] + metric_names + ["编码耗时(s)", "查询编码(ms)", "峰值内存(MB)"]
+    headers = ["模型"] + metric_names + ["样本规模", "编码耗时(s)", "查询编码(ms)", "峰值内存(MB)"]
     col_widths = [max(len(h), 10) for h in headers]
 
     # 表头
@@ -432,7 +441,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--positive-grade", type=int, default=2, help="正样本等级阈值")
     parser.add_argument("--ks", default="5,10,20,100", help="K 值列表，逗号分隔")
     parser.add_argument("--output", type=Path, default=DEFAULT_OUT, help="输出报告路径")
-    parser.add_argument("--compare-all", action="store_true", help="三模型对比（BM25/text2vec/BGE-M3）")
+    parser.add_argument("--compare-all", action="store_true", help="四方案对比（BM25/text2vec/BGE-M3/融合）")
+    parser.add_argument("--fusion", type=Path, default=DEFAULT_FUSION, help="融合结果文件路径（BM25+BGE+技能覆盖）")
     parser.add_argument("--compare", action="store_true", help="自定义多模型对比")
     parser.add_argument("--rankings", nargs="*", default=[], help="自定义对比: path:score:rank:label ...")
     return parser.parse_args()
@@ -442,7 +452,7 @@ def main() -> None:
     args = parse_args()
     ks = [int(x.strip()) for x in args.ks.split(",") if x.strip()]
 
-    # ── 三模型对比 ────────────────────────────────────────────────
+    # ── 四方案对比 ────────────────────────────────────────────────
     if args.compare_all:
         compare_all(
             bm25_path=DEFAULT_BM25,
@@ -452,6 +462,7 @@ def main() -> None:
             ks=ks,
             positive_grade=args.positive_grade,
             output_path=args.output,
+            fusion_path=args.fusion,
         )
         return
 

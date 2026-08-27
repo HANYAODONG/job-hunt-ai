@@ -20,6 +20,8 @@ from .api.endpoints.fusion import router as fusion_router
 from .api.endpoints import graph  # 新增
 from .api.endpoints.jd_update import router as jd_update_router
 from .api.endpoints.talent import router as talent_router
+from .api.endpoints.diagnosis import router as diagnosis_router
+from .api.endpoints.learning import router as learning_router
 
 # Configure logging
 logging.basicConfig(
@@ -74,6 +76,8 @@ app.include_router(fusion_router, prefix="/api/v1/fusion", tags=["fusion"])
 app.include_router(graph.router, prefix="/api/v1", tags=["graph"])  # 新增
 app.include_router(jd_update_router, prefix="/api/v1/jd-update", tags=["jd-update"])
 app.include_router(talent_router, prefix="/api/v1/talent", tags=["talent"])
+app.include_router(diagnosis_router, prefix="/api/v1/diagnosis", tags=["diagnosis"])
+app.include_router(learning_router, prefix="/api/v1/learning", tags=["learning"])
 
 # Health check endpoint
 @app.get("/health")

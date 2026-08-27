@@ -7,14 +7,14 @@ Updated after merging PR #15/#16/#17.
 | Area | Page / Service | Status | Notes |
 | --- | --- | --- | --- |
 | Fusion recommendation | `/fusion-demo`, `fusionApi.recommendJobs` | live | Calls `POST /api/v1/fusion/recommend`; keeps offline/mock modes for fallback. |
-| Resume diagnosis | `/diagnosis`, `talentApi.diagnoseCandidate` | live with fallback | Intended chain: resume upload -> BM25 -> semantic rerank -> KG gap -> fusion rank. Falls back to legacy recommendations if the full chain fails. |
+| Resume diagnosis | `/diagnosis`, `talentApi.diagnoseCandidate` | live with fallback | Intended chain: resume upload -> BM25 -> semantic rerank -> KG gap -> fusion rank. Falls back to legacy recommendations if the full chain fails. Also exposes a stable backend contract at `POST /api/v1/diagnosis/analyze`. |
 | BM25 retrieval | `intelligenceApi.searchBm25` | live | Calls `/api/v1/bm25/search`. |
 | Semantic rerank | `intelligenceApi.rerankSemantic` | live | Calls `/api/v1/semantic/rerank`. |
 | KG gap analysis | `intelligenceApi.analyzeKnowledgeGraphGap` | live | Calls `/api/v1/kg/analyze`; requires job_id/candidate_id alignment. |
 | Market CSV ingestion | `talentApi.importMarketCsv` | live | Calls CSV ingestion API. |
 | Market runtime stats | `talentApi.getMarketRuntimeStatus` | partial-live | Uses backend stats, but trend candidates are still mock. |
 | Graph visualization | `/graph`, `getCapabilityGraph` | mock-only | Needs real nodes/edges graph API. |
-| Learning plan | `/learning`, `getLearningPlan` | mock-only | Needs learning-path generation API. |
+| Learning plan | `/learning`, `getLearningPlan` | live with fallback | Calls `POST /api/v1/learning/plan` from diagnosis gaps; falls back to mock when backend unavailable. |
 | Recruitment jobs | `/recruitment`, `getRecruitmentJobs` | live with fallback | Reads 12,675 enterprise jobs and supports runtime detail/status edits through `/api/v1/talent/jobs`. |
 | Candidate pipeline | `/candidates`, `getJobCandidates` | live with fallback | Reads 30,200 candidate profiles, returns explainable baseline scores, and persists candidate stages through `/api/v1/talent/jobs/{job_id}/candidates`. |
 | Dashboard overview | `/`, `getTalentOverview` | mock-only | Needs aggregate dashboard API if required for final demo. |
@@ -60,20 +60,32 @@ Each node should include id, label, type, weight/count, and optional year. Each 
 
 ### `/learning`
 
-Still mock-only.
+Connected to `POST /api/v1/learning/plan` with mock fallback.
 
-Needed backend output:
+Backend output (minimal contract):
 
 ```json
 {
   "target_role": "...",
-  "missing_skills": [],
-  "stages": [],
+  "missing_skills": [{"skill": "...", "priority": "high", "reason": "..."}],
+  "stages": [
+    {
+      "id": "stage-1",
+      "skill": "...",
+      "priority": "high",
+      "learning_stage": "阶段 1",
+      "title": "...",
+      "suggestion": "...",
+      "resources": ["..."]
+    }
+  ],
   "resources": []
 }
 ```
 
-This can be generated from diagnosis gaps plus optional LLM explanation later.
+Generated from diagnosis gaps (`careerTarget` in localStorage) via a deterministic
+skill-suggestion library; no LLM required. The `/diagnosis` page already writes
+`careerTarget` before navigating to `/learning`, so the two pages are chained.
 
 ### `/recruitment`
 
@@ -138,12 +150,12 @@ They still use older search/recommendation APIs. Do not migrate all of them at o
 | 页面 | 状态 | 说明 | 负责人 |
 | --- | --- | --- | --- |
 | `/fusion-demo` | ✅ 已接 | `recommendJobs()` → `/fusion/recommend`，四种模式齐全 | 纪雨涵 |
-| `/diagnosis` | ✅ 已接 | 全链路 live（上传→BM25→Semantic→KG→Fusion），降级 fallback | 叶骑瑞/纪雨涵 |
+| `/diagnosis` | ✅ 已接 | 全链路 live（上传→BM25→Semantic→KG→Fusion），降级 fallback；新增 `POST /api/v1/diagnosis/analyze` 稳定字段契约 | 叶骑瑞/纪雨涵 |
 | `/recommendations` | 🔄 本轮已接 | 改接 `/fusion/recommend`（sample），复用 FusionScoreCard | 纪雨涵 |
 | `/search` | ⚠️ 旧接口 | 仍走旧 `/jobs/search`（英文市场）；legacy 页面暂不整体迁移 | 纪雨涵 |
 | `/signals` | ⚠️ partial-live | 基础统计 real，趋势候选 mock；JD 更新模块可成为数据源 | 李佳蔓/魏昊朗 |
 | `/graph` | ❌ mock-only | 需 nodes/edges 图谱接口（分工5 已定义最小结构） | 魏昊朗 |
-| `/learning` | ❌ mock-only | 需学习路径接口（分工5 已定义最小输出） | 叶骑瑞 |
+| `/learning` | ✅ 已接 | 接 `/learning/plan`，由诊断缺口生成，mock 兜底 | 叶骑瑞 |
 | `/recruitment` | ❌ mock-only | 部分可复用 `/jobs/*` CRUD | 甘可欣 |
 | `/candidates` | ❌ mock-only | `POST /bm25/candidates` 可复用 | 甘可欣 |
 

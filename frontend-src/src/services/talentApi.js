@@ -13,6 +13,7 @@ import { recruitmentCandidatesData, recruitmentJobsData } from '../data/mockRecr
 import { getJobById, getJobRecommendations, getMarketTrends, uploadResume } from './api';
 import {
   analyzeKnowledgeGraphGap,
+  generateLearningPlan,
   getMarketRuntime,
   getTalentCandidates,
   getTalentCandidateExplanation,
@@ -33,7 +34,7 @@ export const TALENT_API_CAPABILITIES = Object.freeze({
   knowledgeGraphGap: 'live',
   fusionRanking: 'live',
   capabilityGraph: 'live-with-canonical-fallback',
-  learningPlan: 'mock-only',
+  learningPlan: 'live-with-fallback',
   recruitment: 'live-with-fallback',
   candidatePipeline: 'live-with-fallback',
   marketSignals: 'partial-live',
@@ -329,7 +330,45 @@ export const diagnoseCandidate = ({ resumeFile } = {}) => {
 export const getDataGovernance = () => mockOnly(governanceData);
 export const getEvaluationReport = () => mockOnly(evaluationData);
 export const getRoleCatalog = () => mockOnly(roleCatalogData);
-export const getLearningPlan = () => mockOnly(learningPlanData);
+export const getLearningPlan = async () => {
+  let target = null;
+  try { target = JSON.parse(localStorage.getItem('careerTarget')); } catch { target = null; }
+  if (!target?.role) return learningPlanData;
+
+  try {
+    const raw = await generateLearningPlan({
+      targetRole: target.role,
+      missingSkills: (target.gaps || []).map((gap) => (typeof gap === 'string' ? gap : gap?.skill)).filter(Boolean),
+      targetVersion: target.version,
+      matchScore: target.score != null ? Number(target.score) / 100 : null,
+    });
+
+    return {
+      profile: raw.profile || '求职者',
+      targetRole: raw.target_role || target.role,
+      targetVersion: raw.target_version || target.version,
+      matchScore: raw.match_score != null ? Math.round(raw.match_score * 100) : target.score,
+      progress: raw.progress || 0,
+      currentStage: raw.current_stage || '阶段 1',
+      updatedAt: raw.updated_at || new Date().toLocaleString('zh-CN', { hour12: false }),
+      gapCount: raw.gap_count || (raw.stages || []).length,
+      stages: (raw.stages || []).map((stage) => ({
+        id: stage.id,
+        phase: stage.phase || stage.learning_stage || '阶段 1',
+        title: stage.title,
+        duration: stage.duration || '1 周',
+        status: stage.status,
+        goal: stage.goal || stage.suggestion,
+        tasks: stage.tasks || [],
+        outcome: stage.outcome,
+        skill: stage.skill,
+      })),
+    };
+  } catch (error) {
+    console.warn('Learning plan API unavailable, falling back to mock:', error);
+    return learningPlanData;
+  }
+};
 
 const roleEvolutionApiUrl = process.env.REACT_APP_ROLE_EVOLUTION_API_URL;
 const roleEvolutionBaseUrl = roleEvolutionApiUrl || process.env.REACT_APP_API_URL || '/api/v1';

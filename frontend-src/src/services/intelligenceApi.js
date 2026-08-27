@@ -41,6 +41,36 @@ export const rerankSemantic = async ({ queryId, queryText, candidates }) => {
   }
 };
 
+export const generateLearningPlan = async ({
+  targetRole,
+  missingSkills,
+  candidateName,
+  targetVersion,
+  matchScore,
+}) => {
+  try {
+    const response = await api.post('/learning/plan', {
+      target_role: targetRole,
+      missing_skills: (missingSkills || []).map((skill) => ({ skill, priority: 'high' })),
+      candidate_name: candidateName,
+      target_version: targetVersion,
+      match_score: matchScore,
+    });
+    return response.data;
+  } catch (error) {
+    throw new Error(detail(error, '学习路径生成失败'));
+  }
+};
+
+export const diagnosePersonRole = async (payload) => {
+  try {
+    const response = await api.post('/diagnosis/analyze', payload);
+    return response.data;
+  } catch (error) {
+    throw new Error(detail(error, '人岗诊断失败'));
+  }
+};
+
 export const analyzeKnowledgeGraphGap = async (candidateId, jobId) => {
   try {
     const response = await api.post('/kg/analyze', {
