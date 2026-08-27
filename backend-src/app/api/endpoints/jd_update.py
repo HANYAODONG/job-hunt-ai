@@ -10,6 +10,7 @@ from app.services import analytics_service, government_job_service, job_service
 from app.services.live_update_effect_service import get_live_update_effect
 from app.services.profile_override_service import save_profile_overrides
 from app.models.jd_update import (
+    CandidateSkillReviewInput,
     Domain,
     ExistingJobReviewInput,
     JdSubmitInput,
@@ -73,6 +74,33 @@ async def import_csv(
 @router.get("/reviews")
 def reviews(domain: Domain = Query("company")) -> list[dict[str, Any]]:
     return _service(domain).get_review_items()
+
+
+@router.get("/cross-validation/candidates")
+def cross_validation_candidates(
+    status: str | None = None,
+    domain: Domain = Query("company"),
+) -> list[dict[str, Any]]:
+    if domain == "government":
+        return []
+    return job_service.get_candidate_skills(status=status)
+
+
+@router.post("/cross-validation/candidates/review")
+def review_cross_validation_candidate(
+    payload: CandidateSkillReviewInput,
+    domain: Domain = Query("company"),
+) -> dict[str, Any]:
+    if domain == "government":
+        raise HTTPException(status_code=400, detail="政府岗位数据域暂不启用动态候选能力池")
+    try:
+        return job_service.review_candidate_skill(
+            standard_job=payload.standard_job,
+            skill=payload.skill,
+            action=payload.action,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.get("/live-evolution/{effect_id}")

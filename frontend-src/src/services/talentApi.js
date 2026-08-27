@@ -373,6 +373,8 @@ const normalizeProcessResult = (item, input = {}) => {
   const route = result.route || {};
   const role = route.best_job?.name || result.job_title || input.job_title || '未归类岗位';
   const skills = (result.skills || []).map(skillName).filter(Boolean);
+  const crossValidation = Array.isArray(result.cross_validation) ? result.cross_validation : [];
+  const candidateSkillCount = crossValidation.filter((item) => ['candidate', 'confirmed_dynamic', 'confirmed_cross_role'].includes(item?.status)).length;
   const update = result.update || {};
   const effect = result.live_update_effect || {};
   const changes = effect.changes || {};
@@ -388,6 +390,8 @@ const normalizeProcessResult = (item, input = {}) => {
     removed: changes.removed?.map(skillName).filter(Boolean) || [],
     modified: [...(changes.increased || []), ...(changes.decreased || [])].map(skillName).filter(Boolean),
     evidence: skills.length,
+    crossValidation,
+    candidateSkillCount,
     updatedAt,
     input,
     raw: item,
@@ -561,6 +565,22 @@ export const saveRoleOptimization = async (payload) => {
   } catch {
     return { status: '已保存', version: 'v1.3', ...payload };
   }
+};
+
+export const getCrossValidationCandidates = async (status = '') => {
+  if (!roleEvolutionLiveEnabled) return [];
+  const query = status ? `&status=${encodeURIComponent(status)}` : '';
+  return roleEvolutionRequest(roleEvolutionPath(
+    `/jd-update/cross-validation/candidates?domain=company${query}`,
+    `/api/cross-validation/candidates?domain=company${query}`,
+  ));
+};
+
+export const reviewCrossValidationCandidate = async ({ standard_job, skill, action }) => {
+  return roleEvolutionRequest(roleEvolutionPath(
+    '/jd-update/cross-validation/candidates/review?domain=company',
+    '/api/cross-validation/candidates/review?domain=company',
+  ), { method: 'POST', body: JSON.stringify({ standard_job, skill, action }) });
 };
 export const getLiveMarketTrend = (skill) => getMarketTrends(skill);
 export const getMarketRuntimeStatus = async () => {

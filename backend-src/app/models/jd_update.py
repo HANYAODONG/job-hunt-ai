@@ -53,6 +53,12 @@ class SkillReviewInput(BaseModel):
     skill_type: str = ""
 
 
+class CandidateSkillReviewInput(BaseModel):
+    standard_job: str
+    skill: str
+    action: Literal["confirm", "reject"]
+
+
 class ProfileOverrideInput(BaseModel):
     standard_job: str
     changes: list[dict[str, Any]] = Field(default_factory=list)
