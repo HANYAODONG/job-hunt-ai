@@ -510,3 +510,18 @@
   .candidate-review-detail { padding: 22px 17px 30px; }
   .candidate-match-score { justify-items: start; width: fit-content; }
 }
+
+/* Keep the three-pane review area bounded; the candidate list scrolls inside it. */
+@media (min-width: 821px) {
+  .candidate-review-workspace {
+    height: min(760px, calc(100vh - 300px));
+    min-height: 620px;
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .candidate-review-detail,
+  .candidate-decision-panel {
+    min-height: 0;
+    overflow-y: auto;
+  }
+}
