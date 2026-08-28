@@ -139,6 +139,7 @@ const RoleEvolutionCenterPage = () => {
         <Metric label="待处理信号" value={data.pending.length} detail="新岗位与能力变化" />
         <Metric label="当前岗位" value={data.analytics.role} detail={`版本 ${latest.version}`} />
         <Metric label="本次变化" value={safeList(latest.added).length + safeList(latest.modified).length} detail="新增与调整能力" />
+        <Metric label="待交叉验证" value={latest.candidateSkillCount || 0} detail="候选能力暂不写入基线" />
         <Metric label="证据数量" value={latest.evidence || 0} detail="已关联来源记录" />
       </section>
 
@@ -172,7 +173,7 @@ const RoleEvolutionCenterPage = () => {
       {activeView === 'live-evolution' && <section className="role-evolution-grid role-evolution-live-grid">
         <main className="role-evolution-panel">
           <header><div><span>LIVE EFFECT</span><h2>{latest.role} · 本次岗位演化</h2></div><Tag color="gold">{latest.status}</Tag></header>
-          <div className="role-evolution-effect-header"><div><small>变化版本</small><strong>{latest.version}</strong></div><div><small>更新时间</small><strong>{latest.updatedAt}</strong></div><div><small>关联证据</small><strong>{latest.evidence || 0} 条</strong></div></div>
+          <div className="role-evolution-effect-header"><div><small>变化版本</small><strong>{latest.version}</strong></div><div><small>更新时间</small><strong>{latest.updatedAt}</strong></div><div><small>关联证据</small><strong>{latest.evidence || 0} 条</strong></div><div><small>候选能力</small><strong>{latest.candidateSkillCount || 0} 项</strong></div></div>
           <p className="role-evolution-summary">{latest.summary}</p>
           <div className="role-evolution-change-columns">{changeGroups.map((group) => <ChangeGroup key={group.key} title={group.label} items={latest[group.key]} tone={group.tone} />)}</div>
           <div className="role-evolution-action-row"><Button onClick={() => openView('analytics')} icon={<BarChartOutlined />}>查看历史趋势</Button><Button onClick={() => openContextualRoute('/graph')} icon={<NodeIndexOutlined />}>打开全景图谱</Button><Button type="primary" onClick={() => openView('optimization')} icon={<FileSearchOutlined />}>进入人工优化</Button></div>
@@ -181,7 +182,7 @@ const RoleEvolutionCenterPage = () => {
           { source: '市场 JD 输入', confidence: '本次提交', excerpt: form.job_title || latest.role, collectedAt: form.month },
           { source: '岗位技能抽取', confidence: `${latest.evidence || 0} 条证据`, excerpt: safeList(latest.added).join('、') || '未发现新增能力', collectedAt: latest.updatedAt },
           { source: '岗位画像版本', confidence: latest.version, excerpt: '变化结果保留新增、删除和修改三类差异。', collectedAt: latest.updatedAt },
-        ]} history={[{ label: '完成 JD 解析与岗位归类', time: latest.updatedAt }, { label: '生成岗位能力变化预览', time: latest.updatedAt }, { label: '等待人工确认发布', time: '当前' }]} />
+        ]} history={[{ label: '完成 JD 解析与岗位归类', time: latest.updatedAt }, { label: latest.candidateSkillCount ? `${latest.candidateSkillCount} 项新增能力进入交叉验证候选池` : '技能均已通过岗位能力验证', time: latest.updatedAt }, { label: '等待人工确认发布', time: '当前' }]} />
       </section>}
 
       {activeView === 'analytics' && <section className="role-evolution-analytics">
