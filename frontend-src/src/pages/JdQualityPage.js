@@ -213,7 +213,7 @@ const JdQualityPage = () => {
         <article><span>审核 JD</span><strong>{summary.total || items.length}</strong><small>来自标准数据样例</small></article>
         <article><span>高风险</span><strong>{highCount}</strong><small>建议人工复核</small></article>
         <article><span>中风险</span><strong>{mediumCount}</strong><small>降权并追踪</small></article>
-        <article><span>平均通胀风险</span><strong>{avgInflation}%</strong><Progress percent={avgInflation} showInfo={false} strokeColor="#2aa8ff" /></article>
+        <article><span>平均通胀风险</span><strong>{avgInflation}%</strong><Progress percent={avgInflation} showInfo={false} strokeColor="#0b7a68" /></article>
       </section>
 
       <section className="jd-quality-workspace">
@@ -246,9 +246,9 @@ const JdQualityPage = () => {
                 <Tag color={riskTone[item.risk_level]}>{riskLabels[item.risk_level] || item.risk_level}</Tag>
               </header>
               <div className="jd-quality-score-row">
-                <div><span>通胀风险</span><Progress percent={metricPercent(item.inflation_score)} size="small" strokeColor="#2aa8ff" /></div>
-                <div><span>模板噪声</span><Progress percent={metricPercent(item.noise_score)} size="small" strokeColor="#8cc7ff" /></div>
-                <div><span>证据不足</span><Progress percent={metricPercent(item.evidence_risk)} size="small" strokeColor="#7c8cff" /></div>
+                <div><span>通胀风险</span><Progress percent={metricPercent(item.inflation_score)} size="small" strokeColor="#0b7a68" /></div>
+                <div><span>模板噪声</span><Progress percent={metricPercent(item.noise_score)} size="small" strokeColor="#d39431" /></div>
+                <div><span>证据不足</span><Progress percent={metricPercent(item.evidence_risk)} size="small" strokeColor="#6558b8" /></div>
               </div>
               <p>{item.llm_summary || item.local_summary}</p>
               <div className="jd-quality-evidence">
