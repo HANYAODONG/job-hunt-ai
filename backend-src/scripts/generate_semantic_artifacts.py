@@ -324,11 +324,13 @@ def main(
     write_json(artifact_dir / "embedding_model_comparison.json", comparison)
 
     metadata_path = artifact_dir / "model_metadata.json"
+    effective_model = "char-ngram-hashing-768" if use_fallback else model_name
+    effective_family = "deterministic-lightweight-baseline" if use_fallback else "bge-m3"
     write_json(
         metadata_path,
         {
-            "model_name": model_name,
-            "model_family": "bge-m3",
+            "model_name": effective_model,
+            "model_family": effective_family,
             "pipeline": "offline_job_embedding_and_rerank",
             "candidate_source": str(candidates_path) if candidates_path else "all_jobs_fallback",
             "jobs_input": str(jobs_path),
@@ -345,7 +347,11 @@ def main(
 
     try:
         print("\nFirst 3 rerank entries (sample):")
-        print(json.dumps(rerank_results[:3], ensure_ascii=False, indent=2))
+        preview = [
+            {**row, "candidates": row.get("candidates", [])[:10]}
+            for row in rerank_results[:3]
+        ]
+        print(json.dumps(preview, ensure_ascii=False, indent=2))
     except Exception:
         pass
 

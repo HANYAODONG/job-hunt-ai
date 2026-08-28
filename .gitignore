@@ -49,6 +49,7 @@ backend-src/job_update/government_job_update/data/base/**
 backend-src/job_update/government_job_update/government_jobs_2024_2026_tech_final.csv
 # Runtime data packages kept in Git for convenient team setup
 !artifacts/workflow1_dataset_iteration_05.zip
+!artifacts/semantic_index_runtime.zip
 !backend-src/job_update/company_job_update/data/versions/
 !backend-src/job_update/company_job_update/data/versions/company_large_v2/
 !backend-src/job_update/company_job_update/data/versions/company_large_v2/job_update_company_runtime_data.zip

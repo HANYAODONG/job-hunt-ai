@@ -153,6 +153,43 @@ class StandardRoleGraphTests(unittest.TestCase):
             for direction in domain["children"]:
                 self.assertGreaterEqual(len(direction["children"]), 2)
 
+    def test_filters_graph_snapshot_by_publish_year(self):
+        records = [
+            {
+                "standard_category": "AI应用",
+                "standard_role": "大模型应用工程师",
+                "skills": ["RAG"],
+                "publish_time": "2024-06-01",
+            },
+            {
+                "standard_category": "数据",
+                "standard_role": "数据工程师",
+                "skills": ["Spark"],
+                "publish_time": "2026/07/15",
+            },
+        ]
+
+        graph_2024 = build_standard_role_graph(records, year=2024)
+        graph_2026 = build_standard_role_graph(records, year=2026)
+
+        self.assertEqual(graph_2024["summary"]["job_postings"], 1)
+        self.assertEqual(graph_2026["summary"]["job_postings"], 1)
+        self.assertEqual(graph_2024["tree"]["label"], "岗位银河 (2024)")
+        self.assertEqual(graph_2026["tree"]["label"], "岗位银河 (2026)")
+
+    def test_returns_empty_snapshot_for_year_without_records(self):
+        graph = build_standard_role_graph([
+            {
+                "standard_category": "数据",
+                "standard_role": "数据工程师",
+                "skills": ["Python"],
+                "publish_time": "2026-01-10",
+            },
+        ], year=2025)
+
+        self.assertEqual(graph["summary"]["job_postings"], 0)
+        self.assertEqual(graph["tree"]["children"], [])
+
 
 if __name__ == "__main__":
     unittest.main()

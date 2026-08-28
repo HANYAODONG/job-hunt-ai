@@ -36,6 +36,8 @@ class Settings(BaseSettings):
     # NLP Models
     SPACY_MODEL: str = "en_core_web_sm"
     SENTENCE_TRANSFORMER_MODEL: str = "BAAI/bge-m3"
+    ENABLE_SPACY_MODEL: bool = True
+    ENABLE_SENTENCE_TRANSFORMER: bool = True
     SEMANTIC_EMBEDDING_MODEL: str = "BAAI/bge-m3"
     SEMANTIC_EMBEDDING_DEVICE: str = "cpu"
     SEMANTIC_EMBEDDING_BATCH_SIZE: int = 16

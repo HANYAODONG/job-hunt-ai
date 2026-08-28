@@ -68,9 +68,11 @@ async def rerank_candidates(request: SemanticRerankRequest) -> SemanticRerankRes
     if has_meaningful_text:
         ranked = semantic_service.rank_candidate_texts(request.query_text, candidate_texts)
         source = "on_the_fly_embeddings"
+        model_name = semantic_service.nlp_service.active_embedding_model_name
     else:
         ranked = semantic_service.rank_candidate_ids(request.query_text, candidate_ids)
         source = "precomputed_index"
+        model_name = semantic_service.index_model_name
 
     if not ranked:
         raise HTTPException(
@@ -81,6 +83,6 @@ async def rerank_candidates(request: SemanticRerankRequest) -> SemanticRerankRes
     return SemanticRerankResponse(
         query_id=request.query_id,
         candidates=[SemanticRankCandidate(**item) for item in ranked],
-        model_name=semantic_service.nlp_service.sentence_transformer_model,
+        model_name=model_name,
         source=source,
     )

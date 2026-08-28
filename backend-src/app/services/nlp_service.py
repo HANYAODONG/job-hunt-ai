@@ -42,11 +42,22 @@ class NLPService:
             else None
         )
         self.setup_models()
+
+    @property
+    def active_embedding_model_name(self) -> str:
+        """Return the embedding implementation that is actually serving requests."""
+        if self.sentence_transformer is not None:
+            return self.sentence_transformer_model
+        if self.fallback_vectorizer is not None:
+            return "char-ngram-hashing-768"
+        return "unavailable"
     
     def setup_models(self):
         """Initialize NLP models"""
         try:
-            if spacy:
+            if not settings.ENABLE_SPACY_MODEL:
+                logger.info("spaCy model loading disabled; using rule-based NLP fallbacks.")
+            elif spacy:
                 try:
                     self.nlp = spacy.load(settings.SPACY_MODEL)
                     logger.info(f"Loaded spaCy model: {settings.SPACY_MODEL}")
@@ -56,7 +67,9 @@ class NLPService:
             else:
                 logger.warning("spaCy is not installed; NLP entity extraction disabled.")
             
-            if SentenceTransformer:
+            if not settings.ENABLE_SENTENCE_TRANSFORMER:
+                logger.info("Sentence transformer loading disabled; using deterministic embedding fallback.")
+            elif SentenceTransformer:
                 try:
                     self.sentence_transformer = SentenceTransformer(self.sentence_transformer_model)
                     logger.info(f"Loaded sentence transformer: {self.sentence_transformer_model}")

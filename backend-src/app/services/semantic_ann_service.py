@@ -22,6 +22,7 @@ class SemanticANNService:
         self.job_ids: List[str] = []
         self.dimension: Optional[int] = None
         self.nlp_service = NLPService()
+        self.index_model_name = "unknown"
 
         self._load_index()
 
@@ -42,6 +43,7 @@ class SemanticANNService:
             self.embeddings = embeddings
             self.normalized_embeddings = self._normalize(embeddings)
             self.job_ids = ids
+            self.index_model_name = self._load_index_model_name(Path(index_path))
 
             try:
                 import hnswlib
@@ -186,3 +188,16 @@ class SemanticANNService:
         # Resolve relative paths against repository root (two levels up from backend/app)
         repo_root = Path(__file__).resolve().parents[3]
         return repo_root / path
+
+    def _load_index_model_name(self, index_path: Path) -> str:
+        metadata_path = index_path.parent / "model_metadata.json"
+        try:
+            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+            model_name = str(metadata.get("model_name", "")).strip()
+            if model_name:
+                return model_name
+        except FileNotFoundError:
+            logger.warning("Semantic model metadata not found at %s.", metadata_path)
+        except (OSError, ValueError, TypeError) as exc:
+            logger.warning("Failed to read semantic model metadata at %s: %s", metadata_path, exc)
+        return self.nlp_service.active_embedding_model_name

@@ -44,14 +44,6 @@ const ABILITY_FACTORS = [
   { key: 'ability_graph', label: '知识图谱关联', icon: '🔗' },
 ];
 
-const FACTOR_BREAKDOWN_MAP = {
-  relevance_bm25: 'bm25_score',
-  relevance_semantic: 'semantic_score',
-  ability_skill: 'skill_coverage',
-  ability_graph: 'graph_relatedness',
-  job_family: 'job_family_match',
-};
-
 const DEFAULT_WEIGHTS = {
   relevance_bm25: 0.4, relevance_semantic: 0.6,
   ability_skill: 0.7, ability_graph: 0.3,

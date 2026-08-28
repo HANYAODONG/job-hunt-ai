@@ -1,5 +1,6 @@
 param(
     [int]$FrontendPort = 18080,
+    [int]$BackendPort = 18088,
     [switch]$Build,
     [switch]$Logs
 )
@@ -50,6 +51,19 @@ if ($envText -notmatch "(?m)^FRONTEND_PORT=") {
     Write-Host "Using FRONTEND_PORT=$FrontendPort"
 }
 
+$envText = Get-Content ".env" -Raw
+if ($envText -notmatch "(?m)^BACKEND_PORT=") {
+    Add-Content ".env" "BACKEND_PORT=$BackendPort"
+    Write-Host "Added BACKEND_PORT=$BackendPort to .env"
+} else {
+    (Get-Content ".env") |
+        ForEach-Object {
+            if ($_ -match "^BACKEND_PORT=") { "BACKEND_PORT=$BackendPort" } else { $_ }
+        } |
+        Set-Content ".env"
+    Write-Host "Using BACKEND_PORT=$BackendPort"
+}
+
 Write-Host ""
 Write-Host "Starting services..."
 if ($Build) {
@@ -66,8 +80,8 @@ Write-Host ""
 Write-Host "Access URLs:"
 Write-Host "  Frontend:        http://localhost:$FrontendPort"
 Write-Host "  Fusion demo:     http://localhost:$FrontendPort/fusion-demo"
-Write-Host "  Backend API:     http://localhost:8000"
-Write-Host "  API Docs:        http://localhost:8000/docs"
+Write-Host "  Backend API:     http://localhost:$BackendPort"
+Write-Host "  API Docs:        http://localhost:$BackendPort/docs"
 Write-Host "  Elasticsearch:   http://localhost:9200"
 Write-Host "  Neo4j Browser:   http://localhost:7474"
 Write-Host ""
