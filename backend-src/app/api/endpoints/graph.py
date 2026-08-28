@@ -15,8 +15,8 @@ router = APIRouter()
 talent_data_service = TalentDataService()
 GRAPH_CACHE_TTL_SECONDS = 60
 SPARSE_DIRECTION_POSTING_THRESHOLD = 100
-_graph_cache = None
-_graph_cache_at = 0.0
+_graph_cache = {}
+_graph_cache_at = {}
 
 
 def _node_id(kind: str, *parts: str) -> str:
@@ -33,8 +33,34 @@ def _sorted_categories(categories: set[str]) -> list[str]:
     return known + sorted(categories - set(known))
 
 
-def build_standard_role_graph(records: list[dict]) -> dict:
+def build_standard_role_graph(records: list[dict], year: int | None = None) -> dict:
     """Aggregate job postings into category -> direction -> standard role."""
+    # 年份过滤
+    if year is not None:
+        year_str = str(year)
+        records = [
+            r for r in records
+            if str(r.get("publish_time", "")).strip().startswith(year_str)
+        ]
+    
+    if not records:
+        return {
+            "tree": {
+                "id": "root",
+                "label": f"岗位银河 ({year})",
+                "type": "root",
+                "count": 0,
+                "growth": "+0%",
+                "detail": f"暂无 {year} 年的岗位数据。",
+                "skills": [],
+                "children": [],
+            },
+            "summary": {"domains": 0, "families": 0, "roles": 0, "job_postings": 0, "needs_review": 0, "single_role_families": 0, "sparse_single_role_families": 0, "skills": 0, "relationships": 0},
+            "stacks": [],
+            "jobs": [],
+            "source": "canonical_standard_role_taxonomy",
+        }
+
     roles: dict[tuple[str, str, str], dict] = {}
     category_skills: defaultdict[str, Counter[str]] = defaultdict(Counter)
     direction_skills: defaultdict[tuple[str, str], Counter[str]] = defaultdict(Counter)
@@ -63,9 +89,10 @@ def build_standard_role_graph(records: list[dict]) -> dict:
     for (category, direction, role), role_data in roles.items():
         grouped[category][direction].append((role, role_data))
 
+    year_label = f" ({year})" if year else ""
     tree = {
         "id": "root",
-        "label": "岗位银河",
+        "label": f"岗位银河{year_label}",
         "type": "root",
         "count": len(roles),
         "growth": "+0%",
@@ -166,15 +193,22 @@ def build_standard_role_graph(records: list[dict]) -> dict:
 
 
 @router.get("/graph")
-async def get_capability_graph():
-    """Return a cached standard-role taxonomy, never raw recruitment titles."""
+async def get_capability_graph(year: int | None = None):
+    """Return a cached standard-role taxonomy, optionally filtered by year."""
     global _graph_cache, _graph_cache_at
     now = time.monotonic()
-    if _graph_cache is not None and now - _graph_cache_at < GRAPH_CACHE_TTL_SECONDS:
-        return _graph_cache
-    _graph_cache = build_standard_role_graph(talent_data_service.list_standard_role_records())
-    _graph_cache_at = now
-    return _graph_cache
+    cache_key = f"graph_{year}" if year else "graph_all"
+    
+    # 检查缓存
+    if cache_key in _graph_cache and now - _graph_cache_at.get(cache_key, 0) < GRAPH_CACHE_TTL_SECONDS:
+        return _graph_cache[cache_key]
+    
+    _graph_cache[cache_key] = build_standard_role_graph(
+        talent_data_service.list_standard_role_records(),
+        year=year
+    )
+    _graph_cache_at[cache_key] = now
+    return _graph_cache[cache_key]
 
 
 @router.get("/graph/role-jobs")
@@ -193,6 +227,6 @@ async def get_standard_role_jobs(
 
 def invalidate_capability_graph_cache():
     global _graph_cache, _graph_cache_at
-    _graph_cache = None
-    _graph_cache_at = 0.0
+    _graph_cache = {}
+    _graph_cache_at = {}
     talent_data_service.invalidate_runtime_state_cache()
