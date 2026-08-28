@@ -383,6 +383,42 @@ class KnowledgeGraphService:
             logger.error(f"Error creating job-skill relationship: {e}")
             return False
 
+    def create_job_skill_relationship_with_evidence(
+        self,
+        job_id: str,
+        skill_name: str,
+        source_type: str = "dictionary",
+        matched_text: Optional[str] = None,
+        confidence: float = 0.85,
+        evidence: Optional[str] = None,
+    ) -> bool:
+        """创建带证据链的岗位-技能关系（能力幻觉防控：每条边说明"为什么有"）。"""
+        if self.disabled:
+            return False
+        try:
+            with self.neo4j.get_session() as session:
+                query = """
+                MATCH (j:Job {id: $job_id})
+                MERGE (s:Skill {name: $skill_name})
+                MERGE (j)-[r:REQUIRES_SKILL]->(s)
+                SET r.source_type = $source_type,
+                    r.matched_text = $matched_text,
+                    r.confidence = $confidence,
+                    r.evidence = $evidence
+                """
+                session.run(query, {
+                    "job_id": job_id,
+                    "skill_name": skill_name,
+                    "source_type": source_type,
+                    "matched_text": matched_text or "",
+                    "confidence": confidence,
+                    "evidence": evidence or f"{source_type} 命中技能 '{skill_name}'",
+                })
+                return True
+        except Exception as e:
+            logger.error(f"Error creating job-skill relationship with evidence: {e}")
+            return False
+
     def count_job_skill_matches(self, job_id: str, skills: List[str], hops: int = 1) -> int:
         """Count how many query skills connect to the job within given hops."""
         if self.disabled or not skills:
