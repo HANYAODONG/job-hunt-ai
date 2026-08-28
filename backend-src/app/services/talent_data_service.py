@@ -222,6 +222,7 @@ class TalentDataService:
             "jobFamily": str(merged.get("job_family") or merged.get("standard_job") or ""),
             "standardCategory": str(merged.get("standard_category") or ""),
             "dataSource": "live-standard-dataset",
+            "publish_time": str(merged.get("publish_time") or ""),  # 新增：保留原始 publish_time
         }
 
     def list_jobs(
@@ -277,6 +278,7 @@ class TalentDataService:
                 "skills": _list(view.get("requiredSkills")),
                 "needs_review": needs_review,
                 "job_id": view["id"],
+                "publish_time": job.get("publish_time"),  # 新增：把 publish_time 传出来
             })
         return records
 
