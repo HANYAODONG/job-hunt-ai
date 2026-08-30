@@ -146,6 +146,79 @@ ALGORITHM_DIRECTIONS = {
     "自动驾驶算法工程师": "控制、自动驾驶与优化",
 }
 
+# Coarse families are used by matching as an interpretable gate before
+# fine-grained semantic and skill scoring. They intentionally sit above the
+# graph's detailed taxonomy so related roles can still be recommended.
+MATCHING_ROLE_GROUPS: dict[str, tuple[str, ...]] = {
+    "ai": ("大模型", "aigc", "算法", "机器学习", "深度学习", "人工智能", "ai", "agent", "智能体", "推荐", "搜索", "视觉", "nlp"),
+    "backend": ("后端", "后台", "服务端", "java", "go开发", "服务器"),
+    "frontend": ("前端", "web", "全栈"),
+    "client": ("android", "ios", "客户端", "unity", "ue5", "游戏开发"),
+    "data": ("数据", "大数据", "数仓", "数据仓库", "etl", "数据库"),
+    "quality": ("测试", "质量", "qa", "稳定性"),
+    "infrastructure": ("运维", "网络", "安全", "sre", "云计算", "基础设施", "infra"),
+    "embedded": ("嵌入式", "控制", "机器人", "硬件", "自动驾驶"),
+}
+
+ADJACENT_MATCHING_ROLE_GROUPS: dict[str, set[str]] = {
+    "ai": {"data", "backend", "infrastructure"},
+    "backend": {"frontend", "data", "infrastructure", "client"},
+    "frontend": {"backend", "client"},
+    "client": {"frontend", "backend", "quality"},
+    "data": {"ai", "backend", "infrastructure"},
+    "quality": {"client", "backend", "infrastructure"},
+    "infrastructure": {"backend", "data", "quality", "ai"},
+    "embedded": {"ai", "client"},
+}
+
+
+def _matching_role_groups(text: str) -> set[str]:
+    normalized = str(text or "").casefold()
+    return {
+        group
+        for group, keywords in MATCHING_ROLE_GROUPS.items()
+        if any(keyword in normalized for keyword in keywords)
+    }
+
+
+def _matching_role_core(text: str) -> str:
+    normalized = str(text or "").casefold()
+    for token in ("高级", "资深", "初级", "专家", "负责人", "工程师", "开发", "研发", "方向"):
+        normalized = normalized.replace(token, "")
+    return re.sub(r"[^0-9a-z\u4e00-\u9fff]+", "", normalized)
+
+
+def role_match_grade(candidate_role: str, job_title: str, job_family: str = "") -> int:
+    """Return 0-3 role compatibility before semantic/skill reranking.
+
+    3 means the role cores directly match, 2 means the roles share a coarse
+    family, 1 means adjacent families, and 0 means cross-family or unknown.
+    """
+    candidate_core = _matching_role_core(candidate_role)
+    job_core = _matching_role_core(job_title)
+    if candidate_core and job_core and (
+        candidate_core in job_core or job_core in candidate_core
+    ):
+        return 3
+    candidate_groups = _matching_role_groups(candidate_role)
+    job_groups = _matching_role_groups(f"{job_title} {job_family}")
+    if candidate_groups & job_groups:
+        return 2
+    if any(
+        job_group in ADJACENT_MATCHING_ROLE_GROUPS.get(candidate_group, set())
+        for candidate_group in candidate_groups
+        for job_group in job_groups
+    ):
+        return 1
+    return 0
+
+
+def role_affinity(candidate_role: str, job_title: str, job_family: str = "") -> float:
+    """Return a calibrated role gate in [0, 1] for fusion scoring."""
+    return {0: 0.0, 1: 0.4, 2: 0.8, 3: 1.0}[
+        role_match_grade(candidate_role, job_title, job_family)
+    ]
+
 
 def refine_standard_role(category: str, role: str, *, title: str = "", skills: object = None, description: str = "") -> str:
     """Refine an over-broad source label only when the JD contains direct evidence."""

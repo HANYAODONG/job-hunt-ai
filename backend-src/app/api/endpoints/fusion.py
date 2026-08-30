@@ -26,6 +26,7 @@ from app.models.fusion import (
     LayeredWeights,
     MockRankRequest,
 )
+from app.services.role_taxonomy import role_affinity
 from app.services.fusion_scoring_service import (
     fuse_single,
     fuse_batch,
@@ -297,7 +298,7 @@ async def get_layered_fusion_weights():
             "relevance": "relevance_score = w_bm25 * bm25 + w_semantic * semantic",
             "ability": "ability_score = normalize( w_skill * skill + w_graph * graph )  within candidates",
             "final": "final_score = relevance_score * (base + multiplier * ability_score)",
-            "gate": "if job_family_match == 0: final_score *= family_discount",
+            "gate": "same family keeps score; adjacent family uses affinity; cross-family uses family_discount",
         },
     }
 
@@ -542,9 +543,11 @@ def _build_sample_fusion_inputs(
             semantic_score = max(semantic_score, _jaccard(resume_skills, job_skills))
 
         job_family = str(job.get("job_family") or job.get("standard_job") or "").strip()
-        job_family_match = 1.0 if target_family and job_family and target_family == job_family else 0.0
-        if not target_family:
-            job_family_match = 1.0
+        job_family_match = (
+            role_affinity(target_family, str(job.get("title") or ""), job_family)
+            if target_family
+            else 1.0
+        )
 
         inputs.append(
             FusionInput(

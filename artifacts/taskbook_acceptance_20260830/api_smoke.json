@@ -1,0 +1,400 @@
+[
+  {
+    "name": "health",
+    "method": "GET",
+    "url": "http://localhost:18088/health",
+    "status": 200,
+    "elapsed_ms": 24.1,
+    "ok": true,
+    "summary": {
+      "type": "dict",
+      "keys": [
+        "status",
+        "service",
+        "version"
+      ],
+      "status": "healthy"
+    },
+    "error_body": null
+  },
+  {
+    "name": "frontend",
+    "method": "GET",
+    "url": "http://localhost:18080",
+    "status": 200,
+    "elapsed_ms": 43.0,
+    "ok": true,
+    "summary": {
+      "type": "str"
+    },
+    "error_body": null
+  },
+  {
+    "name": "graph_all",
+    "method": "GET",
+    "url": "http://localhost:18088/api/v1/graph",
+    "status": 200,
+    "elapsed_ms": 1813.1,
+    "ok": true,
+    "summary": {
+      "type": "dict",
+      "keys": [
+        "tree",
+        "summary",
+        "stacks",
+        "jobs",
+        "source"
+      ],
+      "stacks_len": 5,
+      "jobs_len": 120
+    },
+    "error_body": null
+  },
+  {
+    "name": "graph_2024",
+    "method": "GET",
+    "url": "http://localhost:18088/api/v1/graph?year=2024",
+    "status": 200,
+    "elapsed_ms": 281.1,
+    "ok": true,
+    "summary": {
+      "type": "dict",
+      "keys": [
+        "tree",
+        "summary",
+        "stacks",
+        "jobs",
+        "source"
+      ],
+      "stacks_len": 5,
+      "jobs_len": 88
+    },
+    "error_body": null
+  },
+  {
+    "name": "graph_2025",
+    "method": "GET",
+    "url": "http://localhost:18088/api/v1/graph?year=2025",
+    "status": 200,
+    "elapsed_ms": 608.6,
+    "ok": true,
+    "summary": {
+      "type": "dict",
+      "keys": [
+        "tree",
+        "summary",
+        "stacks",
+        "jobs",
+        "source"
+      ],
+      "stacks_len": 5,
+      "jobs_len": 105
+    },
+    "error_body": null
+  },
+  {
+    "name": "graph_2026",
+    "method": "GET",
+    "url": "http://localhost:18088/api/v1/graph?year=2026",
+    "status": 200,
+    "elapsed_ms": 323.0,
+    "ok": true,
+    "summary": {
+      "type": "dict",
+      "keys": [
+        "tree",
+        "summary",
+        "stacks",
+        "jobs",
+        "source"
+      ],
+      "stacks_len": 5,
+      "jobs_len": 105
+    },
+    "error_body": null
+  },
+  {
+    "name": "graph_role_jobs",
+    "method": "GET",
+    "url": "http://localhost:18088/api/v1/graph/role-jobs",
+    "status": 422,
+    "elapsed_ms": 26.5,
+    "ok": false,
+    "summary": {
+      "type": "dict",
+      "keys": [
+        "detail",
+        "message"
+      ],
+      "message": "Request validation failed. Check the 'detail' field for specific errors.",
+      "detail_len": 3
+    },
+    "error_body": "{'detail': [{'type': 'missing', 'loc': ['query', 'category'], 'msg': 'Field required', 'input': None}, {'type': 'missing', 'loc': ['query', 'direction'], 'msg': 'Field required', 'input': None}, {'type': 'missing', 'loc': ['query', 'role'], 'msg': 'Field required', 'input': None}], 'message': \"Request validation failed. Check the 'detail' field for specific errors.\"}"
+  },
+  {
+    "name": "jd_quality_sample_30",
+    "method": "GET",
+    "url": "http://localhost:18088/api/v1/jd-quality/sample?limit=30&use_llm=false",
+    "status": 200,
+    "elapsed_ms": 30.1,
+    "ok": true,
+    "summary": {
+      "type": "dict",
+      "keys": [
+        "items",
+        "summary"
+      ],
+      "items_len": 10
+    },
+    "error_body": null
+  },
+  {
+    "name": "jd_quality_summary",
+    "method": "GET",
+    "url": "http://localhost:18088/api/v1/jd-quality/summary",
+    "status": 200,
+    "elapsed_ms": 9.8,
+    "ok": true,
+    "summary": {
+      "type": "dict",
+      "keys": [
+        "total",
+        "risk_counts",
+        "average_inflation_score",
+        "top_issues",
+        "top_suspected_skills",
+        "high_risk_examples",
+        "overall_summary",
+        "llm_used",
+        "llm_warning"
+      ],
+      "total": 10,
+      "top_issues_len": 3,
+      "top_suspected_skills_len": 4,
+      "high_risk_examples_len": 0
+    },
+    "error_body": null
+  },
+  {
+    "name": "bm25_stats",
+    "method": "GET",
+    "url": "http://localhost:18088/api/v1/bm25/stats",
+    "status": 200,
+    "elapsed_ms": 179.0,
+    "ok": true,
+    "summary": {
+      "type": "dict",
+      "keys": [
+        "index_name",
+        "document_count",
+        "search_fields"
+      ],
+      "search_fields_len": 10
+    },
+    "error_body": null
+  },
+  {
+    "name": "bm25_search",
+    "method": "POST",
+    "url": "http://localhost:18088/api/v1/bm25/search",
+    "status": 200,
+    "elapsed_ms": 211.2,
+    "ok": true,
+    "summary": {
+      "type": "dict",
+      "keys": [
+        "index_name",
+        "query",
+        "took_ms",
+        "total",
+        "hits"
+      ],
+      "total": 388,
+      "hits_len": 10
+    },
+    "error_body": null
+  },
+  {
+    "name": "fusion_rank_query",
+    "method": "POST",
+    "url": "http://localhost:18088/api/v1/fusion/rank-from-query",
+    "status": 200,
+    "elapsed_ms": 42.3,
+    "ok": true,
+    "summary": {
+      "type": "dict",
+      "keys": [
+        "query_id",
+        "results",
+        "weights_used"
+      ],
+      "results_len": 10
+    },
+    "error_body": null
+  },
+  {
+    "name": "diagnosis",
+    "method": "POST",
+    "url": "http://localhost:18088/api/v1/diagnosis/analyze",
+    "status": 200,
+    "elapsed_ms": 37.1,
+    "ok": true,
+    "summary": {
+      "type": "dict",
+      "keys": [
+        "candidate_id",
+        "job_id",
+        "candidate_skills",
+        "target_job_skills",
+        "matched_skills",
+        "missing_skills",
+        "skill_coverage",
+        "semantic_score",
+        "final_score",
+        "score_breakdown",
+        "explanation"
+      ],
+      "candidate_skills_len": 3,
+      "target_job_skills_len": 4,
+      "matched_skills_len": 3,
+      "missing_skills_len": 1
+    },
+    "error_body": null
+  },
+  {
+    "name": "learning_plan",
+    "method": "POST",
+    "url": "http://localhost:18088/api/v1/learning/plan",
+    "status": 200,
+    "elapsed_ms": 22.5,
+    "ok": true,
+    "summary": {
+      "type": "dict",
+      "keys": [
+        "target_role",
+        "missing_skills",
+        "stages",
+        "resources",
+        "profile",
+        "target_version",
+        "match_score",
+        "progress",
+        "current_stage",
+        "gap_count",
+        "updated_at"
+      ],
+      "missing_skills_len": 1,
+      "stages_len": 1,
+      "resources_len": 3
+    },
+    "error_body": null
+  },
+  {
+    "name": "talent_market",
+    "method": "GET",
+    "url": "http://localhost:18088/api/v1/talent/market/stats",
+    "status": 200,
+    "elapsed_ms": 1016.2,
+    "ok": true,
+    "summary": {
+      "type": "dict",
+      "keys": [
+        "total_jobs",
+        "source_type_counts",
+        "top_job_families",
+        "top_skills",
+        "publish_year_counts",
+        "source"
+      ],
+      "total_jobs": 16574,
+      "top_job_families_len": 20,
+      "top_skills_len": 30
+    },
+    "error_body": null
+  },
+  {
+    "name": "talent_jobs",
+    "method": "GET",
+    "url": "http://localhost:18088/api/v1/talent/recruitment/jobs?limit=10",
+    "status": 200,
+    "elapsed_ms": 284.8,
+    "ok": true,
+    "summary": {
+      "type": "dict",
+      "keys": [
+        "items",
+        "total",
+        "limit",
+        "offset",
+        "source"
+      ],
+      "total": 12675,
+      "items_len": 10
+    },
+    "error_body": null
+  },
+  {
+    "name": "jd_analytics_overview",
+    "method": "GET",
+    "url": "http://localhost:18088/api/v1/jd-update/analytics/overview",
+    "status": 200,
+    "elapsed_ms": 26.2,
+    "ok": true,
+    "summary": {
+      "type": "dict",
+      "keys": [
+        "latest_month",
+        "job_count",
+        "skill_count",
+        "frequency_rows",
+        "lifecycle_rows",
+        "migration_skill_count",
+        "latest_new_skill_count",
+        "latest_declining_skill_count"
+      ]
+    },
+    "error_body": null
+  },
+  {
+    "name": "jd_analytics_months",
+    "method": "GET",
+    "url": "http://localhost:18088/api/v1/jd-update/analytics/months",
+    "status": 200,
+    "elapsed_ms": 23.8,
+    "ok": true,
+    "summary": {
+      "type": "list",
+      "length": 0
+    },
+    "error_body": null
+  },
+  {
+    "name": "resume_upload_pdf",
+    "method": "POST",
+    "url": "http://localhost:18088/api/v1/jobs/upload-resume?candidate_id=taskbook_acceptance",
+    "status": 200,
+    "elapsed_ms": 1150.0,
+    "ok": true,
+    "summary": {
+      "type": "dict",
+      "keys": [
+        "candidate",
+        "extracted_skills",
+        "extracted_experience",
+        "skill_categories",
+        "experience_summary",
+        "match_score",
+        "visa_status",
+        "degree_level",
+        "certifications",
+        "security_clearance",
+        "languages"
+      ],
+      "extracted_skills_len": 4,
+      "extracted_experience_len": 1,
+      "certifications_len": 0,
+      "languages_len": 0
+    },
+    "error_body": null
+  }
+]

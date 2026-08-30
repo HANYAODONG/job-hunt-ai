@@ -1,0 +1,21 @@
+{
+  "status": "provisional_machine_assisted_not_human_gold",
+  "annotator": "codex_provisional_prelabel",
+  "generated_at": "2026-08-30T13:08:10.496175+00:00",
+  "source_policy": "source fields with literal text evidence; JD draft also uses the project evidence dictionary; matching mode=rubric",
+  "replacement_required": "Replace with independent A/B human annotations and third-person adjudication before final reporting",
+  "outputs": {
+    "jd_annotation_adjudicated.csv": {
+      "rows": 400,
+      "sha256": "3a3a98680d4f9ca892e34c4296edc63e2ba4b3ad096d41c151b2f41c4594e5b3"
+    },
+    "resume_annotation_adjudicated.csv": {
+      "rows": 400,
+      "sha256": "0940c2b2ec40be30c43b8b883d0fb4ff2288671f9d33013a371c363e39d96220"
+    },
+    "matching_annotation_adjudicated.csv": {
+      "rows": 400,
+      "sha256": "ae16a9ac43079ee5022630d2a9ee8e15d6e01a2d608f0d4cd98375a8f0120bcf"
+    }
+  }
+}

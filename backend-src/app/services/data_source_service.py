@@ -5,12 +5,14 @@ from functools import lru_cache
 from pathlib import Path
 import csv
 import json
+import sqlite3
 import sys
 from typing import Any
 
 import pandas as pd
 
 from .paths import (
+    BASE_DATABASE,
     BASE_CURRENT_PROFILE,
     BASE_EVENT_STREAM,
     BASE_FREQUENCY_OUTPUT,
@@ -22,6 +24,7 @@ from .paths import (
     DATASET_ROOT,
     DATA_STREAM_ROOT,
     GOVERNMENT_BASE_CURRENT_PROFILE,
+    GOVERNMENT_BASE_DATABASE,
     GOVERNMENT_BASE_EVENT_STREAM,
     GOVERNMENT_BASE_FREQUENCY_OUTPUT,
     GOVERNMENT_BASE_JOB_PROFILE_DIFF,
@@ -219,12 +222,14 @@ def _source_to_dict(source: DataSource) -> dict[str, Any]:
 
 def _source_signature(source: DataSource) -> str:
     base_paths = _base_table_paths(source.domain) if source.kind == "base" else []
+    base_database = _base_database_path(source.domain) if source.kind == "base" else None
     paths = [
         source.event_stream_path,
         source.frequency_path,
         source.skill_universe_path,
         *(sorted(source.derived_dir.glob("*.csv")) if source.derived_dir and source.derived_dir.exists() else []),
         *base_paths,
+        base_database,
     ]
     parts = []
     for path in paths:
@@ -238,9 +243,9 @@ def _source_signature(source: DataSource) -> str:
 def _get_source_tables_cached(domain: str, source_key: str, _signature: str) -> SourceTables:
     source = _resolve_source(domain, source_key)
     if source.kind == "base":
-        frequency, lifecycle, migration, spread, snapshots, diff, current_profile = [
-            _read_csv(path) for path in _base_table_paths(source.domain)
-        ]
+        frequency, lifecycle, migration, spread, snapshots, diff, current_profile = _read_base_tables(
+            source.domain
+        )
         return SourceTables(
             source=_source_to_dict(source),
             frequency=frequency,
@@ -294,6 +299,60 @@ def _base_table_paths(domain: str) -> list[Path]:
         BASE_JOB_PROFILE_DIFF,
         BASE_CURRENT_PROFILE,
     ]
+
+
+BASE_SQLITE_TABLES = (
+    "job_skill_monthly_frequency",
+    "skill_lifecycle",
+    "skill_migration",
+    "skill_job_monthly_spread",
+    "job_profile_snapshots",
+    "job_profile_diff",
+)
+
+
+def _base_database_path(domain: str) -> Path:
+    if resolve_domain(domain) == "government":
+        return GOVERNMENT_BASE_DATABASE
+    return BASE_DATABASE
+
+
+def _read_base_tables(domain: str) -> tuple[
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
+]:
+    """Read packaged CSV analytics, falling back to the runtime SQLite DB.
+
+    Runtime archives intentionally keep the large derived tables in SQLite.
+    Older deployments also ship CSV exports, so each table prefers its CSV
+    and independently falls back to the equivalent database table.
+    """
+    csv_tables = [_read_csv(path) for path in _base_table_paths(domain)]
+    database = _base_database_path(domain)
+    derived = []
+    for frame, table_name in zip(csv_tables[:6], BASE_SQLITE_TABLES):
+        derived.append(frame if not frame.empty else _read_sqlite_table(database, table_name))
+
+    current_profile = csv_tables[6]
+    if current_profile.empty and not derived[4].empty:
+        current_profile = build_current_profile(derived[4])
+    return (*derived, current_profile)
+
+
+def _read_sqlite_table(database: Path, table_name: str) -> pd.DataFrame:
+    if not database.exists():
+        return pd.DataFrame()
+    try:
+        with sqlite3.connect(database) as connection:
+            frame = pd.read_sql_query(f'SELECT * FROM "{table_name}"', connection)
+        return frame.fillna("")
+    except (sqlite3.Error, pd.errors.DatabaseError):
+        return pd.DataFrame()
 
 
 def _analysis_file(run_id: str, name: str) -> Path | None:

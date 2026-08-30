@@ -39,6 +39,11 @@ dataset/incoming/*.md
 # Logs
 *.log
 
+# Local test/build outputs
+backend-src/.coverage
+frontend-src/build/
+frontend-src/coverage/
+
 # OS files
 .DS_Store
 Thumbs.db

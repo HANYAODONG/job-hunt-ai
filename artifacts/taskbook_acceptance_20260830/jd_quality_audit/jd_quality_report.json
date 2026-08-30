@@ -1,0 +1,64 @@
+{
+  "status": "pass",
+  "workflow": "phase6_jd_quality_audit",
+  "reference_date": "2026-07-13",
+  "thresholds": {
+    "noise": 0.35,
+    "inflation": 0.65,
+    "stale_days": 365,
+    "near_duplicate": 0.86
+  },
+  "counts": {
+    "input_jobs": 16574,
+    "output_jobs": 16574,
+    "duplicates": 3858,
+    "near_duplicates": 3206,
+    "noisy_jobs": 3816,
+    "inflated_jobs": 1035,
+    "stale_jobs": 7944,
+    "multi_source_verified_jobs": 10540,
+    "record_level_multi_source_jobs": 503
+  },
+  "rates": {
+    "duplicates": 0.2328,
+    "near_duplicates": 0.1934,
+    "noisy_jobs": 0.2302,
+    "inflated_jobs": 0.0624,
+    "stale_jobs": 0.4793,
+    "multi_source_verified_jobs": 0.6359,
+    "record_level_multi_source_jobs": 0.0303
+  },
+  "source_type_counts": {
+    "enterprise": 12675,
+    "government": 3045,
+    "legacy_label": 854
+  },
+  "score_distributions": {
+    "noise_score": {
+      "mean": 0.1407,
+      "p50": 0.0,
+      "p90": 0.55
+    },
+    "inflation_score": {
+      "mean": 0.2809,
+      "p50": 0.2464,
+      "p90": 0.5961
+    },
+    "staleness_score": {
+      "mean": 0.3748,
+      "p50": 0.2977,
+      "p90": 0.9151
+    }
+  },
+  "acceptance": {
+    "minimum_jd_required": 100,
+    "jd_audited": 16574,
+    "minimum_met": true,
+    "required_fields_complete": true,
+    "source_evidence_complete": true
+  },
+  "input": {
+    "path": "/app/artifacts/dataset_iteration_05/jobs.jsonl",
+    "sha256": "c5973d531477a91fdeadf7ca5c15171d3780a68b6a7ec995d2d1b159eb2313d0"
+  }
+}

@@ -8,10 +8,18 @@ if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
 from app.api.endpoints.graph import build_standard_role_graph
-from app.services.role_taxonomy import refine_standard_role
+from app.services.role_taxonomy import refine_standard_role, role_affinity, role_match_grade
 
 
 class StandardRoleGraphTests(unittest.TestCase):
+    def test_role_matching_gate_distinguishes_same_adjacent_and_cross_family(self):
+        self.assertEqual(role_match_grade("大模型算法工程师", "大模型算法工程师"), 3)
+        self.assertEqual(role_match_grade("测试开发工程师", "高级游戏测试工程师"), 3)
+        self.assertEqual(role_match_grade("数据平台工程师", "大数据运维工程师"), 2)
+        self.assertEqual(role_match_grade("前端开发工程师", "客户端开发工程师"), 1)
+        self.assertEqual(role_match_grade("控制算法工程师", "招聘运营经理"), 0)
+        self.assertEqual(role_affinity("AI应用工程师", "大模型应用后端工程师"), 0.8)
+
     def test_refines_data_analysis_labels_only_with_title_evidence(self):
         self.assertEqual(
             refine_standard_role("数据", "数据分析师", title="数据科学家-电商场景"),

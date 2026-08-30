@@ -1,0 +1,57 @@
+{
+  "status": "provisional_machine_assisted_baseline_not_formal_acceptance",
+  "formal_acceptance_eligible": false,
+  "annotators": [
+    "codex_provisional_manual_review",
+    "codex_provisional_prelabel"
+  ],
+  "generated_at": "2026-08-30T13:00:42.915511+00:00",
+  "git_commit": "d9425dd6aa57d707ab13ccac52a2df3381ecf2ad",
+  "gold_files": {
+    "jd": {
+      "path": "C:\\Users\\YaodongHan\\Desktop\\挑战杯大模型组\\job-hunt-ai-backend-integration\\artifacts\\taskbook_gold_v1\\jd_annotation_adjudicated.csv",
+      "sha256": "9cbc7461ac9affcad56c7152a554ab0c1074242d379892a3bbdf6eed934fcb1b"
+    },
+    "resume": {
+      "path": "C:\\Users\\YaodongHan\\Desktop\\挑战杯大模型组\\job-hunt-ai-backend-integration\\artifacts\\taskbook_gold_v1\\resume_annotation_adjudicated.csv",
+      "sha256": "757ed23f97423ab46fd53609cb07db66ad3480f00378318a2de3514160f2ac3a"
+    },
+    "matching": {
+      "path": "C:\\Users\\YaodongHan\\Desktop\\挑战杯大模型组\\job-hunt-ai-backend-integration\\artifacts\\taskbook_gold_v1\\matching_annotation_adjudicated.csv",
+      "sha256": "05ce16f385d973c02e85c0d3c13f96c522db6714a80bad3d8ab20852703fee2e"
+    }
+  },
+  "jd_parsing": {
+    "samples": 100,
+    "parseable_samples": 100,
+    "skill_micro": {
+      "precision": 1.0,
+      "recall": 0.890673,
+      "f1": 0.942175
+    }
+  },
+  "resume_extraction": {
+    "samples": 100,
+    "parseable_samples": 100,
+    "skill_micro": {
+      "precision": 1.0,
+      "recall": 0.902834,
+      "f1": 0.948936
+    },
+    "years_exact_accuracy": 1.0,
+    "years_labeled_samples": 100
+  },
+  "matching": {
+    "samples": 100,
+    "positive_samples_grade_ge_2": 43,
+    "negative_samples_grade_lt_2": 57,
+    "status": "gold_validated; pass --matching-predictions for model scoring",
+    "model_scores": {
+      "precision": 0.611111,
+      "recall": 0.511628,
+      "f1": 0.556962,
+      "accuracy": 0.65,
+      "prediction_sha256": "f1ef50d6c2aa5422b30fdeed388630a11c18f97038d9a94fa0fcc954f1a1d98f"
+    }
+  }
+}

@@ -227,6 +227,7 @@ class ResumeService:
                 salary_expectation=None,
                 preferred_locations=locations,
                 resume_file_path=file_path,
+                years_experience=profile_data.get("years_experience"),
                 created_at=datetime.now(),
                 updated_at=datetime.now()
             )
@@ -258,7 +259,7 @@ class ResumeService:
             ],
             "frameworks": [
                 "react", "angular", "vue", "node.js", "express", "django", 
-                "flask", "spring", "laravel", "rails", "tensorflow", "pytorch"
+                "flask", "fastapi", "spring", "laravel", "rails", "tensorflow", "pytorch"
             ],
             "databases": [
                 "sql", "postgresql", "mysql", "mongodb", "redis", 
@@ -285,7 +286,7 @@ class ResumeService:
             categorized = False
             
             for category, keywords in skill_categories.items():
-                if any(keyword in skill_lower for keyword in keywords):
+                if any(keyword.casefold() == skill_lower.casefold() for keyword in keywords):
                     categories[category].append(skill)
                     categorized = True
                     break

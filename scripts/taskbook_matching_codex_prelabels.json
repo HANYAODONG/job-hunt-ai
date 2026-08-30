@@ -1,0 +1,26 @@
+{
+  "status": "codex_provisional_manual_review_not_human_gold",
+  "rubric": "0=unrelated, 1=adjacent_or_major_gap, 2=recommendable, 3=strong_match",
+  "grades": {
+    "MATCH-001": 2, "MATCH-002": 1, "MATCH-003": 2, "MATCH-004": 1, "MATCH-005": 1,
+    "MATCH-006": 1, "MATCH-007": 1, "MATCH-008": 2, "MATCH-009": 1, "MATCH-010": 2,
+    "MATCH-011": 1, "MATCH-012": 2, "MATCH-013": 0, "MATCH-014": 2, "MATCH-015": 2,
+    "MATCH-016": 1, "MATCH-017": 3, "MATCH-018": 2, "MATCH-019": 1, "MATCH-020": 3,
+    "MATCH-021": 1, "MATCH-022": 1, "MATCH-023": 1, "MATCH-024": 1, "MATCH-025": 1,
+    "MATCH-026": 1, "MATCH-027": 0, "MATCH-028": 3, "MATCH-029": 3, "MATCH-030": 2,
+    "MATCH-031": 1, "MATCH-032": 0, "MATCH-033": 1, "MATCH-034": 2, "MATCH-035": 2,
+    "MATCH-036": 2, "MATCH-037": 0, "MATCH-038": 1, "MATCH-039": 2, "MATCH-040": 3,
+    "MATCH-041": 1, "MATCH-042": 2, "MATCH-043": 1, "MATCH-044": 1, "MATCH-045": 1,
+    "MATCH-046": 2, "MATCH-047": 0, "MATCH-048": 1, "MATCH-049": 1, "MATCH-050": 0,
+    "MATCH-051": 1, "MATCH-052": 1, "MATCH-053": 1, "MATCH-054": 2, "MATCH-055": 1,
+    "MATCH-056": 2, "MATCH-057": 1, "MATCH-058": 2, "MATCH-059": 1, "MATCH-060": 2,
+    "MATCH-061": 3, "MATCH-062": 1, "MATCH-063": 1, "MATCH-064": 1, "MATCH-065": 0,
+    "MATCH-066": 1, "MATCH-067": 2, "MATCH-068": 0, "MATCH-069": 2, "MATCH-070": 1,
+    "MATCH-071": 0, "MATCH-072": 1, "MATCH-073": 2, "MATCH-074": 0, "MATCH-075": 0,
+    "MATCH-076": 1, "MATCH-077": 0, "MATCH-078": 2, "MATCH-079": 1, "MATCH-080": 2,
+    "MATCH-081": 2, "MATCH-082": 2, "MATCH-083": 3, "MATCH-084": 1, "MATCH-085": 1,
+    "MATCH-086": 2, "MATCH-087": 3, "MATCH-088": 1, "MATCH-089": 2, "MATCH-090": 2,
+    "MATCH-091": 1, "MATCH-092": 0, "MATCH-093": 3, "MATCH-094": 2, "MATCH-095": 3,
+    "MATCH-096": 2, "MATCH-097": 1, "MATCH-098": 1, "MATCH-099": 2, "MATCH-100": 3
+  }
+}

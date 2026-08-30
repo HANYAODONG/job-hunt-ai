@@ -1,0 +1,82 @@
+{
+  "status": "human_reviewed_acceptance_evaluation",
+  "formal_acceptance_eligible": true,
+  "annotators": [
+    "team_human_review_approved"
+  ],
+  "human_review_approval": {
+    "status": "human_review_approved",
+    "formal_acceptance_eligible": true,
+    "review_method": "team_review_of_machine_assisted_prelabels",
+    "reviewer_group": "项目小组",
+    "individual_reviewer_names_recorded": false,
+    "approval_assertion": "The project team reported that all rows were reviewed and no label issues remained.",
+    "approved_at": "2026-08-30T13:12:59.222674+00:00",
+    "git_commit": "d9425dd6aa57d707ab13ccac52a2df3381ecf2ad",
+    "rows": {
+      "jd_annotation_adjudicated.csv": 400,
+      "resume_annotation_adjudicated.csv": 400,
+      "matching_annotation_adjudicated.csv": 400
+    },
+    "pre_review_sha256": {
+      "jd_annotation_adjudicated.csv": "3a3a98680d4f9ca892e34c4296edc63e2ba4b3ad096d41c151b2f41c4594e5b3",
+      "resume_annotation_adjudicated.csv": "0940c2b2ec40be30c43b8b883d0fb4ff2288671f9d33013a371c363e39d96220",
+      "matching_annotation_adjudicated.csv": "ae16a9ac43079ee5022630d2a9ee8e15d6e01a2d608f0d4cd98375a8f0120bcf"
+    },
+    "approved_sha256": {
+      "jd_annotation_adjudicated.csv": "fb80a6adfa1f15b983c49a215c5d32b7e8af5cef34bbd53890b1f457eda03bb8",
+      "resume_annotation_adjudicated.csv": "40472a800deac13666a6120b805c482c73b37973c2245f9f372d22f1ecc6bdc7",
+      "matching_annotation_adjudicated.csv": "9a6061bd3937921e927d44e81e7a9f349f5f15a593395a7aeb1dc83171ff1d3c"
+    },
+    "limitations": "This was a team review of prelabels, not two independent blind annotations."
+  },
+  "generated_at": "2026-08-30T13:26:40.692081+00:00",
+  "git_commit": "d9425dd6aa57d707ab13ccac52a2df3381ecf2ad",
+  "gold_files": {
+    "jd": {
+      "path": "artifacts\\taskbook_gold_v2_400\\jd_annotation_adjudicated.csv",
+      "sha256": "fb80a6adfa1f15b983c49a215c5d32b7e8af5cef34bbd53890b1f457eda03bb8"
+    },
+    "resume": {
+      "path": "artifacts\\taskbook_gold_v2_400\\resume_annotation_adjudicated.csv",
+      "sha256": "40472a800deac13666a6120b805c482c73b37973c2245f9f372d22f1ecc6bdc7"
+    },
+    "matching": {
+      "path": "artifacts\\taskbook_gold_v2_400\\matching_annotation_adjudicated.csv",
+      "sha256": "9a6061bd3937921e927d44e81e7a9f349f5f15a593395a7aeb1dc83171ff1d3c"
+    }
+  },
+  "jd_parsing": {
+    "samples": 400,
+    "parseable_samples": 400,
+    "skill_micro": {
+      "precision": 1.0,
+      "recall": 0.894854,
+      "f1": 0.94451
+    }
+  },
+  "resume_extraction": {
+    "samples": 400,
+    "parseable_samples": 400,
+    "skill_micro": {
+      "precision": 1.0,
+      "recall": 0.899799,
+      "f1": 0.947257
+    },
+    "years_exact_accuracy": 1.0,
+    "years_labeled_samples": 400
+  },
+  "matching": {
+    "samples": 400,
+    "positive_samples_grade_ge_2": 282,
+    "negative_samples_grade_lt_2": 118,
+    "status": "gold_validated; pass --matching-predictions for model scoring",
+    "model_scores": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "accuracy": 1.0,
+      "prediction_sha256": "d964651f1ec7a93f0a8966b6e0bb1ca5f67a0ea3a192972dcaa5f6cc169b93bf"
+    }
+  }
+}

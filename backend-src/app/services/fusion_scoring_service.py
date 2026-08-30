@@ -34,7 +34,7 @@ DEFAULT_LAYERED_WEIGHTS = LayeredWeights(
     ability_graph=0.3,
     relevance_base=0.7,
     ability_multiplier=0.3,
-    family_discount=0.85,
+    family_discount=0.20,
 )
 
 # 运行时权重（可通过 API 修改）
@@ -109,6 +109,14 @@ def _normalize_within_batch(values: list[float]) -> list[float]:
     return [(v - mn) / (mx - mn) for v in values]
 
 
+def _family_gate(affinity: float, minimum: float) -> float:
+    """Turn role affinity into a strong, continuous recommendation gate."""
+    affinity = max(0.0, min(1.0, affinity))
+    if affinity >= 0.75:
+        return 1.0
+    return max(minimum, affinity)
+
+
 def compute_final_score(inp: FusionInput, weights: FusionWeights = None) -> float:
     """
     [兼容旧接口] 五因子简单加权，仅在旧调用路径中使用。
@@ -133,16 +141,14 @@ def compute_layered_score(
 
     relevance = w_bm25 * bm25 + w_semantic * semantic
     final = relevance * (base + multiplier * ability_norm)
-    若 job_family_match == 0，额外乘以 family_discount
+    岗位族同族不折扣，相邻族按亲和度折扣，跨族乘以最低门控系数。
     """
     w = lw or _current_layered_weights
 
     relevance = inp.bm25_score * w.relevance_bm25 + inp.semantic_score * w.relevance_semantic
     final = relevance * (w.relevance_base + w.ability_multiplier * ability_norm)
 
-    # job_family 门控：不匹配时打折
-    if inp.job_family_match < 0.5:
-        final *= w.family_discount
+    final *= _family_gate(inp.job_family_match, w.family_discount)
 
     return max(0.0, min(1.0, final))
 
@@ -185,7 +191,7 @@ def fuse_batch(inputs: List[FusionInput], weights: FusionWeights = None) -> List
     1. 对每个候选计算 relevance_score
     2. 对每个候选计算 raw_ability，然后在候选集内 min-max 归一化
     3. final_score = relevance * (base + multiplier * ability_norm)
-    4. job_family_match == 0 时打折
+    4. 按 job_family_match 连续门控：同族保留、相邻族降权、跨族强折扣
     5. 按 final_score 降序排列，分配 rank
     """
     lw = _current_layered_weights
@@ -206,8 +212,7 @@ def fuse_batch(inputs: List[FusionInput], weights: FusionWeights = None) -> List
     outputs = []
     for inp, rel, ab_norm in zip(inputs, relevances, abilities_norm):
         final_score = rel * (lw.relevance_base + lw.ability_multiplier * ab_norm)
-        if inp.job_family_match < 0.5:
-            final_score *= lw.family_discount
+        final_score *= _family_gate(inp.job_family_match, lw.family_discount)
         final_score = max(0.0, min(1.0, final_score))
 
         breakdown = ScoreBreakdown(

@@ -1,0 +1,15 @@
+{
+  "status": "human_reviewed_five_fold_cross_validation",
+  "formal_acceptance_eligible": true,
+  "label_source": "team_human_review_approved",
+  "model": "BAAI/bge-small-zh-v1.5",
+  "classifier": "interpretable semantic/static features + StandardScaler + LogisticRegression",
+  "feature_count": 11,
+  "samples": 400,
+  "folds": 5,
+  "accuracy": 0.705,
+  "precision": 0.876147,
+  "recall": 0.677305,
+  "f1": 0.764,
+  "meets_taskbook_90_percent_accuracy": false
+}

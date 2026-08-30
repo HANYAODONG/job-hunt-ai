@@ -1,0 +1,26 @@
+{
+  "status": "human_review_approved",
+  "formal_acceptance_eligible": true,
+  "review_method": "team_review_of_machine_assisted_prelabels",
+  "reviewer_group": "项目小组",
+  "individual_reviewer_names_recorded": false,
+  "approval_assertion": "The project team reported that all rows were reviewed and no label issues remained.",
+  "approved_at": "2026-08-30T13:12:59.222674+00:00",
+  "git_commit": "d9425dd6aa57d707ab13ccac52a2df3381ecf2ad",
+  "rows": {
+    "jd_annotation_adjudicated.csv": 400,
+    "resume_annotation_adjudicated.csv": 400,
+    "matching_annotation_adjudicated.csv": 400
+  },
+  "pre_review_sha256": {
+    "jd_annotation_adjudicated.csv": "3a3a98680d4f9ca892e34c4296edc63e2ba4b3ad096d41c151b2f41c4594e5b3",
+    "resume_annotation_adjudicated.csv": "0940c2b2ec40be30c43b8b883d0fb4ff2288671f9d33013a371c363e39d96220",
+    "matching_annotation_adjudicated.csv": "ae16a9ac43079ee5022630d2a9ee8e15d6e01a2d608f0d4cd98375a8f0120bcf"
+  },
+  "approved_sha256": {
+    "jd_annotation_adjudicated.csv": "fb80a6adfa1f15b983c49a215c5d32b7e8af5cef34bbd53890b1f457eda03bb8",
+    "resume_annotation_adjudicated.csv": "40472a800deac13666a6120b805c482c73b37973c2245f9f372d22f1ecc6bdc7",
+    "matching_annotation_adjudicated.csv": "9a6061bd3937921e927d44e81e7a9f349f5f15a593395a7aeb1dc83171ff1d3c"
+  },
+  "limitations": "This was a team review of prelabels, not two independent blind annotations."
+}

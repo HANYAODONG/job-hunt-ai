@@ -1,0 +1,16 @@
+{
+  "generated_at": "2026-08-30T12:51:16.373909+00:00",
+  "model": "BAAI/bge-small-zh-v1.5",
+  "classifier": "HistGradientBoostingClassifier",
+  "seed": 20260830,
+  "train_pairs": 500,
+  "holdout_pairs": 100,
+  "holdout_policy": "all taskbook pair_ids excluded from classifier training",
+  "inputs": {
+    "jobs_sha256": "c5973d531477a91fdeadf7ca5c15171d3780a68b6a7ec995d2d1b159eb2313d0",
+    "candidates_sha256": "ec1a11d447a4a5b3e781b8fc03cfeab5f3445c28c2680d885aa9fa5489a57f83",
+    "labels_sha256": "fc41829afff7752afc23938b71504f626ea5130cc99b7e7d95dd114d1f53ab5d",
+    "holdout_sha256": "4679c1caabedf8b60eab85735279f5818b7636477d55a84bea336c8eaf2ebc90"
+  },
+  "output_sha256": "6c3ed2b588b47870dbb7d3159be4cb7dd5dac59ca6fe3f2015e2ee3506c0a6d9"
+}

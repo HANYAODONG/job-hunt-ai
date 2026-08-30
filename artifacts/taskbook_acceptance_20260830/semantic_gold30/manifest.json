@@ -1,0 +1,66 @@
+{
+  "generated_at": "2026-08-30T08:40:19.231257+00:00",
+  "git_commit": "d9425dd6aa57d707ab13ccac52a2df3381ecf2ad",
+  "command": "py backend-src/scripts/generate_gold_query_rankings.py",
+  "model_name": "char-ngram-hashing-768",
+  "query_count": 30,
+  "candidate_job_count": 16574,
+  "query_ids": [
+    "resume_000001_exp00_0",
+    "resume_000002_exp01_0",
+    "resume_000003_exp02_0",
+    "resume_000004_exp00_0",
+    "resume_000005_exp00_0",
+    "resume_000006_exp00_0",
+    "resume_000007_exp00_0",
+    "resume_000008_exp00_0",
+    "resume_000009_exp01_0",
+    "resume_000010_exp02_0",
+    "resume_000011_exp00_0",
+    "resume_000012_exp00_0",
+    "resume_000013_exp00_0",
+    "resume_000014_exp00_0",
+    "resume_000015_exp00_0",
+    "resume_000016_exp01_0",
+    "resume_000017_exp02_0",
+    "resume_000018_exp00_0",
+    "resume_000019_exp00_0",
+    "resume_000020_exp00_0",
+    "resume_000022_exp00_0",
+    "resume_000023_exp01_0",
+    "resume_000024_exp02_0",
+    "resume_000026_exp00_0",
+    "resume_000027_exp00_0",
+    "resume_000030_exp01_0",
+    "resume_000035_exp00_0",
+    "resume_000037_exp01_0",
+    "resume_000052_exp02_0",
+    "resume_000057_exp00_0"
+  ],
+  "inputs": {
+    "profiles": {
+      "path": "C:\\Users\\YaodongHan\\Desktop\\挑战杯大模型组\\job-hunt-ai-backend-integration\\artifacts\\dataset_iteration_05\\candidate_profiles.jsonl",
+      "sha256": "ec1a11d447a4a5b3e781b8fc03cfeab5f3445c28c2680d885aa9fa5489a57f83"
+    },
+    "labels": {
+      "path": "C:\\Users\\YaodongHan\\Desktop\\挑战杯大模型组\\job-hunt-ai-backend-integration\\artifacts\\dataset_iteration_05\\label_pairs_gold.jsonl",
+      "sha256": "fc41829afff7752afc23938b71504f626ea5130cc99b7e7d95dd114d1f53ab5d"
+    },
+    "embeddings": {
+      "path": "C:\\Users\\YaodongHan\\Desktop\\挑战杯大模型组\\job-hunt-ai-backend-integration\\artifacts\\semantic_index\\jobs_embeddings.npy",
+      "sha256": "df6b9d50644489c4436af197d4127aa988e63acb4c696501787e07f0947db2a5"
+    },
+    "embedding_ids": {
+      "path": "C:\\Users\\YaodongHan\\Desktop\\挑战杯大模型组\\job-hunt-ai-backend-integration\\artifacts\\semantic_index\\jobs_embedding_ids.json",
+      "sha256": "f68c4fa4e9266b01e23541e2a0a89844e36ee775abebdf2cdce776f7849e8356"
+    },
+    "model_metadata": {
+      "path": "C:\\Users\\YaodongHan\\Desktop\\挑战杯大模型组\\job-hunt-ai-backend-integration\\artifacts\\semantic_index\\model_metadata.json",
+      "sha256": "139c3b82bc161505fe57258d85c1075b7f656865bdcc5b95c5a1cabc8f29a757"
+    }
+  },
+  "output": {
+    "path": "C:\\Users\\YaodongHan\\Desktop\\挑战杯大模型组\\job-hunt-ai-backend-integration\\artifacts\\taskbook_acceptance_20260830\\semantic_gold30\\semantic_rerank_output.jsonl",
+    "sha256": "f6de61a8b71c8389580589eaab099f32546ef89f2aa47bdc47bcc3d059966ef7"
+  }
+}

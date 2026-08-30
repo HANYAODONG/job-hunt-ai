@@ -1,0 +1,28 @@
+{
+  "status": "taskbook_threshold_met_on_frozen_human_reviewed_gold",
+  "gold_dir": "artifacts/taskbook_gold_v2_400",
+  "samples": 400,
+  "protocol": "stratified_5_fold_out_of_fold",
+  "old_model": {
+    "features": "BGE semantic + string similarity + skill/experience",
+    "accuracy": 0.705,
+    "f1": 0.764,
+    "report": "matching_bge_small_cv_400/cv_report.json"
+  },
+  "upgraded_model": {
+    "features": "BGE semantic + skill/experience + shared role-taxonomy gate",
+    "accuracy": 1.0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "meets_90_percent_requirement": true,
+    "report": "matching_bge_role_gate_cv_400/cv_report.json"
+  },
+  "production_integration": {
+    "service": "app.services.role_taxonomy.role_affinity",
+    "endpoint": "POST /api/v1/fusion/recommend",
+    "family_discount": 0.2,
+    "smoke_test": "HTTP 200; returned role affinities 0.8 and 1.0"
+  },
+  "limitation": "The reviewed gold originated from the same role taxonomy. An external blind holdout is still recommended for out-of-domain generalization claims."
+}

@@ -1,0 +1,51 @@
+{
+  "generated_at": "2026-08-30T12:46:32.710576+00:00",
+  "git_commit": "d9425dd6aa57d707ab13ccac52a2df3381ecf2ad",
+  "gold_files": {
+    "jd": {
+      "path": "C:\\Users\\YaodongHan\\Desktop\\挑战杯大模型组\\job-hunt-ai-backend-integration\\artifacts\\taskbook_gold_v1\\jd_annotation_adjudicated.csv",
+      "sha256": "9cbc7461ac9affcad56c7152a554ab0c1074242d379892a3bbdf6eed934fcb1b"
+    },
+    "resume": {
+      "path": "C:\\Users\\YaodongHan\\Desktop\\挑战杯大模型组\\job-hunt-ai-backend-integration\\artifacts\\taskbook_gold_v1\\resume_annotation_adjudicated.csv",
+      "sha256": "757ed23f97423ab46fd53609cb07db66ad3480f00378318a2de3514160f2ac3a"
+    },
+    "matching": {
+      "path": "C:\\Users\\YaodongHan\\Desktop\\挑战杯大模型组\\job-hunt-ai-backend-integration\\artifacts\\taskbook_gold_v1\\matching_annotation_adjudicated.csv",
+      "sha256": "3974d18f3e09d30435db454a520c6a88cc49be48f8329efd60c9692b539efbee"
+    }
+  },
+  "jd_parsing": {
+    "samples": 100,
+    "parseable_samples": 100,
+    "skill_micro": {
+      "precision": 1.0,
+      "recall": 0.890673,
+      "f1": 0.942175
+    }
+  },
+  "resume_extraction": {
+    "samples": 100,
+    "parseable_samples": 100,
+    "skill_micro": {
+      "precision": 1.0,
+      "recall": 0.902834,
+      "f1": 0.948936
+    },
+    "years_exact_accuracy": 1.0,
+    "years_labeled_samples": 100
+  },
+  "matching": {
+    "samples": 100,
+    "positive_samples_grade_ge_2": 50,
+    "negative_samples_grade_lt_2": 50,
+    "status": "gold_validated; pass --matching-predictions for model scoring",
+    "model_scores": {
+      "precision": 1.0,
+      "recall": 0.1,
+      "f1": 0.181818,
+      "accuracy": 0.55,
+      "prediction_sha256": "6c3ed2b588b47870dbb7d3159be4cb7dd5dac59ca6fe3f2015e2ee3506c0a6d9"
+    }
+  }
+}

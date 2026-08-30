@@ -1,0 +1,50 @@
+{
+  "status": "provisional_machine_assisted_baseline_not_formal_acceptance",
+  "formal_acceptance_eligible": false,
+  "annotators": [
+    "codex_provisional_prelabel",
+    "codex_provisional_role_rubric"
+  ],
+  "generated_at": "2026-08-30T13:08:12.888862+00:00",
+  "git_commit": "d9425dd6aa57d707ab13ccac52a2df3381ecf2ad",
+  "gold_files": {
+    "jd": {
+      "path": "artifacts\\taskbook_gold_v2_400\\jd_annotation_adjudicated.csv",
+      "sha256": "3a3a98680d4f9ca892e34c4296edc63e2ba4b3ad096d41c151b2f41c4594e5b3"
+    },
+    "resume": {
+      "path": "artifacts\\taskbook_gold_v2_400\\resume_annotation_adjudicated.csv",
+      "sha256": "0940c2b2ec40be30c43b8b883d0fb4ff2288671f9d33013a371c363e39d96220"
+    },
+    "matching": {
+      "path": "artifacts\\taskbook_gold_v2_400\\matching_annotation_adjudicated.csv",
+      "sha256": "ae16a9ac43079ee5022630d2a9ee8e15d6e01a2d608f0d4cd98375a8f0120bcf"
+    }
+  },
+  "jd_parsing": {
+    "samples": 400,
+    "parseable_samples": 400,
+    "skill_micro": {
+      "precision": 1.0,
+      "recall": 0.894854,
+      "f1": 0.94451
+    }
+  },
+  "resume_extraction": {
+    "samples": 400,
+    "parseable_samples": 400,
+    "skill_micro": {
+      "precision": 1.0,
+      "recall": 0.899799,
+      "f1": 0.947257
+    },
+    "years_exact_accuracy": 1.0,
+    "years_labeled_samples": 400
+  },
+  "matching": {
+    "samples": 400,
+    "positive_samples_grade_ge_2": 282,
+    "negative_samples_grade_lt_2": 118,
+    "status": "gold_validated; pass --matching-predictions for model scoring"
+  }
+}

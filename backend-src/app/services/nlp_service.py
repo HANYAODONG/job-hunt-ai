@@ -138,7 +138,12 @@ class NLPService:
             return {}
     
     def extract_skills_from_text(self, text: str) -> List[str]:
-        """Extract technical skills from text"""
+        """Extract normalized technical skills with deterministic evidence.
+
+        The legacy regular expressions remain as a lightweight fallback. The
+        shared evidence dictionary adds Chinese skills, aliases and newer
+        frameworks while retaining source-text evidence for every match.
+        """
         # Common technical skills patterns
         skill_patterns = [
             r'\b(?:Python|Java|JavaScript|C\+\+|C#|Go|Rust|Swift|Kotlin|PHP|Ruby|Scala|TypeScript)\b',
@@ -174,7 +179,15 @@ class NLPService:
                     if self._is_technical_skill(token.text):
                         skills.add(token.text)
         
-        return list(skills)
+        try:
+            from .skill_evidence_service import extract_skills_with_evidence
+
+            evidence = extract_skills_with_evidence(text)
+            skills.update(item["skill"] for item in evidence["skills"])
+        except (FileNotFoundError, KeyError, TypeError, ValueError) as exc:
+            logger.warning("Evidence-based skill extraction unavailable: %s", exc)
+
+        return sorted(skills, key=lambda item: (item.casefold(), item))
     
     def _is_technical_skill(self, text: str) -> bool:
         """Check if a text looks like a technical skill"""
@@ -231,13 +244,17 @@ class NLPService:
         entities = self.extract_entities_from_text(text)
         
         # Extract location from entities
-        if entities["GPE"]:
+        if entities.get("GPE"):
             requirements["location"] = ", ".join(entities["GPE"])
         
         # Extract salary from entities
-        if entities["MONEY"]:
+        if entities.get("MONEY"):
             requirements["salary_range"] = ", ".join(entities["MONEY"])
         
+        if not requirements["required_skills"] and not requirements["preferred_skills"]:
+            requirements["required_skills"] = self.extract_skills_from_text(text)
+        requirements["required_skills"] = list(dict.fromkeys(requirements["required_skills"]))
+        requirements["preferred_skills"] = list(dict.fromkeys(requirements["preferred_skills"]))
         return requirements
 
     def extract_hard_constraints(self, text: str) -> Dict[str, Any]:
@@ -455,8 +472,11 @@ class NLPService:
             "locations": entities.get("GPE", [])
         }
         
-        # Extract skills
-        profile["skills"] = self.extract_skills_from_text(resume_text)
+        # Prefer an explicit skill-list section when one exists. Full-text
+        # dictionary matching remains the fallback for unstructured resumes.
+        section_skills = self._extract_labeled_skill_section(resume_text)
+        profile["skills"] = section_skills or self.extract_skills_from_text(resume_text)
+        profile["years_experience"] = self._extract_years_experience(resume_text)
         
         # Extract experience (simplified)
         experience_sections = self._extract_experience_sections(resume_text)
@@ -467,6 +487,48 @@ class NLPService:
         profile["education"] = education_sections
         
         return profile
+
+    @staticmethod
+    def _extract_labeled_skill_section(text: str) -> List[str]:
+        """Extract comma-like delimited skills from an explicit resume field."""
+        if not text:
+            return []
+        header_pattern = re.compile(
+            r"^\s*(?:技能栈|技术栈|专业技能|核心技能|skills?|technical skills?)\s*[：:]\s*(.+)$",
+            re.IGNORECASE,
+        )
+        for line in text.splitlines():
+            match = header_pattern.match(line.strip())
+            if not match:
+                continue
+            values = re.split(r"[、,，;；|]", match.group(1))
+            seen: set[str] = set()
+            skills: List[str] = []
+            for value in values:
+                skill = value.strip().strip("。.")
+                key = skill.casefold()
+                if not skill or len(skill) > 80 or key in seen:
+                    continue
+                seen.add(key)
+                skills.append(skill)
+            return skills
+        return []
+
+    @staticmethod
+    def _extract_years_experience(text: str) -> Optional[int]:
+        """Extract an explicitly stated total/minimum experience duration."""
+        if not text:
+            return None
+        patterns = (
+            r"(?i)(\d{1,2})\s*\+?\s*years?(?:\s+of)?\s+(?:work\s+|professional\s+|relevant\s+)?experience",
+            r"(?i)(?:experience|worked)\s*(?:of|for)?\s*(\d{1,2})\s*\+?\s*years?",
+            r"(\d{1,2})\s*年(?:以上|及以上)?[^，。；;\n]{0,20}(?:经验|经历)",
+            r"(?:具备|拥有|具有)?\s*(\d{1,2})\s*年(?:以上|及以上)?[^，。；;\n]{0,20}(?:经验|经历)",
+        )
+        values = []
+        for pattern in patterns:
+            values.extend(int(value) for value in re.findall(pattern, text) if int(value) <= 50)
+        return max(values) if values else None
     
     def _extract_emails(self, text: str) -> List[str]:
         """Extract email addresses from text"""

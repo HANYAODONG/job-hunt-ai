@@ -105,7 +105,7 @@ class LayeredWeights(BaseModel):
     ability_graph: float = Field(default=0.3, ge=0.0, le=1.0, description="知识图谱在能力中的权重")
     relevance_base: float = Field(default=0.7, ge=0.0, le=1.0, description="相关性基础乘数")
     ability_multiplier: float = Field(default=0.3, ge=0.0, le=1.0, description="能力调制幅度")
-    family_discount: float = Field(default=0.85, ge=0.0, le=1.0, description="岗位族不匹配时的折扣系数")
+    family_discount: float = Field(default=0.20, ge=0.0, le=1.0, description="跨岗位族时的最低门控系数")
 
     def validate_groups(self):
         """验证两组权重各自求和为 1.0（仅在对应乘数 > 0 时校验）"""
