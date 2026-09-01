@@ -1,0 +1,56 @@
+{
+  "version": "canonical_role_pool_v2",
+  "status": "review_gated_release_candidate",
+  "base_v1_records": 10964,
+  "v1_review_records_preserved": 1656,
+  "incremental_candidate_records": 1022,
+  "incremental_exact_duplicates_removed": 120,
+  "incremental_active_records_added": 397,
+  "incremental_review_records_added": 505,
+  "canonical_records": 11361,
+  "review_records": 2161,
+  "defined_roles": 78,
+  "active_roles": 76,
+  "new_role_decisions": {
+    "product_manager": "active",
+    "data_product_manager": "active",
+    "technical_product_manager": "active",
+    "security_compliance_engineer": "active",
+    "research_development_project_manager": "active",
+    "game_project_manager": "active",
+    "delivery_project_manager": "active",
+    "it_project_manager": "active",
+    "ui_ux_design": "active"
+  },
+  "incremental_role_counts": {
+    "data_product_manager": 29,
+    "delivery_project_manager": 2,
+    "game_project_manager": 11,
+    "it_project_manager": 1,
+    "product_manager": 259,
+    "research_development_project_manager": 10,
+    "security_compliance_engineer": 20,
+    "technical_product_manager": 54,
+    "ui_ux_design": 11,
+    "unclassified_review": 505
+  },
+  "input_sha256": {
+    "v1_canonical_jobs": "982e7c00453085ff110b8686d3f8ca078b967be569fe80b3669722ac0c211e37",
+    "v1_review_queue": "d2aa0da258abcac0827cffda28b88c82413ffef4f455717340653b1255a37301",
+    "incremental_candidates": "2abaad3cbd22395a7e1c374431bd23aa240d637985f7a428372e24ac5b47ec9f"
+  },
+  "quality_gates": [
+    "v1 canonical jobs are copied without mutation",
+    "only roles marked active contribute to canonical_jobs.jsonl",
+    "review_only candidates remain in role_mapping_review.jsonl",
+    "exact title+description duplicates are excluded from the active input",
+    "indexes and graph imports must be rebuilt only after this release candidate is accepted"
+  ],
+  "outputs": {
+    "canonical_jobs": "D:\\job-hunt\\artifacts\\canonical_role_pool_v2\\canonical_jobs.jsonl",
+    "review_queue": "D:\\job-hunt\\artifacts\\canonical_role_pool_v2\\role_mapping_review.jsonl",
+    "canonical_roles": "D:\\job-hunt\\artifacts\\canonical_role_pool_v2\\canonical_roles.csv",
+    "deduplication_report": "D:\\job-hunt\\artifacts\\canonical_role_pool_v2\\deduplication_report.json",
+    "report": "D:\\job-hunt\\artifacts\\canonical_role_pool_v2\\role_pool_report.json"
+  }
+}

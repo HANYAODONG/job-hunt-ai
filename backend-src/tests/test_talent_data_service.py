@@ -2,6 +2,7 @@ import json
 import sys
 import tempfile
 import unittest
+import os
 from pathlib import Path
 
 
@@ -100,6 +101,41 @@ class TalentDataServiceTests(unittest.TestCase):
         self.assertTrue(result["items"][0]["isEligible"])
         self.assertEqual(result["retrieval_stats"]["eligible_count"], 1)
 
+    def test_canonical_role_ids_merge_language_variants_but_not_architecture_roles(self):
+        java_profile = {
+            "candidate_id": "java_profile",
+            "target_job_family": "Java开发工程师",
+            "standard_category": "软件研发",
+            "skills_normalized": ["Java", "Spring Boot"],
+        }
+        backend_job = {
+            "job_id": "CANONICAL_BACKEND",
+            "standard_job": "服务端研发工程师",
+            "job_family": "服务端研发工程师",
+            "standard_category": "软件工程",
+            "standard_direction": "服务端与工程架构",
+            "canonical_role_id": "backend_engineering",
+            "role_mapping_status": "mapped",
+            "required_skills": ["Java", "Spring Boot"],
+        }
+        architecture_job = {
+            **backend_job,
+            "job_id": "CANONICAL_ARCHITECT",
+            "standard_job": "软件架构师",
+            "job_family": "软件架构师",
+            "canonical_role_id": "software_architecture",
+        }
+
+        same_score, same_relation = self.service._role_match_score(
+            java_profile, ["Java", "Spring Boot"], backend_job
+        )
+        adjacent_score, adjacent_relation = self.service._role_match_score(
+            java_profile, ["Java", "Spring Boot"], architecture_job
+        )
+
+        self.assertEqual((same_score, same_relation), (1.0, "same_role"))
+        self.assertEqual((adjacent_score, adjacent_relation), (0.0, "career_adjacent"))
+
     def test_threshold_filters_candidates_and_keeps_pagination_contract(self):
         result = self.service.match_candidates(
             "JOB001",
@@ -163,6 +199,19 @@ class TalentDataServiceTests(unittest.TestCase):
         refreshed = graph_service.list_standard_role_records()
         role_record = next(item for item in refreshed if item["standard_role"] == "后端开发工程师")
         self.assertEqual(role_record["skills"], ["Python", "FastAPI"])
+
+    def test_explicit_jobs_path_has_precedence_over_canonical_pool_environment(self):
+        original = os.environ.get("JOB_HUNT_CANONICAL_ROLE_POOL_PATH")
+        os.environ["JOB_HUNT_CANONICAL_ROLE_POOL_PATH"] = str(self.temp_dir.name) + "/canonical.jsonl"
+        try:
+            service = TalentDataService(self.jobs_path, self.profiles_path, self.state_path)
+        finally:
+            if original is None:
+                os.environ.pop("JOB_HUNT_CANONICAL_ROLE_POOL_PATH", None)
+            else:
+                os.environ["JOB_HUNT_CANONICAL_ROLE_POOL_PATH"] = original
+
+        self.assertEqual(service.jobs_path, self.jobs_path)
 
 
 if __name__ == "__main__":

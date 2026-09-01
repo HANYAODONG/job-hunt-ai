@@ -19,6 +19,7 @@ DEFAULT_REPO_ROOT = (
 )
 REPO_ROOT = Path(os.getenv("JOB_HUNT_REPO_ROOT", DEFAULT_REPO_ROOT))
 ITERATION_DIR = REPO_ROOT / "artifacts" / "dataset_iteration_05"
+CANONICAL_ROLE_POOL_PATH_ENV = "JOB_HUNT_CANONICAL_ROLE_POOL_PATH"
 
 
 def _read_jsonl(path: Path) -> Iterable[dict[str, Any]]:
@@ -59,6 +60,16 @@ def _sentences(value: Any, limit: int = 5) -> list[str]:
     return [item for item in parts if item][:limit]
 
 
+def _is_mapped_canonical_role(job: dict[str, Any]) -> bool:
+    """Identify records produced by the reviewed canonical role-pool builder."""
+    return bool(
+        job.get("canonical_role_id")
+        and job.get("role_mapping_status") == "mapped"
+        and job.get("standard_category")
+        and job.get("standard_direction")
+    )
+
+
 class TalentDataService:
     """Expose canonical jobs and an explainable candidate matching baseline."""
 
@@ -69,7 +80,10 @@ class TalentDataService:
         state_path: Path | None = None,
         fusion_path: Path | None = None,
     ) -> None:
-        self.jobs_path = jobs_path or ITERATION_DIR / "jobs.jsonl"
+        configured_jobs_path = os.getenv(CANONICAL_ROLE_POOL_PATH_ENV, "").strip()
+        self.jobs_path = jobs_path or (
+            Path(configured_jobs_path) if configured_jobs_path else ITERATION_DIR / "jobs.jsonl"
+        )
         self.profiles_path = profiles_path or ITERATION_DIR / "candidate_profiles.jsonl"
         self.state_path = state_path or REPO_ROOT / "artifacts" / "runtime" / "talent_state.json"
         self.fusion_path = fusion_path or (
@@ -82,6 +96,8 @@ class TalentDataService:
         self._state: dict[str, Any] | None = None
         self._fusion_index: dict[str, dict[str, Any]] | None = None
         self._candidate_rankings: dict[str, list[dict[str, Any]]] = {}
+        self._canonical_role_pool: Any | None = None
+        self._profile_role_contexts: dict[str, dict[str, str]] = {}
 
     def _load_jobs(self) -> dict[str, dict[str, Any]]:
         with self._lock:
@@ -145,6 +161,93 @@ class TalentDataService:
         """Force other service instances to reread persisted JD overrides."""
         with self._lock:
             self._state = None
+
+    def _get_canonical_role_pool(self):
+        if self._canonical_role_pool is None:
+            from app.services.canonical_role_pool import CanonicalRolePool
+
+            self._canonical_role_pool = CanonicalRolePool()
+        return self._canonical_role_pool
+
+    def _role_context(
+        self,
+        *,
+        role_name: str,
+        category: str,
+        skills: list[str],
+        job: dict[str, Any] | None = None,
+    ) -> dict[str, str]:
+        """Resolve a source label to the canonical role identity when available."""
+        if job is not None and _is_mapped_canonical_role(job):
+            return {
+                "role_id": str(job["canonical_role_id"]),
+                "domain": str(job["standard_category"]),
+                "direction": str(job["standard_direction"]),
+                "mapping_status": "mapped",
+            }
+
+        mapping = self._get_canonical_role_pool().classify({
+            "standard_job": role_name,
+            "title": role_name,
+            "skills": skills,
+        })
+        return {
+            "role_id": str(mapping.get("canonical_role_id") or ""),
+            "domain": str(mapping.get("canonical_domain") or category),
+            "direction": str(mapping.get("canonical_direction") or ""),
+            "mapping_status": str(mapping.get("role_mapping_status") or "unmapped"),
+        }
+
+    def _profile_role_context(self, profile: dict[str, Any], skills: list[str]) -> dict[str, str]:
+        candidate_id = str(profile.get("candidate_id") or profile.get("resume_id") or "")
+        if candidate_id not in self._profile_role_contexts:
+            self._profile_role_contexts[candidate_id] = self._role_context(
+                role_name=str(profile.get("target_job_family") or ""),
+                category=str(profile.get("standard_category") or ""),
+                skills=skills,
+            )
+        return self._profile_role_contexts[candidate_id]
+
+    def _role_match_score(
+        self,
+        profile: dict[str, Any],
+        profile_skills: list[str],
+        job: dict[str, Any],
+    ) -> tuple[float, str]:
+        """Score only declared role equivalence and explicitly curated neighbours."""
+        candidate = self._profile_role_context(profile, profile_skills)
+        target = self._role_context(
+            role_name=str(job.get("job_family") or job.get("standard_job") or ""),
+            category=str(job.get("standard_category") or ""),
+            skills=_list(job.get("required_skills") or job.get("skills")),
+            job=job,
+        )
+        candidate_role_id = candidate["role_id"]
+        target_role_id = target["role_id"]
+        if candidate_role_id and target_role_id:
+            relation = self._get_canonical_role_pool().relation_between(
+                candidate_role_id, target_role_id
+            )
+            treatment = relation["matching_treatment"]
+            if treatment == "full_credit":
+                return 1.0, relation["relation"]
+            if treatment == "partial_credit":
+                return 0.6, relation["relation"]
+            return 0.0, relation["relation"]
+
+        # Old or newly introduced labels without a reviewed mapping retain the
+        # prior conservative category fallback, but never imply role equivalence.
+        target_family = _key(profile.get("target_job_family"))
+        job_family = _key(job.get("job_family") or job.get("standard_job"))
+        profile_category = _key(profile.get("standard_category"))
+        job_category = _key(job.get("standard_category"))
+        if target_family and target_family == job_family:
+            return 1.0, "legacy_same_role"
+        if profile_category and profile_category == job_category:
+            return 0.75, "legacy_same_category"
+        if target_family and job_family and (target_family in job_family or job_family in target_family):
+            return 0.6, "legacy_text_overlap"
+        return 0.0, "unmapped"
 
     @staticmethod
     def _required_experience(job: dict[str, Any]) -> int:
@@ -277,6 +380,7 @@ class TalentDataService:
                 "standard_direction": direction,
                 "skills": _list(view.get("requiredSkills")),
                 "needs_review": needs_review,
+                "is_mapped_canonical_role": _is_mapped_canonical_role(job),
                 "job_id": view["id"],
                 "publish_time": job.get("publish_time"),  # 新增：把 publish_time 传出来
             })
@@ -334,8 +438,12 @@ class TalentDataService:
 
         for raw_job in jobs_by_id.values():
             raw_category, raw_direction, raw_role, _ = self._normalized_standard_role(raw_job)
-            canonical_category, inferred_direction = get_canonical_taxonomy(raw_category, raw_role)
-            normalized_direction = raw_direction or inferred_direction
+            if _is_mapped_canonical_role(raw_job):
+                canonical_category = raw_category
+                normalized_direction = raw_direction
+            else:
+                canonical_category, inferred_direction = get_canonical_taxonomy(raw_category, raw_role)
+                normalized_direction = raw_direction or inferred_direction
             if raw_role != requested_role:
                 continue
             if canonical_category != requested_category or normalized_direction != requested_direction:
@@ -469,18 +577,9 @@ class TalentDataService:
         else:
             project_score = skill_score * 0.8
 
+        family_score, role_relation = self._role_match_score(profile, profile_skills, job)
         target_family = _key(profile.get("target_job_family"))
         job_family = _key(job.get("job_family") or job.get("standard_job"))
-        profile_category = _key(profile.get("standard_category"))
-        job_category = _key(job.get("standard_category"))
-        if target_family and target_family == job_family:
-            family_score = 1.0
-        elif profile_category and profile_category == job_category:
-            family_score = 0.75
-        elif target_family and job_family and (target_family in job_family or job_family in target_family):
-            family_score = 0.6
-        else:
-            family_score = 0.0
 
         years = float(profile.get("years_experience") or 0)
         if required_years is None:
@@ -519,7 +618,8 @@ class TalentDataService:
         stage = stage_lookup.get(f"{job_id}::{candidate_id}", "待筛选")
         reason = (
             f"匹配到 {len(matched)}/{max(1, len(job_skills))} 项岗位技能"
-            f"，岗位方向匹配度 {round(family_score * 100)}%，经验要求匹配度 {round(experience_score * 100)}%。"
+            f"，岗位关系为 {role_relation}，岗位方向匹配度 {round(family_score * 100)}%，"
+            f"经验要求匹配度 {round(experience_score * 100)}%。"
         )
         return {
             "id": candidate_id,
@@ -550,6 +650,7 @@ class TalentDataService:
             ],
             "recommendation": reason,
             "scoreBreakdown": {key: round(value * 100, 2) for key, value in score_breakdown.items()},
+            "roleRelation": role_relation,
             "dataSource": "live-explainable-retrieval-v2",
             "_has_signal": bool(matched or family_score >= 0.6),
             "_sort": (final_score, project_score, skill_focus_score, experience_score, confidence),
@@ -564,7 +665,12 @@ class TalentDataService:
         job_skills = [item["name"] for item in job_view["requiredSkills"]]
         required_years = self._required_experience(job)
         fusion_record = self._load_fusion_index().get(job_id)
-        if fusion_record and job_id not in state["job_overrides"]:
+        use_fusion = bool(
+            fusion_record
+            and job_id not in state["job_overrides"]
+            and not _is_mapped_canonical_role(job)
+        )
+        if use_fusion:
             ranked: list[dict[str, Any]] = []
             for hit in fusion_record.get("candidates") or []:
                 candidate_id = str(hit.get("candidate_id") or "")

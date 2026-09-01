@@ -22,6 +22,7 @@ import {
   ingestMarketCsv,
   patchTalentCandidateStage,
   putTalentJob,
+  rankRoleAware,
   rerankSemantic,
   searchBm25,
 } from './intelligenceApi';
@@ -33,6 +34,7 @@ export const TALENT_API_CAPABILITIES = Object.freeze({
   semanticReranking: 'live',
   knowledgeGraphGap: 'live',
   fusionRanking: 'live',
+  roleAwareMatching: 'live-with-fallback',
   capabilityGraph: 'live-with-canonical-fallback',
   learningPlan: 'live-with-fallback',
   recruitment: 'live-with-fallback',
@@ -212,8 +214,8 @@ const normalizeFullDiagnosis = (candidateProfile, hits, gapByJobId, fusionResult
 
     return {
       id: result.job_id,
-      role: hit.standard_job || hit.title || `Job ${index + 1}`,
-      family: hit.job_family || hit.standard_category || 'job family pending',
+      role: result.canonical_role || hit.standard_job || hit.title || `Job ${index + 1}`,
+      family: result.canonical_direction || hit.job_family || hit.standard_category || 'job family pending',
       company: hit.company || '',
       version: 'current graph version',
       score: toPercent(result.final_score),
@@ -223,6 +225,10 @@ const normalizeFullDiagnosis = (candidateProfile, hits, gapByJobId, fusionResult
       evidenceCoverage: toPercent(gap.skill_coverage),
       evidencePaths: normalizeTextList(result.evidence_paths || gap.evidence_paths),
       scoreBreakdown: result.score_breakdown || null,
+      canonicalRoleId: result.canonical_role_id || null,
+      canonicalRole: result.canonical_role || null,
+      canonicalDirection: result.canonical_direction || null,
+      roleMappingStatus: result.role_mapping_status || null,
       job: {
         id: result.job_id,
         title: hit.title,
@@ -259,12 +265,14 @@ const normalizeFullDiagnosis = (candidateProfile, hits, gapByJobId, fusionResult
   };
 };
 
+const ROLE_AWARE_CANDIDATE_POOL_SIZE = 100;
+
 const runFullDiagnosisPipeline = async (candidateProfile) => {
   const candidateId = candidateProfile.candidate?.id;
   const queryText = buildCandidateQuery(candidateProfile);
   if (!candidateId || !queryText) throw new Error('Resume profile lacks candidate id or searchable text.');
 
-  const bm25Result = await searchBm25(queryText, { size: 8 });
+  const bm25Result = await searchBm25(queryText, { size: ROLE_AWARE_CANDIDATE_POOL_SIZE });
   const hits = (bm25Result.hits || []).filter((hit) => hit.job_id);
   if (!hits.length) throw new Error('BM25 index returned no candidate jobs.');
 
@@ -308,12 +316,52 @@ const runFullDiagnosisPipeline = async (candidateProfile) => {
       graph_relatedness: clampScore(gap.graph_relatedness),
       missing_skills: normalizeTextList(gap.missing_skills),
       evidence_paths: normalizeTextList(gap.evidence_paths),
+      _meta: {
+        title: hit.title,
+        standard_job: hit.standard_job,
+        job_family: hit.job_family,
+        required_skills: hit.skills || [],
+        company: hit.company,
+        location: hit.location,
+        source_type: hit.source_type,
+      },
     };
   });
   const fusionResult = await rankJobs(candidateId, fusionInputs);
   if (!fusionResult.results?.length) throw new Error('Fusion ranking returned no results.');
 
-  return normalizeFullDiagnosis(candidateProfile, hits, gapByJobId, fusionResult.results);
+  const hitByJobId = new Map(hits.map((hit) => [hit.job_id, hit]));
+  let rankedResults = fusionResult.results;
+  try {
+    const roleAwareResult = await rankRoleAware({
+      queryId: candidateId,
+      jobs: fusionResult.results.map((result) => {
+        const hit = hitByJobId.get(result.job_id) || {};
+        return {
+          ...result,
+          title: hit.title,
+          standard_job: hit.standard_job,
+          job_family: hit.job_family,
+          required_skills: hit.skills || [],
+          meta: {
+            title: hit.title,
+            standard_job: hit.standard_job,
+            job_family: hit.job_family,
+            required_skills: hit.skills || [],
+          },
+        };
+      }),
+      topK: 3,
+      roleTopK: 1,
+      candidateRoleId: candidateProfile.candidate?.canonical_role_id || null,
+    });
+    if (roleAwareResult?.results?.length) rankedResults = roleAwareResult.results;
+  } catch (roleAwareError) {
+    // The role gate is additive; preserve the existing fused result if unavailable.
+    console.warn('Role-aware adapter unavailable, keeping fusion ranking:', roleAwareError);
+  }
+
+  return normalizeFullDiagnosis(candidateProfile, hits, gapByJobId, rankedResults);
 };
 
 const diagnoseUploadedResume = async (resumeFile) => {

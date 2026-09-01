@@ -1,0 +1,27 @@
+source_standard_job,role_id,specialization,minimum_matches,signals
+软件开发工程师,agent_application,智能体应用,2,agent;智能体;rag;langchain;langgraph;function calling;mcp;工具调用
+软件开发工程师,llm_application,大模型应用,2,大模型;llm;prompt;知识库问答;模型服务;提示词
+软件开发工程师,data_engineering,数据工程,2,hive;spark;flink;hadoop;etl;kafka;数据管道;数据开发
+软件开发工程师,backend_engineering,服务端,2,spring;微服务;redis;消息队列;rpc;后端开发;服务端系统
+软件开发工程师,frontend_engineering,前端,2,react;vue;typescript;css;html;浏览器
+软件开发工程师,system_software,系统软件,2,编译器;操作系统;运行时;sdk;内核;系统编程
+软件开发工程师,embedded_software,嵌入式,2,嵌入式;固件;rtos;单片机;arm
+软件开发工程师,hardware_engineering,硬件,2,电路;单板;原理图;硬件设计;pcb
+算法工程师,agent_algorithm,智能体算法,2,agent;智能体;任务规划;工具学习;多智能体
+算法工程师,llm_algorithm,大语言模型,2,大模型;llm;transformer;预训练;sft;对齐
+算法工程师,cv_algorithm,计算机视觉,2,计算机视觉;图像;目标检测;图像分割;视觉定位
+算法工程师,speech_algorithm,语音,2,语音;asr;tts;声学
+算法工程师,recommendation_algorithm,推荐,2,推荐系统;推荐算法;召回;ctr;排序模型
+算法工程师,search_algorithm,搜索,2,搜索引擎;查询理解;检索;搜索算法
+算法工程师,risk_algorithm,风险控制,2,风控;反欺诈;反作弊;反爬;黑灰产
+算法工程师,control_algorithm,控制,2,路径规划;运动控制;强化学习;控制策略;无人机
+算法工程师,robotics_algorithm,机器人算法,2,机器人;具身智能;slam;激光雷达;lidar
+算法工程师,navigation_positioning_algorithm,导航定位,3,gnss;ins;imu;slam;vio;组合导航;定位算法;卡尔曼滤波
+数据分析师,data_scientist,数据科学,3,sql;实验设计;ab实验;a/b测试;统计推断;因果推断;归因分析;指标体系
+安全工程师,security_operations,安全运营,2,soc;siem;edr;告警研判;应急响应;事件响应;安全运营
+网络安全工程师,security_operations,安全运营,2,soc;siem;edr;告警研判;应急响应;事件响应;安全运营
+信息安全工程师,security_operations,安全运营,2,soc;siem;edr;告警研判;应急响应;事件响应;安全运营
+软件开发工程师,game_technical_artist,游戏技术美术,2,技术美术;shader;unity;unreal;美术工具;材质优化;houdini
+硬件工程师,data_center_hvac,数据中心暖通,2,数据中心;暖通;制冷;液冷;dcim;pue;机房空调
+服务器工程师,data_center_hvac,数据中心暖通,2,数据中心;暖通;制冷;液冷;dcim;pue;机房空调
+安全工程师,cybersecurity_engineering,网络信息安全,2,网络安全;应用安全;漏洞;渗透;攻防;数据安全;隐私
