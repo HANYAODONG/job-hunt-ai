@@ -29,6 +29,7 @@ jest.mock('./intelligenceApi', () => ({
   ingestMarketCsv: jest.fn(),
   patchTalentCandidateStage: jest.fn(),
   putTalentJob: jest.fn(),
+  rankRoleAware: jest.fn(),
   rerankSemantic: jest.fn(),
   searchBm25: jest.fn(),
 }));
@@ -163,7 +164,7 @@ describe('diagnoseCandidate', () => {
 
     const result = await diagnoseCandidate({ resumeFile: resume });
 
-    expect(searchBm25).toHaveBeenCalledWith(expect.stringContaining('React'), { size: 8 });
+    expect(searchBm25).toHaveBeenCalledWith(expect.stringContaining('React'), { size: 100 });
     expect(rankJobs).toHaveBeenCalledWith('candidate-1', [expect.objectContaining({
       job_id: 'job-1',
       bm25_score: 1,

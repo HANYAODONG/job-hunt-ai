@@ -1,0 +1,13 @@
+{
+  "owner": "data_group",
+  "repository": "https://github.com/LeeJM2024/job-skill-graph-evolution",
+  "revision": "a4fa1fa1ce8a18706d08715865248230e6b8178c",
+  "enterprise_job_path": "dataset/岗位数据流生成与评测系统/data/input/job_bigcompany_final.csv",
+  "enterprise_job_git_blob": "1df1ff0eda1adea354bd7d5325c18a39d24e3a7c",
+  "enterprise_job_sha256": "5a00de23eec1ec3595016849eee0f0e6d6a007f387ceec84a1930828b61f302f",
+  "enterprise_job_record_count": 12620,
+  "standard_job_dictionary_path": "dataset/岗位数据流生成与评测系统/data/input/standard_job_title_dictionary.csv",
+  "standard_job_dictionary_git_blob": "75049f7f001f2174701e6fb3a77d44a3345854ab",
+  "standard_job_dictionary_sha256": "e6600c7ae0141e9a50fa2931c1004a85ea9581ecf5cca5a4cd5ac154354a88ed",
+  "standard_job_dictionary_role_count": 73
+}

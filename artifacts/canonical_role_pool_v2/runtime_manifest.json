@@ -1,0 +1,20 @@
+{
+  "role_pool_version": "v2",
+  "status": "prepared_not_default",
+  "jobs_path": "D:\\job-hunt\\artifacts\\canonical_role_pool_v2\\canonical_jobs.jsonl",
+  "roles_path": "D:\\job-hunt\\backend-src\\app\\data\\canonical_role_pool\\v2\\canonical_roles.csv",
+  "role_data_dir": "D:\\job-hunt\\backend-src\\app\\data\\canonical_role_pool\\v2",
+  "jobs_sha256": "d95655a583b07e7f2a7f195db296f1aa3f40d4ce3ba35967a23ddb3e7a0a5c02",
+  "roles_sha256": "a2e07e9e21ff2857525e3ba4a2a23aa03d18a323d366af65de541396845d4f96",
+  "required_environment": {
+    "JOB_HUNT_CANONICAL_ROLE_POOL_PATH": "D:\\job-hunt\\artifacts\\canonical_role_pool_v2\\canonical_jobs.jsonl",
+    "JOB_HUNT_CANONICAL_ROLE_DATA_DIR": "D:\\job-hunt\\backend-src\\app\\data\\canonical_role_pool\\v2"
+  },
+  "compatibility": {
+    "core_matching_algorithm_changed": false,
+    "bm25_model_changed": false,
+    "semantic_model_changed": false,
+    "fusion_scoring_changed": false,
+    "kg_schema_changed": false
+  }
+}

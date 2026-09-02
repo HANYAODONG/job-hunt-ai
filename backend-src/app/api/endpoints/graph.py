@@ -72,8 +72,12 @@ def build_standard_role_graph(records: list[dict], year: int | None = None) -> d
         role = str(record.get("standard_role") or record.get("job_family") or "").strip()
         if not category or not role:
             continue
-        canonical_category, inferred_direction = get_canonical_taxonomy(category, role)
-        direction = str(record.get("standard_direction") or inferred_direction).strip()
+        if record.get("is_mapped_canonical_role"):
+            canonical_category = category
+            direction = str(record.get("standard_direction") or "").strip()
+        else:
+            canonical_category, inferred_direction = get_canonical_taxonomy(category, role)
+            direction = str(record.get("standard_direction") or inferred_direction).strip()
         skills = [str(skill).strip() for skill in record.get("skills") or [] if str(skill).strip()]
         key = (canonical_category, direction, role)
         role_data = roles.setdefault(key, {"count": 0, "skills": Counter(), "needs_review": 0})
@@ -167,7 +171,7 @@ def build_standard_role_graph(records: list[dict], year: int | None = None) -> d
             family_count += 1
         tree["children"].append(category_node)
 
-    stacks = [category for category in ("算法与智能", "AI应用", "软件研发", "数据智能", "基础设施") if category in grouped]
+    stacks = [node["label"] for node in tree["children"]]
     return {
         "tree": tree,
         "summary": {

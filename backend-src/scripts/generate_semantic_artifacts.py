@@ -239,9 +239,14 @@ def main(
     sample_profiles: int | None = None,
     candidates_file: Optional[str] = None,
     comparison_model: str = "all-MiniLM-L6-v2",
+    jobs_file: Optional[str] = None,
+    profiles_file: Optional[str] = None,
+    output_dir: Optional[str] = None,
 ) -> None:
-    jobs_path, profiles_path, _ = resolve_input_paths(REPO_ROOT)
-    artifact_dir = REPO_ROOT / "artifacts" / "semantic_index"
+    default_jobs_path, default_profiles_path, _ = resolve_input_paths(REPO_ROOT)
+    jobs_path = Path(jobs_file).expanduser().resolve() if jobs_file else default_jobs_path
+    profiles_path = Path(profiles_file).expanduser().resolve() if profiles_file else default_profiles_path
+    artifact_dir = Path(output_dir).expanduser().resolve() if output_dir else REPO_ROOT / "artifacts" / "semantic_index"
     artifact_dir.mkdir(parents=True, exist_ok=True)
 
     if not jobs_path.exists():
@@ -364,6 +369,9 @@ if __name__ == "__main__":
     parser.add_argument("--use-fallback", action="store_true", help="Force using the fallback embedding path even when a transformer is available")
     parser.add_argument("--candidates-file", type=str, default=None, help="Optional candidate set file with job_ids list")
     parser.add_argument("--comparison-model", type=str, default="all-MiniLM-L6-v2", help="Optional comparison embedding model")
+    parser.add_argument("--jobs", type=str, default=None, help="Explicit jobs JSONL input; default keeps the legacy dataset discovery")
+    parser.add_argument("--profiles", type=str, default=None, help="Explicit candidate profiles JSONL input")
+    parser.add_argument("--output-dir", type=str, default=None, help="Explicit artifact output directory")
     args = parser.parse_args()
 
     sample_limit = args.sample if args.sample and args.sample > 0 else None
@@ -377,4 +385,7 @@ if __name__ == "__main__":
         sample_profiles=sample_profiles,
         candidates_file=args.candidates_file,
         comparison_model=args.comparison_model,
+        jobs_file=args.jobs,
+        profiles_file=args.profiles,
+        output_dir=args.output_dir,
     )

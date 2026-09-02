@@ -14,6 +14,16 @@ RUN sed -i 's|http://deb.debian.org/debian|http://mirrors.aliyun.com/debian|g' /
 # Copy requirements first for better caching
 COPY requirements.txt .
 
+# Install the CPU wheel explicitly. Installing the unconstrained Linux wheel
+# from the general package mirror also pulls several gigabytes of CUDA runtime
+# libraries, although the default local/Docker workflow runs inference on CPU.
+ARG TORCH_INDEX_URL=https://download.pytorch.org/whl/cpu
+ARG TORCH_VERSION=2.7.1+cpu
+RUN pip install --no-cache-dir \
+    --default-timeout=300 \
+    --index-url "${TORCH_INDEX_URL}" \
+    "torch==${TORCH_VERSION}"
+
 # Install Python dependencies (use Aliyun mirror for China mainland, with longer timeout)
 RUN pip install --no-cache-dir \
     --default-timeout=300 \

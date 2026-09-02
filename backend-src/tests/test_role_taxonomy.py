@@ -144,6 +144,31 @@ class StandardRoleGraphTests(unittest.TestCase):
             "生成式与语言智能", "推荐、风控与搜索算法", "控制、自动驾驶与优化",
         })
 
+    def test_preserves_reviewed_canonical_role_pool_levels(self):
+        graph = build_standard_role_graph([
+            {
+                "standard_category": "软件工程",
+                "standard_direction": "服务端与工程架构",
+                "standard_role": "服务端研发工程师",
+                "is_mapped_canonical_role": True,
+                "skills": ["Java"],
+            },
+            {
+                "standard_category": "算法与模型",
+                "standard_direction": "生成式与认知智能",
+                "standard_role": "大模型算法工程师",
+                "is_mapped_canonical_role": True,
+                "skills": ["PyTorch"],
+            },
+        ])
+
+        self.assertEqual(
+            [node["label"] for node in graph["tree"]["children"]],
+            ["算法与模型", "软件工程"],
+        )
+        algorithm_direction = graph["tree"]["children"][0]["children"][0]
+        self.assertEqual(algorithm_direction["label"], "生成式与认知智能")
+
     def test_taxonomy_never_collapses_to_single_direction_or_role(self):
         graph = build_standard_role_graph([
             {"standard_category": "AI应用", "standard_role": "大模型应用工程师", "skills": []},

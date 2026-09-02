@@ -83,6 +83,21 @@ export const analyzeKnowledgeGraphGap = async (candidateId, jobId) => {
   }
 };
 
+export const rankRoleAware = async ({ queryId, jobs, topK = 3, roleTopK = 1, candidateRoleId = null }) => {
+  try {
+    const response = await api.post('/fusion/role-aware-rank', {
+      query_id: queryId,
+      jobs,
+      top_k: topK,
+      role_top_k: roleTopK,
+      candidate_role_id: candidateRoleId,
+    });
+    return response.data;
+  } catch (error) {
+    throw new Error(detail(error, '岗位感知排序失败'));
+  }
+};
+
 export const getMarketRuntime = async () => {
   const [ingestion, bm25] = await Promise.allSettled([
     api.get('/ingestion/stats'),

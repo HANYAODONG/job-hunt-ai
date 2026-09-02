@@ -42,6 +42,7 @@ from app.services.fusion_scoring_service import (
     DEFAULT_LAYERED_WEIGHTS,
 )
 from app.services.fusion_merge_service import merge_from_bm25_api, normalize_bm25_scores
+from app.services.role_aware_matching_service import rank_role_aware
 from app.core.database import get_elasticsearch
 from app.services.chinese_bm25_service import ChineseBM25Service
 
@@ -77,6 +78,31 @@ class RecommendRequest(BaseModel):
     layered_weights: Optional[LayeredWeights] = Field(default=None, description="本次请求使用的分层融合权重")
 
 
+class RoleAwareJobInput(BaseModel):
+    """Already-scored JD plus the metadata needed for role normalization."""
+
+    model_config = {"extra": "allow"}
+
+    job_id: str
+    final_score: float = Field(default=0.0, ge=0.0, le=1.0)
+    title: Optional[str] = None
+    standard_job: Optional[str] = None
+    job_family: Optional[str] = None
+    required_skills: list[str] = Field(default_factory=list)
+    skills: list[str] = Field(default_factory=list)
+    meta: Optional[dict[str, Any]] = None
+
+
+class RoleAwareRankRequest(BaseModel):
+    """Apply the role gate after the existing fusion scorer."""
+
+    query_id: str
+    jobs: list[RoleAwareJobInput] = Field(..., min_length=1)
+    top_k: int = Field(default=3, ge=1, le=20)
+    role_top_k: int = Field(default=1, ge=1, le=10)
+    candidate_role_id: Optional[str] = None
+
+
 # ── 核心融合接口 ─────────────────────────────────────────────────
 
 @router.post("/score", response_model=FusionOutput, summary="单条融合评分")
@@ -109,6 +135,28 @@ async def rank_jobs(body: FusionBatchInput):
     except Exception as e:
         logger.error(f"Fusion rank error: {e}")
         raise HTTPException(status_code=500, detail=f"批量排序失败: {str(e)}")
+
+
+@router.post("/role-aware-rank", summary="岗位感知二阶段排序")
+async def role_aware_rank(body: RoleAwareRankRequest):
+    """Select a canonical third-level role, then rank JD evidence within it.
+
+    This is an orchestration layer. It does not alter any existing retrieval,
+    semantic, knowledge-graph, or fusion score.
+    """
+
+    try:
+        return rank_role_aware(
+            [item.model_dump() for item in body.jobs],
+            top_k=body.top_k,
+            role_top_k=body.role_top_k,
+            candidate_role_id=body.candidate_role_id,
+        ) | {"query_id": body.query_id}
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.error("Role-aware ranking error: %s", exc)
+        raise HTTPException(status_code=500, detail=f"岗位感知排序失败: {exc}") from exc
 
 
 # ── 查询驱动融合（在线模式）──────────────────────────────────────

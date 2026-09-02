@@ -1,0 +1,3 @@
+# Canonical role pool source boundary
+
+The canonical enterprise role pool is built only from a checksum-pinned snapshot of the data group's `job_bigcompany_final.csv` and its standard-job dictionary. Enterprise JDs may enter graph and matching only after a traceable mapping to the three-level canonical taxonomy; government JDs and legacy evaluation JDs remain separate source domains until each has skills and an equivalent reviewed mapping. This rejects the simpler shared `jobs.jsonl` pool because its mixed sources and unreviewed labels make both role evidence and matching errors impossible to audit.

@@ -1,0 +1,606 @@
+{
+  "candidate_records": 1022,
+  "deduplicated_records": 120,
+  "duplicates": [
+    {
+      "job_id": "BT-PM-7660433683103172917",
+      "title": "服务商平台产品经理（平台方向）-抖音生活服务",
+      "duplicate_key": "2d7aa5e6a6d2596dcd9410b978e52dd3093202aede7e057ab529f1593072df0b"
+    },
+    {
+      "job_id": "BT-PM-7454030631287965960",
+      "title": "数据分析师（治理方向）-抖音电商",
+      "duplicate_key": "31d868b519bce44d52b4cfcc2c28df55bbbcd3a8706dc42bb54ee2a28021f826"
+    },
+    {
+      "job_id": "BT-PM-7646676618301638917",
+      "title": "Seedance2.5美术设计师（MaaS） - 火山方舟",
+      "duplicate_key": "d3fab6dc23db43b0dd877ae04f3a6e83afff6e4789b4d6fbe62e3e9fe97be38e"
+    },
+    {
+      "job_id": "BT-PM-7493010080491112722",
+      "title": "高级数据分析师（ROI方向 ）-抖音生活服务",
+      "duplicate_key": "4e2052c8db13a3f85253f0af1c84841a0556fa68f76b919cc50fea440586a7d1"
+    },
+    {
+      "job_id": "BT-PM-7660379536680585525",
+      "title": "用户体验AI产品经理-抖音电商",
+      "duplicate_key": "7028b6a682da61fb26aafb27ff47b0cc06ac68bea1370405961d15dcd3cc8c0b"
+    },
+    {
+      "job_id": "BT-PM-7631458341814208773",
+      "title": "Seedance2.5剪辑师（MaaS） - 火山方舟",
+      "duplicate_key": "81a878b08ba76a65709b2bfad544eaac9ec2a1f271fc3ef3f8fd5c994f254a3f"
+    },
+    {
+      "job_id": "BT-PM-7626223336313817349",
+      "title": "AI产品经理-Dev Infra",
+      "duplicate_key": "ae78c31b13341ecb0877b6b2fecffceb84449fbdf834716a9d9bcd5f6511bf04"
+    },
+    {
+      "job_id": "BT-PM-7644171893146929461",
+      "title": "豆包AI大模型数据分析-火山方舟MaaS",
+      "duplicate_key": "248a1178c24afc804b2d8fb9a9d806f7f179b33ef4b9cdf25ec17a5f765b2514"
+    },
+    {
+      "job_id": "BT-PM-7424493757935225125",
+      "title": "AI Coding产品经理-TRAE",
+      "duplicate_key": "b7770078a724767e3bc4967ac1a3f24ab4d680cb093a310ef161bce86413af8a"
+    },
+    {
+      "job_id": "BT-PM-7631124636152154373",
+      "title": "AI产品经理-抖音电商",
+      "duplicate_key": "c1753f5205ab0b17d53f2525d877ab2c63760ebe8f5a06bb7103e9c2b0d66ea6"
+    },
+    {
+      "job_id": "BT-PM-7634119512225171765",
+      "title": "用户体验判责策略产品专家-抖音电商",
+      "duplicate_key": "2805818a987c7c062bfa70440ff9569946bb93636f330b6af4ccb1e069f4bd76"
+    },
+    {
+      "job_id": "BT-PM-7649589601338706181",
+      "title": "豆包AI大模型产品经理（评测方向）-火山方舟MaaS",
+      "duplicate_key": "be667292a6acc134d5c51993aac6821258896e4b463bcbcd968e1e344d0b8123"
+    },
+    {
+      "job_id": "BT-PM-7249563957382351164",
+      "title": "数据科学家-抖音推荐",
+      "duplicate_key": "4ec46a1bea40c30298fbec6672f5246133026717a93c9ca1d38729d286345c6f"
+    },
+    {
+      "job_id": "BT-PM-7532121022121560328",
+      "title": "AI应用平台高级产品经理-AI Platform",
+      "duplicate_key": "42f91262324ba2f43b1acd2e7b1f137d11005e72f9ab3117ba64768de28f2a9c"
+    },
+    {
+      "job_id": "BT-PM-7044435107453471007",
+      "title": "Agent产品经理-火山引擎",
+      "duplicate_key": "e1889ebd27022e6fd51690145796398eff3720a75b568705526cbfea1055f43d"
+    },
+    {
+      "job_id": "BT-PM-7475314052706732306",
+      "title": "数据科学家（行业与解决方案方向）-抖音生活服务",
+      "duplicate_key": "3c7b8133fe7a9b05d434e30b4356df5e83906103b3a5d118c434be67d1645f8d"
+    },
+    {
+      "job_id": "BT-PM-7650039970105035013",
+      "title": "Coding Agent产品经理-扣子",
+      "duplicate_key": "b1529e99229823100913985ca96a4e8d40bd7e7347b8e4d545b022ef0d2683f5"
+    },
+    {
+      "job_id": "BT-PM-7138718538311502116",
+      "title": "高级数据产品经理 - BI",
+      "duplicate_key": "1107a508e6d506879a903e24e65a36b00795f83658d0127bcf71104915905376"
+    },
+    {
+      "job_id": "BT-PM-7044434617672714526",
+      "title": "Agent产品经理-火山引擎",
+      "duplicate_key": "e1889ebd27022e6fd51690145796398eff3720a75b568705526cbfea1055f43d"
+    },
+    {
+      "job_id": "BT-PM-7569207093092845829",
+      "title": "高级产品经理-飞书人事",
+      "duplicate_key": "c02e60f5ac886321db15467d5b28c0dac301d561b8951a3ca58a0d860164461e"
+    },
+    {
+      "job_id": "BT-PM-7494115493713660167",
+      "title": "AI Coding产品经理（开发工具设计方向）-TRAE",
+      "duplicate_key": "2106e32a4a1b2fae816fd455573b94687329d775f8bfb61d09b33964a54a6689"
+    },
+    {
+      "job_id": "BT-PM-7044435284037798174",
+      "title": "Agent产品经理-火山引擎",
+      "duplicate_key": "e1889ebd27022e6fd51690145796398eff3720a75b568705526cbfea1055f43d"
+    },
+    {
+      "job_id": "BT-PM-7522102340129474823",
+      "title": "资金产品解决方案-国际支付",
+      "duplicate_key": "d578044bf589ee68859d179e18f76cfac78811a1b319023884e6e9786c444057"
+    },
+    {
+      "job_id": "BT-PM-7615494860417927477",
+      "title": "AI产品运营经理-火山引擎",
+      "duplicate_key": "a81da3a4f332bbc4bf7890be92d708441e1565fbcb9987fbec20e94d374cb99e"
+    },
+    {
+      "job_id": "BT-PM-7509350922201286930",
+      "title": "平台营销产品经理-抖音电商",
+      "duplicate_key": "f242074de1b0fb7609b1b0d77c68e161a4606aad745b1b8a42d966a2bdb90d3b"
+    },
+    {
+      "job_id": "BT-PM-7501172922162104594",
+      "title": "数据科学家-商业化",
+      "duplicate_key": "031c14872b4c0f2e52e7c6e87ec4f73c912f230b03c116231befb8d84c8251ce"
+    },
+    {
+      "job_id": "BT-PM-7615916167356041477",
+      "title": "AI产品经理-ArkClaw",
+      "duplicate_key": "0e5b4c125dffe7da7912b4915dce6f980b4f28774287cde4322f9574720b7b2c"
+    },
+    {
+      "job_id": "BT-PM-7647006248021264693",
+      "title": "风控AI产品经理-链接安全",
+      "duplicate_key": "0b6bcf14bc6ac26614c7e44175d14fbf927f066e0b8017de12db07bf5101f4a5"
+    },
+    {
+      "job_id": "BT-PM-7269688521161836857",
+      "title": "国际支付 - 流动性产品经理",
+      "duplicate_key": "f9a8f055063d564927d552a9b5c232e62797bfe5cdd3be499bc74b14be4135e2"
+    },
+    {
+      "job_id": "BT-PM-7615494182808455429",
+      "title": "AI产品运营经理-火山引擎",
+      "duplicate_key": "a81da3a4f332bbc4bf7890be92d708441e1565fbcb9987fbec20e94d374cb99e"
+    },
+    {
+      "job_id": "BT-PM-7591396465814702389",
+      "title": "数据科学家-抖音电商",
+      "duplicate_key": "dd049155104521a229f3c9d24213e5a5c8451fa61ca06a4e6fcdbb44e0876a03"
+    },
+    {
+      "job_id": "BT-PM-7589519808858540293",
+      "title": "数据分析师-飞书",
+      "duplicate_key": "11e152e3f31114974f02f045785d2571ed37739ae2e68f6014f7a8c3b25a324a"
+    },
+    {
+      "job_id": "BT-PM-7490437032105756936",
+      "title": "推荐产品（导购方向）-抖音电商",
+      "duplicate_key": "de17c286b896b5713050a4785be541eb0790ec059f317e43e16cb006f4a1ee76"
+    },
+    {
+      "job_id": "BT-PM-7589519601126983941",
+      "title": "数据分析师-飞书",
+      "duplicate_key": "11e152e3f31114974f02f045785d2571ed37739ae2e68f6014f7a8c3b25a324a"
+    },
+    {
+      "job_id": "BT-PM-7594814243961964805",
+      "title": "产品经理（People招聘方向）-集团信息系统",
+      "duplicate_key": "7d959b837f39781acb522f7f633361f13951b0144bdf4864c4006e4698b07f7d"
+    },
+    {
+      "job_id": "BT-PM-7626268790977104181",
+      "title": "基础产品-红果电商",
+      "duplicate_key": "b9bd96e171014c76edcb0c26aee604ae768d62860d81cb6c446be801fd5ea744"
+    },
+    {
+      "job_id": "BT-PM-7617825596307015941",
+      "title": "商业化系统AI产品经理-飞书",
+      "duplicate_key": "f3b5c93bd488b7651ddaff77e971e7d0b838acc77a190049319abb78a7e873d2"
+    },
+    {
+      "job_id": "BT-PM-7491581006534134024",
+      "title": "数据科学家（销售与经营分析）-抖音生活服务",
+      "duplicate_key": "c1ed8185176a062ce59ce042f59d172c2a84c5312b02567f381632fd8f7ee8d4"
+    },
+    {
+      "job_id": "BT-PM-7494489223861438727",
+      "title": "AI产品经理-AI Coding",
+      "duplicate_key": "e93b6652f5801d7f86bac942f2eb1b095bcbed85841b406a16c303915f86c0e9"
+    },
+    {
+      "job_id": "BT-PM-7559097688085989650",
+      "title": "数据科学家（市场营销方向）-抖音生活服务",
+      "duplicate_key": "d91945d004e7f0452d3c9b6e2c158a96f1e38f9daedcabac14b5cff5d731b6e7"
+    },
+    {
+      "job_id": "BT-PM-7319716915172542730",
+      "title": "风控数据挖掘专家-Data",
+      "duplicate_key": "103a0f27efaea50dc2ad5ce7c754a74cfe25a0542fd2805e39033f4a1ac054a6"
+    },
+    {
+      "job_id": "BT-PM-7632206845206857989",
+      "title": "AI产品经理-抖音电商",
+      "duplicate_key": "c1753f5205ab0b17d53f2525d877ab2c63760ebe8f5a06bb7103e9c2b0d66ea6"
+    },
+    {
+      "job_id": "BT-PM-7656725949523200309",
+      "title": "数据科学（流量策略）-抖音电商",
+      "duplicate_key": "c6405daa6109b5ff30d3f1368228885e840358cf086344f6ff6a52ffb7ec837b"
+    },
+    {
+      "job_id": "BT-PM-7587736937450883333",
+      "title": "商业化系统AI产品经理-飞书",
+      "duplicate_key": "f3b5c93bd488b7651ddaff77e971e7d0b838acc77a190049319abb78a7e873d2"
+    },
+    {
+      "job_id": "BT-PM-7589519491076294965",
+      "title": "数据分析师-飞书",
+      "duplicate_key": "11e152e3f31114974f02f045785d2571ed37739ae2e68f6014f7a8c3b25a324a"
+    },
+    {
+      "job_id": "BT-PM-7626267928559618357",
+      "title": "CRM产品经理（运营工具）-抖音电商",
+      "duplicate_key": "334a2c782a4655dc16c6d57d33469f6fd91644860c7e8e37f6a2268da9258a39"
+    },
+    {
+      "job_id": "BT-PM-7576635654604884277",
+      "title": "巨量千川流量策略产品经理-抖音电商",
+      "duplicate_key": "e0c00f302736828f2130b5f9f486c927c64dd8d9678ef6cbd5c82295920bac6f"
+    },
+    {
+      "job_id": "BT-PM-7290395697718233400",
+      "title": "支付产品经理-国际支付",
+      "duplicate_key": "96c41a7e7321632dbd795b60b0bfd50cc6326e6250bf5220e314dec36305eb20"
+    },
+    {
+      "job_id": "BT-PM-7615914486223603973",
+      "title": "AI产品经理-ArkClaw",
+      "duplicate_key": "0e5b4c125dffe7da7912b4915dce6f980b4f28774287cde4322f9574720b7b2c"
+    },
+    {
+      "job_id": "BT-PM-7494208027257784594",
+      "title": "AI Coding产品经理（开发工具设计方向）-TRAE",
+      "duplicate_key": "2106e32a4a1b2fae816fd455573b94687329d775f8bfb61d09b33964a54a6689"
+    },
+    {
+      "job_id": "BT-PM-7524941872901785863",
+      "title": "巨量千川客增产品经理（AI方向）-抖音电商",
+      "duplicate_key": "d53c132bc8535b6c17287dd3111151588536242f59cffd3a53af1a641fc10dd5"
+    },
+    {
+      "job_id": "BT-PM-7579632297735391493",
+      "title": "AI产品经理（垂类场景）-Aime",
+      "duplicate_key": "223b984749c8fd9bc56925f75652fcb000b60072e47d1eec4ce7d31d6537b806"
+    },
+    {
+      "job_id": "BT-PM-7579566079203936517",
+      "title": "内容推荐产品（流量策略方向）-抖音电商",
+      "duplicate_key": "8632fc2247f493fa63b8fb6a493e3889cec0c3abd08b8d17f8aad8cb4999be57"
+    },
+    {
+      "job_id": "BT-PM-7562398777563482373",
+      "title": "AI Coding策略产品经理-TRAE",
+      "duplicate_key": "976fdba2999bd949583b8d8f55ec41124b64c30a2f829330c84a7878b2abc87e"
+    },
+    {
+      "job_id": "BT-PM-7579566115060779317",
+      "title": "内容推荐产品（供给策略方向）-抖音电商",
+      "duplicate_key": "fb8e31cea4e2b14d9fad71e0a201672fe801d29851ffde24082fdbd2cc2e45e2"
+    },
+    {
+      "job_id": "BT-PM-7526834272894126343",
+      "title": "数据科学家-抖音电商",
+      "duplicate_key": "51b3185afd18d44b99baf14ea5869ab743b8b4b4c2d725358c090d077a01c234"
+    },
+    {
+      "job_id": "BT-PM-7470068498636867858",
+      "title": "国际支付增长策略产品经理-现金贷",
+      "duplicate_key": "3bb682636aac94d35d0d30d8f0fe7b609b4f34b48883b6952a1534aa16864c54"
+    },
+    {
+      "job_id": "BT-PM-7566393440643270917",
+      "title": "内容推荐产品经理（用户体验方向）-TikTok Shop",
+      "duplicate_key": "0405104bb984cb2da5ce72332693a6838f526bbce41027ba7730032449c30f64"
+    },
+    {
+      "job_id": "BT-PM-7670500925824108805",
+      "title": "数据分析师（物流与供应链）-国际电商",
+      "duplicate_key": "5ab009121524dad475daa078ced2ecc76c4a7f8d7e2f935325674dd272134cd2"
+    },
+    {
+      "job_id": "BT-PM-7659418027734173957",
+      "title": "AI应用平台高级产品经理-AI Platform",
+      "duplicate_key": "42f91262324ba2f43b1acd2e7b1f137d11005e72f9ab3117ba64768de28f2a9c"
+    },
+    {
+      "job_id": "BT-PM-7659317919810062597",
+      "title": "用户产品经理（首页导购方向）-抖音生活服务",
+      "duplicate_key": "237891786de08cac0c2f83cf54909a3d3bba17a09c68e7d1d8a97debf0ef2253"
+    },
+    {
+      "job_id": "BT-PM-7654471019588258053",
+      "title": "营销玩法产品经理（团购Tab方向）-抖音生活服务",
+      "duplicate_key": "3630fc3972daa43565bd8875bfe88d383a05f2a88d8717e6c335dd2a69a1308c"
+    },
+    {
+      "job_id": "BT-PM-7652342434347321605",
+      "title": "商家服务平台产品经理-抖音电商",
+      "duplicate_key": "7a1c693359b76d56a93bfe4a98601ff727468088afd7ad9ffc6719c20381d081"
+    },
+    {
+      "job_id": "BT-PM-7644178458600802565",
+      "title": "豆包AI大模型策略产品（Model Hub）-火山方舟MaaS",
+      "duplicate_key": "a10821ab1ee72f55bf3757acc80675b6647688a04ad085ec32a24ce4bf7ec430"
+    },
+    {
+      "job_id": "BT-PM-7644177215433967925",
+      "title": "豆包AI大模型策略产品（Model Hub）-火山方舟MaaS",
+      "duplicate_key": "a10821ab1ee72f55bf3757acc80675b6647688a04ad085ec32a24ce4bf7ec430"
+    },
+    {
+      "job_id": "BT-PM-7644171895991290165",
+      "title": "豆包AI大模型数据分析-火山方舟MaaS",
+      "duplicate_key": "248a1178c24afc804b2d8fb9a9d806f7f179b33ef4b9cdf25ec17a5f765b2514"
+    },
+    {
+      "job_id": "BT-PM-7644133615631305013",
+      "title": "交易履约中台产品经理-抖音生活服务",
+      "duplicate_key": "82044029721f4a1884fe570a928efadb83aa817829a9ac53fb69d444a9f83914"
+    },
+    {
+      "job_id": "BT-PM-7644122084184475957",
+      "title": "AI产品经理-抖音电商",
+      "duplicate_key": "c1753f5205ab0b17d53f2525d877ab2c63760ebe8f5a06bb7103e9c2b0d66ea6"
+    },
+    {
+      "job_id": "BT-PM-7638538842266274101",
+      "title": "行业解决方案产品经理（场景化方向）-抖音生活服务",
+      "duplicate_key": "399fe80280ebbf9cbac4ce2a24d588d8b4f180332f708ef18ee835a75373c4f8"
+    },
+    {
+      "job_id": "BT-PM-7632228038297995525",
+      "title": "流量中台产品经理（应用负载均衡方向）-Data",
+      "duplicate_key": "e2d436df7320b8bee78e5dcf2fc3f8dd62a0ef759f30a811c4dbc576b908d77f"
+    },
+    {
+      "job_id": "BT-PM-7631152841902655797",
+      "title": "家装行业策略产品经理-抖音生活服务",
+      "duplicate_key": "77b099b22de3dac5b8785259ac57d7de471332a9348f3dc2810433eb15e663c1"
+    },
+    {
+      "job_id": "BT-PM-7627079031210723589",
+      "title": "CRM产品经理（运营工具）-抖音电商",
+      "duplicate_key": "334a2c782a4655dc16c6d57d33469f6fd91644860c7e8e37f6a2268da9258a39"
+    },
+    {
+      "job_id": "BT-PM-7627070966103345461",
+      "title": "CRM产品经理（AI方向）-抖音电商",
+      "duplicate_key": "6855fa6377430db8d74f855db3d47273c6f6f5a637b9da5bcadf4516628012d0"
+    },
+    {
+      "job_id": "BT-PM-7627070776239950133",
+      "title": "CRM产品经理（运营工具）-抖音电商",
+      "duplicate_key": "334a2c782a4655dc16c6d57d33469f6fd91644860c7e8e37f6a2268da9258a39"
+    },
+    {
+      "job_id": "BT-PM-7626224941537380661",
+      "title": "AI策略产品经理-Dev Infra",
+      "duplicate_key": "5be7c13b1e1e3e761c6a26845ab49beac32d896ad057ade7abda3a125e788a45"
+    },
+    {
+      "job_id": "BT-PM-7625986188319721733",
+      "title": "直播用户产品经理（平台&工具方向）-抖音生活服务",
+      "duplicate_key": "b849fac0781551acadd702c73ded50b021dac3ea23b0dd41bc9104d8302bc275"
+    },
+    {
+      "job_id": "BT-PM-7595494428817950981",
+      "title": "商品信息产品经理（图谱方向）-抖音生活服务",
+      "duplicate_key": "31016a18b510a91d5815dee4b19cf5609c029b328929df62887491eb07cfb67c"
+    },
+    {
+      "job_id": "BT-PM-7595110692163275013",
+      "title": "推荐策略产品高级专家（营销&增长方向）-抖音电商",
+      "duplicate_key": "1ef3022bcf0a359a739a1eb5dedf790a6fabaa5f2f2682096c43f84185da4c8a"
+    },
+    {
+      "job_id": "BT-PM-7594409789403252997",
+      "title": "AI大模型产品经理（算法平台）-火山方舟MaaS",
+      "duplicate_key": "d39964c29a5d62e56d1cb3bd87848243f5cecb5b4c62bb48aebc5c9d81cba2c9"
+    },
+    {
+      "job_id": "BT-PM-7594409737933555973",
+      "title": "AI大模型产品经理（算法平台）-火山方舟MaaS",
+      "duplicate_key": "d39964c29a5d62e56d1cb3bd87848243f5cecb5b4c62bb48aebc5c9d81cba2c9"
+    },
+    {
+      "job_id": "BT-PM-7591817436942846213",
+      "title": "反爬虫风控策略专家-TikTok Shop",
+      "duplicate_key": "6c42ddb4369ea4548e0c51e56669607818732bd82ef5f152ababac080e2c5e96"
+    },
+    {
+      "job_id": "BT-PM-7585414312270448949",
+      "title": "商家发货履约工具产品-抖音电商",
+      "duplicate_key": "f5ef083b84f18e4bc010902d28c38d94add42b961ca197c0fef01d2d550b434f"
+    },
+    {
+      "job_id": "BT-PM-7585121338328009013",
+      "title": "通用计算产品专家-火山引擎",
+      "duplicate_key": "0f74336a148a0514a9fd6f7d80c7acd5f24b6722f0b5c8bdf9ba635fd9c7742b"
+    },
+    {
+      "job_id": "BT-PM-7585098385989536053",
+      "title": "通用计算产品专家-火山引擎",
+      "duplicate_key": "0f74336a148a0514a9fd6f7d80c7acd5f24b6722f0b5c8bdf9ba635fd9c7742b"
+    },
+    {
+      "job_id": "BT-PM-7581406564327426357",
+      "title": "推荐用户产品高级专家-抖音电商",
+      "duplicate_key": "419f586f5f3a650aa54c957920c9c214f2a141e3d1ddb1afe966292cb89f25d8"
+    },
+    {
+      "job_id": "BT-PM-7581404251445676341",
+      "title": "推荐策略产品高级专家-抖音电商",
+      "duplicate_key": "5d1f0735eae89c40a199afb9384d2767fb9340347df3ef12c41955bd00a5a5aa"
+    },
+    {
+      "job_id": "BT-PM-7581323078270404917",
+      "title": "公有云数据库产品解决方案架构师-火山引擎",
+      "duplicate_key": "b4b8fe652641c6b6b8e4ed677be96a8b03445c9b8742aa1449344be60c1b8185"
+    },
+    {
+      "job_id": "BT-PM-7581322476237605125",
+      "title": "公有云数据库产品解决方案架构师-火山引擎",
+      "duplicate_key": "b4b8fe652641c6b6b8e4ed677be96a8b03445c9b8742aa1449344be60c1b8185"
+    },
+    {
+      "job_id": "BT-PM-7574362680318707973",
+      "title": "数据科学家（客服方向）-抖音电商",
+      "duplicate_key": "c6a45c6140321b996ed7f6776f6db1e07f49884e9f534430d2c5301089d76fa5"
+    },
+    {
+      "job_id": "BT-PM-7572422270226090293",
+      "title": "DOU+投放策略产品经理-中国商业产品（北京/上海）",
+      "duplicate_key": "32b616bf01abe80c6abb6ff5a6f5d8c526d281ca460cf57fe41b77df926846dc"
+    },
+    {
+      "job_id": "BT-PM-7559567198593173767",
+      "title": "支付计费产品经理-国际支付",
+      "duplicate_key": "bd7a75c8653c0ccb9dcfb84d69d67c22a6a1b5f238b5258804a430ff970a088f"
+    },
+    {
+      "job_id": "BT-PM-7559199181358713096",
+      "title": "数据科学家（行业产品方向）-抖音电商",
+      "duplicate_key": "6e663244dd2f32ce828ad736f0418745a3cdbf37905fa58f31ca973ee9187cd5"
+    },
+    {
+      "job_id": "BT-PM-7547724283495598344",
+      "title": "数据科学家（履约配送方向）-抖音电商",
+      "duplicate_key": "0bf0761f73bb45f2d4f6630404b00c7e8afb89aab221bba8fdd60974bc5a0e61"
+    },
+    {
+      "job_id": "BT-PM-7542724446944413959",
+      "title": "经营玩法创新产品经理-抖音生活服务",
+      "duplicate_key": "822be25963564e82a977a428c803e2654f48374dd271f5edbfb884fed56985ce"
+    },
+    {
+      "job_id": "BT-PM-7535894102974613768",
+      "title": "数据和诊断产品经理-TikTok Shop",
+      "duplicate_key": "3ff52f224e3c123796da543cef983f6a37c8e71555e7eff097b8cc93c19f4192"
+    },
+    {
+      "job_id": "BT-PM-7532478582901573896",
+      "title": "数据科学家-国际化广告产品",
+      "duplicate_key": "b3de2729af918cb638ada852f6aaa82bbc52771b46ace8845d0c15a393f5aaa3"
+    },
+    {
+      "job_id": "BT-PM-7517185558734539016",
+      "title": "数据科学家（多媒体性能）-TikTok",
+      "duplicate_key": "96172b107e68009d622414004227675d6cd474bbfb6c0e076072a521621f1672"
+    },
+    {
+      "job_id": "BT-PM-7517137921342753042",
+      "title": "数据科学家（多媒体性能）-TikTok",
+      "duplicate_key": "96172b107e68009d622414004227675d6cd474bbfb6c0e076072a521621f1672"
+    },
+    {
+      "job_id": "BT-PM-7516834442905110792",
+      "title": "商城推荐用户体验产品-抖音电商",
+      "duplicate_key": "4d09feb318120703c7461d48eb2d87671e8238bdc6241e142322bca41e9d9db0"
+    },
+    {
+      "job_id": "BT-PM-7514280711382288647",
+      "title": "AI产品经理（可观测性方向）-Dev Infra",
+      "duplicate_key": "d350281c6f52c581dddf013376efd7feeb1fdbfb6207d3b7aa949e44a83dfc0a"
+    },
+    {
+      "job_id": "BT-PM-7514168720051652882",
+      "title": "到综零售行业解决方案产品经理-抖音生活服务",
+      "duplicate_key": "cf4fab4ef4d620effc9f4d4d3dfa9f99ea37b962898592b426ea09b0ae963f0d"
+    },
+    {
+      "job_id": "BT-PM-7506159812201023751",
+      "title": "抖音商城APP用户产品经理-抖音电商",
+      "duplicate_key": "dc6201330585f031b586f24b478fc77809e7b383a63d3b0823c497e87a1c1513"
+    },
+    {
+      "job_id": "BT-PM-7497181975184132370",
+      "title": "推荐策略产品（独立端）-抖音电商",
+      "duplicate_key": "46910f3b59b2c720589bd55c25e761a045ebffb6e8115b92fe0bc94966da6b89"
+    },
+    {
+      "job_id": "BT-PM-7494231474724620552",
+      "title": "数据分析师（营销产品方向）-抖音电商",
+      "duplicate_key": "0cff3103df7ac23f22c0d5f765e254701cb8d7c12d61f9c1537d85d5a7ab894a"
+    },
+    {
+      "job_id": "BT-PM-7486710741690730770",
+      "title": "数据科学家（营销方向）-抖音生活服务",
+      "duplicate_key": "ba0667f4bd9d6392613e469bb6c9ef1db95394349cf38ad3ef972e933224ee0c"
+    },
+    {
+      "job_id": "BT-PM-7483111728679635207",
+      "title": "营销工具产品经理-抖音生活服务",
+      "duplicate_key": "0af0d8f52d2d95a36fd80a94777900aa4e360e96f6608bd27659555d739c1f5f"
+    },
+    {
+      "job_id": "BT-PM-7481501617917856018",
+      "title": "AI产品经理（异构计算方向）-基础设施",
+      "duplicate_key": "13e2222cb16d03019034c537046ad25af9d4c58de51a8de199588e8a7256d14d"
+    },
+    {
+      "job_id": "BT-PM-7447000203297294600",
+      "title": "销售绩效数据产品经理-抖音生活服务",
+      "duplicate_key": "a3968f698af3f22f12697b2cf0c6961fdd8164c264e72d75f4c315748e861947"
+    },
+    {
+      "job_id": "BT-PM-7434030216831568191",
+      "title": "数据科学家（体验与治理方向）-抖音生活服务",
+      "duplicate_key": "0a7f89c5b89ecce69c097fdd05bb53849f5f963bd41f5421bc5ccbf18786412e"
+    },
+    {
+      "job_id": "BT-PM-7404763310334527794",
+      "title": "商品经营产品专家-抖音生活服务",
+      "duplicate_key": "6f680c29652454b646ea5047ef31c216e2ee8fc47956b1ba8d77c26a9080e884"
+    },
+    {
+      "job_id": "BT-PM-7399976168189200667",
+      "title": "营销平台产品经理-抖音生活服务",
+      "duplicate_key": "cab808ead76be912ab47d5ca37633c3d2a37d2c96e44c34bf98534889c217b4c"
+    },
+    {
+      "job_id": "BT-PM-7390390672815507750",
+      "title": "数据科学（决策支持）-抖音电商",
+      "duplicate_key": "adadb76d86bed4c4a985af6535b90dc179054d267c11916c5ef74c97d89ab425"
+    },
+    {
+      "job_id": "BT-PM-7389136675740436773",
+      "title": "高级数据分析师（线索行业）-抖音生活服务",
+      "duplicate_key": "ca4e670de01b65db79fede6d02805b190af58fe3c0bce01a268a6ea35b04ca2a"
+    },
+    {
+      "job_id": "BT-PM-7374385842502879539",
+      "title": "商家端产品经理（体验优化）-抖音生活服务",
+      "duplicate_key": "272e85d12266f76ab91a63831b9a6943193af5579ca29684bf1aca541ea5fd01"
+    },
+    {
+      "job_id": "BT-PM-7336779510987868454",
+      "title": "数据科学家（货架方向）-抖音生活服务",
+      "duplicate_key": "11787a05fa30f6727020632e9ca5e5e8dadeb5abab95da9c2e4e4800e7a7d5b6"
+    },
+    {
+      "job_id": "BT-PM-7322438628281583898",
+      "title": "增长策略产品经理-国际支付",
+      "duplicate_key": "b45d0b769fc956353ed911dac660eeb3ff20e7915b8972f85797889523c34b13"
+    },
+    {
+      "job_id": "BT-PM-7321252497531521330",
+      "title": "研发平台AI产品经理-Dev Infra",
+      "duplicate_key": "3c8e79c6ca1cb98c9f929c093216c4e066b592ec2b00e6741d97755f96e64d82"
+    },
+    {
+      "job_id": "BT-PM-7316843699722488101",
+      "title": "资深数据分析师（用户增长方向）-抖音生活服务",
+      "duplicate_key": "4cd414e418316712e25a433255c930f22199c3813f1e330a73c65375dd7fff6f"
+    },
+    {
+      "job_id": "BT-PM-7313808924161968434",
+      "title": "资深数据科学家（推荐Feed方向）-抖音生活服务",
+      "duplicate_key": "d2b520e4c93aadbcffecd661b9c83c4dab94372ab205d546bd69b8343dbb158a"
+    },
+    {
+      "job_id": "BT-PM-7248886398798317861",
+      "title": "研发平台AI产品经理-Dev Infra",
+      "duplicate_key": "3c8e79c6ca1cb98c9f929c093216c4e066b592ec2b00e6741d97755f96e64d82"
+    }
+  ]
+}

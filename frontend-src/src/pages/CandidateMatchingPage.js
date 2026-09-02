@@ -58,6 +58,7 @@ const CandidateMatchingPage = () => {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedJobId = searchParams.get('job');
+  const compactMode = searchParams.get('compact') === '1';
   const [jobId, setJobId] = useState(requestedJobId);
   const [selectedId, setSelectedId] = useState(null);
   const [stageFilter, setStageFilter] = useState('全部');
@@ -88,9 +89,11 @@ const CandidateMatchingPage = () => {
 
   useEffect(() => {
     if (jobId && requestedJobId !== jobId) {
-      setSearchParams({ job: jobId }, { replace: true });
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.set('job', jobId);
+      setSearchParams(nextParams, { replace: true });
     }
-  }, [jobId, requestedJobId, setSearchParams]);
+  }, [jobId, requestedJobId, searchParams, setSearchParams]);
 
   const candidatesQuery = useQuery(
     ['job-candidates', jobId, threshold, page, pageSize, includeBelowThreshold],
@@ -230,14 +233,14 @@ const CandidateMatchingPage = () => {
       </Upload>
     </PageHeading>
 
-    {job && <section className="candidate-job-context">
+    {!compactMode && job && <section className="candidate-job-context">
       <div><span>CURRENT JOB</span><strong>{job.title}</strong><small>{job.department} · {job.version} · {job.location}</small></div>
       <div><span>标准候选池</span><strong>{retrievalStats.total_profiles}</strong></div>
       <div><span>三路候选并集</span><strong>{retrievalStats.initial_recall_count}</strong></div>
       <div><span>达到准入线</span><strong>{retrievalStats.eligible_count}</strong></div>
     </section>}
 
-    <section className="candidate-retrieval-panel">
+    {!compactMode && <section className="candidate-retrieval-panel">
       <header>
         <div><span>RETRIEVAL FUNNEL</span><strong>{methodLabel}</strong></div>
         <small>耗时 {retrievalStats.took_ms} ms · 分数 {retrievalStats.score_min ?? 0}-{retrievalStats.score_max ?? 0}</small>
@@ -272,7 +275,7 @@ const CandidateMatchingPage = () => {
           options={[50, 100].map((value) => ({ value, label: `每页 ${value} 人` }))}
         />
       </div>
-    </section>
+    </section>}
 
     <nav className="candidate-stage-filter" aria-label="候选人筛选状态">
       {['全部', ...stages].map((item) => <button

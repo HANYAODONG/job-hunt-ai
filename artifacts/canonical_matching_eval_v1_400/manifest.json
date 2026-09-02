@@ -1,0 +1,57 @@
+{
+  "version": "canonical_matching_eval_v1",
+  "algorithm": "training-profile role classifier -> full-pool JD scoring inside predicted canonical role -> concrete JD ranking",
+  "input_jobs": "D:\\job-hunt\\artifacts\\canonical_role_pool_v1\\data_group_current\\canonical_jobs.jsonl",
+  "input_review_pack": "artifacts\\canonical_matching_review_v1",
+  "job_count": 10964,
+  "training_profiles": 18135,
+  "role_classifier": "training-profile skill log-odds",
+  "top_k": 10,
+  "evaluation_protocol": {
+    "unit_of_evaluation": "resume_case",
+    "case_count": 400,
+    "role_stage": "select canonical third-level role first",
+    "jd_stage": "rank concrete JD only inside selected canonical role",
+    "primary_jd_metrics": [
+      "accepted_jd_recall_at_2",
+      "accepted_jd_recall_at_3"
+    ],
+    "strict_secondary_metric": "accepted_jd_recall_at_1",
+    "why_recall_at_k": "Multiple concrete JD records can be acceptable for the same resume and canonical role; a hit is counted when any accepted JD appears in the first K results.",
+    "docker_used": false,
+    "core_algorithm_changed": false
+  },
+  "metrics": {
+    "cases": 400,
+    "unique_candidates": 400,
+    "mapped_jobs_scored_per_case": 10964,
+    "role_top1_accuracy": 0.9975,
+    "role_top3_recall": 0.9975,
+    "role_top5_recall": 1.0,
+    "strict_jd_top1_known_label_accuracy": 0.864662,
+    "strict_jd_top1_known_label_cases": 399,
+    "strict_jd_top1_unlabeled_cases": 1,
+    "accepted_jd_recall_at_1": 0.8625,
+    "accepted_jd_recall_at_2": 0.915,
+    "accepted_jd_recall_at_3": 0.9575,
+    "accepted_jd_recall_at_5": 0.9825,
+    "accepted_jd_recall_at_10": 0.9925,
+    "normalized_title_top1_accuracy": 0.9975,
+    "normalized_title_recall_at_10": 0.9975,
+    "role_and_normalized_title_top1_accuracy": 0.9975,
+    "note": "Primary labels are normalized closed-set job title labels. Exact job_id metrics are secondary evidence metrics because multiple JD records can share one accepted title label.",
+    "generalization_warning": "The current 100 cases and training profiles are generated from the same synthetic dataset family; results are a pipeline sanity check, not a real-resume generalization estimate."
+  },
+  "source_hashes": {
+    "jobs": "982e7c00453085ff110b8686d3f8ca078b967be569fe80b3669722ac0c211e37",
+    "profiles": "ec1a11d447a4a5b3e781b8fc03cfeab5f3445c28c2680d885aa9fa5489a57f83",
+    "role_map": "807a7a8a615b863c1bd4344dadd28f19955a94a700538924e60e40554cfec689",
+    "expert_cases": "031f2f5bfa064d192c7c588c3b273bc6526c21908d03c4f58532321df786c9d3",
+    "expert_annotations": "6417171b7d18dc3924ddbcfda4d7c1f5f0497a16593a2eff62a0b0b3e0ca6077"
+  },
+  "outputs": {
+    "case_metrics": "case_metrics.csv",
+    "job_rankings_topk": "job_rankings_topk.csv",
+    "role_rankings": "role_rankings.csv"
+  }
+}

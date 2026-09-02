@@ -1,0 +1,31 @@
+{
+  "version": "canonical_matching_review_v1",
+  "status": "expert_gpt_provisional_annotation",
+  "purpose": "400 independent resume cases with real canonical JD options",
+  "resume_source": "D:\\job-hunt\\artifacts\\dataset_iteration_05\\candidate_profiles.jsonl",
+  "resume_source_note": "The current candidate profiles originate from synthetic_detailed_resumes_experience_30k.csv; replace with de-identified real resumes before claiming a real-resume benchmark.",
+  "jobs_source": "D:\\job-hunt\\artifacts\\canonical_role_pool_v1\\data_group_current\\canonical_jobs.jsonl",
+  "cases": 400,
+  "job_options": 2000,
+  "unique_candidates": 400,
+  "active_role_ids_in_cases": 59,
+  "annotation_rule": "Human reviewer must choose the canonical role and one or more acceptable concrete JD IDs from the full resume/JD evidence; do not derive gold from role_match_grade or model predictions.",
+  "outputs": {
+    "cases": "expert_gpt_cases.csv",
+    "options": "expert_gpt_annotations.csv"
+  },
+  "annotator": "expert_gpt_v1",
+  "expert_profile": "新一代信息技术岗位 taxonomy 与招聘 JD 分析专家 GPT；重点判断岗位职责边界、技能证据和相邻岗位可区分性。",
+  "annotated_cases": 400,
+  "annotated_options": 2000,
+  "annotation_method": "基于候选人规范化技能、目标 canonical role ID 和岗位 JD 必需技能的可复核规则；不读取模型预测，不使用 role_match_grade 生成标签。",
+  "grade_scale": {
+    "3": "同一 canonical 岗位且技能证据充分，可接受 JD",
+    "2": "同一 canonical 岗位但证据较弱，可作为边界接受样本",
+    "1": "相邻或同岗位证据不足，不接受为标准匹配",
+    "0": "岗位方向和技能证据均不足，拒绝"
+  },
+  "gold_policy": "Accepted title label must have the same canonical role and sufficient resume/JD skill evidence; concrete JD IDs remain supporting evidence and cross-role overlap remains negative or adjacent.",
+  "limitation": "AI expert annotation is not two-independent-human gold and must not be presented as such.",
+  "next_action": "抽样由至少一名人工招聘/岗位专家复核；分歧案例记录原因后再冻结正式金标。"
+}
