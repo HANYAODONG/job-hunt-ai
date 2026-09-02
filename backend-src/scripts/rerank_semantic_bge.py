@@ -24,6 +24,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 import time
@@ -77,6 +78,15 @@ def read_jsonl_all(path: Path) -> List[Dict[str, Any]]:
 def write_json(path: Path, payload: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def file_hashes(path: Path) -> Dict[str, str]:
+    data = path.read_bytes()
+    normalized = data.replace(b"\r\n", b"\n")
+    return {
+        "sha256": hashlib.sha256(data).hexdigest(),
+        "sha256_lf_normalized": hashlib.sha256(normalized).hexdigest(),
+    }
 
 
 JOB_TEXT_MODES = {
@@ -392,6 +402,15 @@ def main() -> None:
     )
 
     # ── 元数据 ────────────────────────────────────────────────────
+    metadata_path = out_dir / "run_metadata.json"
+    previous_metadata: Dict[str, Any] = {}
+    if args.skip_encode and metadata_path.exists():
+        previous_metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    effective_encode_time = (
+        float(previous_metadata.get("encode_time_sec", 0.0))
+        if args.skip_encode
+        else encode_time
+    )
     metadata = {
         "workflow": "workflow_2_bge_m3_semantic_rerank",
         "model": {
@@ -403,16 +422,19 @@ def main() -> None:
         },
         "job_text_mode": args.job_text_mode,
         "load_time_sec": round(load_time, 1),
-        "encode_time_sec": round(encode_time, 1),
+        "encode_time_sec": round(effective_encode_time, 1),
+        "embedding_cache_reused": bool(args.skip_encode),
         "avg_query_encode_ms": round(avg_encode_ms, 2),
         "peak_memory_mb": round(peak_memory / 1024 / 1024, 1),
         "num_jobs_encoded": len(job_ids),
         "embedding_dim": int(job_embeddings.shape[1]),
         "jobs_input": str(args.jobs),
+        "jobs_input_hashes": file_hashes(args.jobs),
         "bm25_input": str(args.bm25),
+        "bm25_input_hashes": file_hashes(args.bm25),
         "output": str(output_path),
     }
-    write_json(out_dir / "run_metadata.json", metadata)
+    write_json(metadata_path, metadata)
 
     print("\n" + "=" * 60)
     print("工作流 2 — BGE-M3 语义重排（对照组）完成")

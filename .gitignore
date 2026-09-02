@@ -58,3 +58,8 @@ backend-src/job_update/government_job_update/government_jobs_2024_2026_tech_fina
 !backend-src/job_update/company_job_update/data/versions/
 !backend-src/job_update/company_job_update/data/versions/company_large_v2/
 !backend-src/job_update/company_job_update/data/versions/company_large_v2/job_update_company_runtime_data.zip
+
+# Generated canonical-role-pool runtime outputs (rebuilt locally, never committed)
+artifacts/dataset_iteration_05/**
+artifacts/semantic_index/**
+artifacts/role_pool_runtime/**
