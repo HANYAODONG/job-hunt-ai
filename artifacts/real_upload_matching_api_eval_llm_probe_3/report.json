@@ -1,0 +1,20 @@
+{
+  "status": "completed",
+  "mode": "real_pdf_http_upload_canonical_two_stage",
+  "parser_mode": "llm",
+  "endpoint": "http://127.0.0.1:18080/api/v1/jobs/search-with-resume",
+  "samples": 3,
+  "successful_requests": 3,
+  "failed_requests": 0,
+  "role_top1_accuracy": 1.0,
+  "jd_top1_recall": 0.6666666666666666,
+  "jd_top2_recall": 0.6666666666666666,
+  "jd_top3_recall": 0.6666666666666666,
+  "normalized_title_top1_recall": 1.0,
+  "normalized_title_top2_recall": 1.0,
+  "normalized_title_top3_recall": 1.0,
+  "pipeline_marker_failures": 0,
+  "wall_clock_ms": 27679.4,
+  "average_request_ms": 9226.37,
+  "metric_note": "All accuracy denominators include failed HTTP requests. Gold fields are read only after each API response."
+}
