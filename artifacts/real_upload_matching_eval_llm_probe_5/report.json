@@ -1,0 +1,22 @@
+{
+  "status": "completed",
+  "mode": "real_pdf_llm_resume_parser_formal_two_stage",
+  "samples": 5,
+  "training_profiles": 18135,
+  "llm_used_cases": 4,
+  "llm_fallback_cases": 1,
+  "role_top1_accuracy": 1.0,
+  "strict_jd_id_top1_recall": 0.8,
+  "strict_jd_id_top2_recall": 0.8,
+  "strict_jd_id_top3_recall": 1.0,
+  "normalized_title_top1_recall": 1.0,
+  "normalized_title_top2_recall": 1.0,
+  "normalized_title_top3_recall": 1.0,
+  "total_ms": 11343.99,
+  "average_total_ms": 2268.8,
+  "average_parse_ms": 2068.1,
+  "average_skill_count": 24.4,
+  "llm_evaluation_valid": false,
+  "llm_evaluation_warning": "Not a valid LLM accuracy evaluation because one or more cases fell back to the local parser.",
+  "metric_note": "Strict JD metrics compare record IDs; normalized title metrics compare accepted canonical job-title labels."
+}

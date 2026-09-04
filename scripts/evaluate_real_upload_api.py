@@ -48,16 +48,23 @@ def main() -> None:
         default=ROOT / "artifacts" / "real_upload_matching_api_eval_v1_100",
     )
     parser.add_argument("--timeout", type=float, default=120.0)
+    parser.add_argument("--limit", type=int, default=None)
+    parser.add_argument(
+        "--parser-mode",
+        choices=("auto", "local", "llm"),
+        default="auto",
+    )
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
 
     manifest = json.loads((args.pack / "manifest.json").read_text(encoding="utf-8"))
+    items = manifest["items"][: args.limit] if args.limit is not None else manifest["items"]
     jobs = read_jobs(args.jobs)
     endpoint = f"{args.base_url.rstrip('/')}/api/v1/jobs/search-with-resume"
     rows: list[dict[str, Any]] = []
 
     run_start = time.perf_counter()
-    for item in manifest["items"]:
+    for item in items:
         pdf_path = args.pack / item["pdf"]
         started = time.perf_counter()
         row: dict[str, Any] = {
@@ -74,7 +81,7 @@ def main() -> None:
                     data={
                         "query": "",
                         "limit": "3",
-                        "parser_mode": "auto",
+                        "parser_mode": args.parser_mode,
                         "pipeline_mode": "lightweight",
                     },
                     timeout=args.timeout,
@@ -129,6 +136,7 @@ def main() -> None:
     report = {
         "status": "completed" if len(successful) == n else "completed_with_errors",
         "mode": "real_pdf_http_upload_canonical_two_stage",
+        "parser_mode": args.parser_mode,
         "endpoint": endpoint,
         "samples": n,
         "successful_requests": len(successful),
