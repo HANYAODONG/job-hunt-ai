@@ -68,6 +68,7 @@ services:
       # Set the model switches to true and offline values to 0 for model downloads.
       - HF_HUB_OFFLINE=${HF_HUB_OFFLINE:-1}
       - TRANSFORMERS_OFFLINE=${TRANSFORMERS_OFFLINE:-1}
+      - JOB_HUNT_REPO_ROOT=/app
       - SEMANTIC_INDEX_PATH=/app/artifacts/semantic_index/jobs_embeddings.npy
       - SEMANTIC_INDEX_IDS=/app/artifacts/semantic_index/jobs_embedding_ids.json
       - PORT=8000

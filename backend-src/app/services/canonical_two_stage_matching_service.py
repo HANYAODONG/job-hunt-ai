@@ -12,6 +12,7 @@ from __future__ import annotations
 import csv
 import json
 import math
+import os
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
@@ -21,10 +22,11 @@ from ..models.candidate import Candidate
 from ..models.job import ExperienceLevel, Job, JobSearchQuery, JobSearchResult, JobType, Location
 
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+APP_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(os.getenv("JOB_HUNT_REPO_ROOT", Path(__file__).resolve().parents[3]))
 DEFAULT_JOBS_PATH = REPO_ROOT / "artifacts" / "canonical_role_pool_v2" / "canonical_jobs.jsonl"
 DEFAULT_PROFILES_PATH = REPO_ROOT / "artifacts" / "dataset_iteration_05" / "candidate_profiles.jsonl"
-DEFAULT_ROLE_MAP_PATH = REPO_ROOT / "backend-src" / "app" / "data" / "canonical_role_pool" / "v2" / "source_role_mapping.csv"
+DEFAULT_ROLE_MAP_PATH = APP_ROOT / "data" / "canonical_role_pool" / "v2" / "source_role_mapping.csv"
 
 SKILL_ALIASES = {
     "golang": "go",

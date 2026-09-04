@@ -135,6 +135,9 @@ class ResumeService:
         # Keep the complete profile contract used by process_resume_file and
         # downstream matching/insights (contact_info, years_experience,
         # projects, and summary must not be discarded).
+        if isinstance(enhanced, dict):
+            emails = (enhanced.get("contact_info") or {}).get("emails") or []
+            enhanced.setdefault("email", emails[0] if emails else "")
         return enhanced
 
     def _extract_emails_simple(self, text: str) -> List[str]:

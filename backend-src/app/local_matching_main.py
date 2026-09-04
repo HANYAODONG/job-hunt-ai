@@ -69,7 +69,14 @@ async def search_jobs_with_resume(
         required_skills=required_skills,
         preferred_skills=preferred_skills,
     )
-    return matching_service.match(profile.candidate, search_query, limit=limit)
+    result = matching_service.match(profile.candidate, search_query, limit=limit)
+    if result.explanations is None:
+        result.explanations = {}
+    result.explanations.update({
+        "runtime_pipeline_mode": "lightweight",
+        "parser_mode": parser_mode or "auto",
+    })
+    return result
 
 
 @router.post("/upload-resume", response_model=CandidateProfile)

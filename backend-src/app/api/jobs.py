@@ -58,7 +58,7 @@ async def search_jobs(query: JobSearchQuery):
 @router.post("/search-with-resume", response_model=JobSearchResult)
 async def search_jobs_with_resume(
     resume_file: UploadFile = File(...),
-    query: str = Form(...),
+    query: str = Form(""),
     location: Optional[str] = Form(None),
     min_salary: Optional[int] = Form(None),
     max_salary: Optional[int] = Form(None),
