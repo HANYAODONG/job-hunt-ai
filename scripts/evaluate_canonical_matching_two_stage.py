@@ -125,7 +125,10 @@ def score_job(candidate_skills: set[str], job: dict[str, Any]) -> dict[str, Any]
     preferred_bonus = min(1.0, len(shared_preferred) / max(1, len(preferred))) if preferred else 0.0
     # Recall is dominant because missing a must-have skill is more serious
     # than having additional transferable skills.
-    score = 0.60 * recall + 0.25 * f1 + 0.10 * precision + 0.05 * preferred_bonus
+    # Required-skill recall is the strongest signal for a concrete JD: a JD
+    # missing several must-have skills should not outrank one covering them,
+    # even when broad semantic overlap is high.
+    score = 0.75 * recall + 0.15 * f1 + 0.10 * precision + 0.0 * preferred_bonus
     return {
         "score": score,
         "required_recall": recall,

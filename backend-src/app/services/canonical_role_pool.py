@@ -10,9 +10,15 @@ from pathlib import Path
 from typing import Any
 
 
-_DEFAULT_ROLE_POOL_ROOT = Path(__file__).resolve().parents[1] / "data" / "canonical_role_pool" / "v1"
-# Keep v1 as the default for backward compatibility. A release can select a
-# versioned role catalog without changing classification or scoring logic.
+_ROLE_POOL_DATA_ROOT = Path(__file__).resolve().parents[1] / "data" / "canonical_role_pool"
+_DEFAULT_ROLE_POOL_ROOT = (
+    _ROLE_POOL_DATA_ROOT / "v2"
+    if (_ROLE_POOL_DATA_ROOT / "v2" / "canonical_roles.csv").exists()
+    else _ROLE_POOL_DATA_ROOT / "v1"
+)
+# Prefer the released v2 catalog when it is present. Deployments can select a
+# different version through JOB_HUNT_CANONICAL_ROLE_DATA_DIR without changing
+# classification or scoring logic.
 ROLE_POOL_ROOT = Path(
     os.getenv("JOB_HUNT_CANONICAL_ROLE_DATA_DIR", str(_DEFAULT_ROLE_POOL_ROOT))
 ).expanduser()

@@ -1,5 +1,14 @@
 import React, { useState } from 'react';
 import { CheckCircleOutlined, FileSearchOutlined, HistoryOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import {
+  PolarAngleAxis,
+  PolarGrid,
+  PolarRadiusAxis,
+  Radar,
+  RadarChart,
+  ResponsiveContainer,
+  Tooltip,
+} from 'recharts';
 
 const tabs = [
   { key: 'explanation', label: '解释', icon: <InfoCircleOutlined /> },
@@ -24,6 +33,26 @@ const toDisplayText = (value) => {
   return String(value);
 };
 
+const CapabilityRadar = ({ data }) => (
+  <section className="inspector-radar" aria-label="求职者能力雷达图">
+    <header>
+      <div><span>CAPABILITY PROFILE</span><strong>能力雷达</strong></div>
+      <small>基于当前简历证据</small>
+    </header>
+    <div className="inspector-radar-chart">
+      <ResponsiveContainer width="100%" height={292}>
+        <RadarChart data={data} outerRadius="78%">
+          <PolarGrid stroke="var(--wf-line-strong)" />
+          <PolarAngleAxis dataKey="subject" tick={{ fill: '#6b7280', fontSize: 10 }} />
+          <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
+          <Radar dataKey="score" stroke="#1677ff" fill="#1677ff" fillOpacity={0.22} strokeWidth={2} />
+          <Tooltip formatter={(value) => [`${value}%`, '得分']} />
+        </RadarChart>
+      </ResponsiveContainer>
+    </div>
+  </section>
+);
+
 const TechnicalInspector = ({
   title,
   status = 'AI 生成',
@@ -32,23 +61,28 @@ const TechnicalInspector = ({
   explanation = [],
   evidence = [],
   history = [],
+  hideFacts = false,
+  hideHeader = false,
+  capabilityRadar = [],
 }) => {
   const [active, setActive] = useState('explanation');
 
   return (
     <aside className="technical-inspector" aria-label={`${toDisplayText(title)}技术检查器`}>
-      <header className="inspector-header">
+      {!hideHeader && <header className="inspector-header">
         <div>
           <span className="inspector-kicker">TECHNICAL INSPECTOR</span>
           <h2>{toDisplayText(title)}</h2>
         </div>
         <span className="inspector-status"><i />{toDisplayText(status)}</span>
-      </header>
+      </header>}
 
-      <div className="inspector-facts">
+      {!hideFacts && <div className="inspector-facts">
         <div><span>版本</span><strong>{toDisplayText(version)}</strong></div>
         <div><span>置信度</span><strong>{confidence == null ? '未提供' : `${confidence}%`}</strong></div>
-      </div>
+      </div>}
+
+      {capabilityRadar.length > 0 && <CapabilityRadar data={capabilityRadar} />}
 
       <div className="inspector-tabs" role="tablist" aria-label="技术详情">
         {tabs.map((tab) => (

@@ -1,0 +1,17 @@
+.runtime-settings-page { max-width: 1180px; }
+.runtime-settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-bottom: 16px; }
+.runtime-setting-panel, .runtime-settings-summary { border: 1px solid var(--line); border-radius: 6px; box-shadow: none; }
+.runtime-setting-panel .ant-card-head, .runtime-settings-summary .ant-card-head { min-height: 52px; border-bottom-color: #e7eeeb; }
+.runtime-setting-panel .ant-card-head-title, .runtime-settings-summary .ant-card-head-title { color: var(--ink); font-weight: 650; }
+.runtime-setting-copy { min-height: 92px; }
+.runtime-setting-copy .ant-typography { display: block; }
+.runtime-setting-copy .ant-typography-secondary { margin-top: 8px; color: var(--muted); font-size: 13px; line-height: 1.65; }
+.runtime-mode-note { display: flex; align-items: flex-start; gap: 8px; margin-top: 14px; padding: 10px 12px; border-radius: 5px; font-size: 12px; line-height: 1.55; }
+.runtime-mode-note.is-active { color: #246b58; background: #edf8f2; }
+.runtime-mode-note.is-warning { color: #8a5a1d; background: #fff7e8; }
+.runtime-parser-status { display: flex; align-items: center; gap: 8px; margin-top: 14px; color: var(--muted); font-size: 12px; }
+.runtime-parser-status .ant-tag { margin: 0; }
+.runtime-settings-alert { margin-bottom: 16px; border-radius: 6px; }
+.runtime-settings-summary { margin-bottom: 16px; }
+.runtime-settings-actions { display: flex; justify-content: flex-end; width: 100%; margin-top: 16px; }
+@media (max-width: 760px) { .runtime-settings-grid { grid-template-columns: 1fr; } .runtime-setting-copy { min-height: 0; } .runtime-settings-actions { justify-content: stretch; } .runtime-settings-actions .ant-btn { flex: 1; } }

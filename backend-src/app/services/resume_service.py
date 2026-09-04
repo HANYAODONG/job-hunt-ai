@@ -7,21 +7,31 @@ import aiofiles
 from datetime import datetime
 from ..models.candidate import Candidate, CandidateProfile, ResumeUpload
 from .nlp_service import NLPService
-from .knowledge_graph_service import KnowledgeGraphService
+from .llm_resume_parser import LLMResumeParser
 
 logger = logging.getLogger(__name__)
 
 class ResumeService:
-    def __init__(self):
+    def __init__(self, persist_to_kg: bool = True):
         self.nlp_service = NLPService()
-        self.kg_service = KnowledgeGraphService()
+        self.llm_resume_parser = LLMResumeParser()
+        # The full runtime keeps its existing candidate graph persistence.
+        # The dependency-light local entry point opts out explicitly.
+        if persist_to_kg:
+            # Import only in the full runtime. The local fallback must not
+            # even probe optional database clients during module import.
+            from .knowledge_graph_service import KnowledgeGraphService
+            self.kg_service = KnowledgeGraphService()
+        else:
+            self.kg_service = None
         self.upload_dir = "uploads"
         os.makedirs(self.upload_dir, exist_ok=True)
     
     async def process_resume_file(
         self, 
         file_path: str, 
-        candidate_id: str
+        candidate_id: str,
+        mode: Optional[str] = None,
     ) -> CandidateProfile:
         """Process uploaded resume file and extract candidate information"""
         try:
@@ -29,15 +39,29 @@ class ResumeService:
             text = await self._extract_text_from_file(file_path)
             
             # Extract candidate profile using NLP
-            profile_data = self.nlp_service.extract_candidate_profile(text)
+            # Do not let an omitted mode unexpectedly activate a configured
+            # remote LLM in the normal upload path.
+            profile_data = self.parse_resume_text(text, mode=mode or "enhanced")
+            # Keep the upload contract total even when an optional parser
+            # rejects malformed configuration or returns a partial object.
+            # The caller should receive a usable empty profile, not a 500
+            # caused by indexing a missing ``skills`` field.
+            if not isinstance(profile_data, dict):
+                profile_data = {}
+            profile_data.setdefault("name", "")
+            profile_data.setdefault("skills", [])
+            profile_data.setdefault("experience", [])
+            profile_data.setdefault("education", [])
             
             # Create candidate object
             candidate = self._create_candidate_from_profile(
                 profile_data, candidate_id, file_path
             )
             
-            # Create candidate node in knowledge graph
-            self.kg_service.create_candidate_node(candidate)
+            # Candidate graph persistence belongs to the optional full runtime;
+            # local resume matching only needs the extracted profile.
+            if self.kg_service is not None:
+                self.kg_service.create_candidate_node(candidate)
             
             # Create candidate profile
             candidate_profile = CandidateProfile(
@@ -58,8 +82,19 @@ class ResumeService:
         """Parse raw resume text with either baseline spaCy NER or enhanced pipeline."""
         try:
             mode = (mode or "enhanced").lower()
+            # The frontend exposes the user-facing name ``local``. Keep that
+            # stable API value mapped to the dependency-light enhanced parser.
+            if mode == "local":
+                mode = "enhanced"
+            if mode not in {"auto", "llm", "enhanced", "spacy"}:
+                raise ValueError("mode must be one of: auto, llm, local, enhanced, spacy")
             if mode == "spacy":
                 return self._parse_with_spacy(text)
+            if mode in {"llm", "auto"}:
+                fallback = self._parse_with_enhanced(text)
+                if mode == "llm" or self.llm_resume_parser.enabled:
+                    return self.llm_resume_parser.parse(text, fallback=fallback)
+                return fallback
             return self._parse_with_enhanced(text)
         except Exception as e:
             logger.error(f"Error parsing resume text: {e}")
@@ -97,13 +132,10 @@ class ResumeService:
     def _parse_with_enhanced(self, text: str) -> Dict[str, Any]:
         """Use the richer NLP pipeline for full extraction."""
         enhanced = self.nlp_service.extract_candidate_profile(text)
-        return {
-            "name": enhanced.get("name"),
-            "email": (enhanced.get("contact_info") or {}).get("emails", [None])[0],
-            "skills": enhanced.get("skills", []),
-            "education": enhanced.get("education", []),
-            "experience": enhanced.get("experience", []),
-        }
+        # Keep the complete profile contract used by process_resume_file and
+        # downstream matching/insights (contact_info, years_experience,
+        # projects, and summary must not be discarded).
+        return enhanced
 
     def _extract_emails_simple(self, text: str) -> List[str]:
         """Simple regex email extraction."""
@@ -132,6 +164,17 @@ class ResumeService:
     def _extract_text_from_pdf(self, file_path: str) -> str:
         """Extract text from PDF file"""
         try:
+            # MuPDF preserves CJK ToUnicode mappings in PDFs that PyPDF2 may
+            # decode as mojibake. Keep PyPDF2 as a dependency-light fallback.
+            try:
+                import fitz
+                document = fitz.open(file_path)
+                text = "\n".join(page.get_text("text") for page in document)
+                document.close()
+                if text.strip():
+                    return text
+            except Exception as exc:
+                logger.warning("MuPDF extraction unavailable, falling back to PyPDF2: %s", exc)
             text = ""
             with open(file_path, 'rb') as file:
                 pdf_reader = PyPDF2.PdfReader(file)

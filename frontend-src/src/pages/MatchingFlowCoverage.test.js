@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from 'react-query';
 
 jest.mock('../services/talentApi', () => ({ diagnoseCandidate: jest.fn() }));
 jest.mock('../services/fusionApi', () => ({ recommendJobs: jest.fn() }));
-jest.mock('../services/api', () => ({ uploadResume: jest.fn() }));
+jest.mock('../services/api', () => ({ uploadResume: jest.fn(), searchJobsWithResume: jest.fn() }));
 jest.mock('../contexts/CandidateContext', () => ({
   useCandidate: jest.fn(),
 }));
@@ -14,6 +14,7 @@ jest.mock('../components/workbench/TechnicalInspector', () => () => <div data-te
 
 import { diagnoseCandidate } from '../services/talentApi';
 import { recommendJobs } from '../services/fusionApi';
+import { searchJobsWithResume } from '../services/api';
 import { useCandidate } from '../contexts/CandidateContext';
 import DiagnosisPage from './DiagnosisPage';
 import RecommendationsPage from './RecommendationsPage';
@@ -81,5 +82,41 @@ describe('recommendations flow', () => {
     recommendJobs.mockResolvedValue({ results: [] });
     render(wrap(<RecommendationsPage />));
     await waitFor(() => expect(screen.getByText('暂无匹配岗位')).toBeTruthy());
+  });
+
+  it('uses the real resume-aware endpoint for an uploaded resume', async () => {
+    const resume = new File(['resume'], 'candidate.pdf', { type: 'application/pdf' });
+    const profile = {
+      candidate: { id: 'c2', name: '上传候选人', skills: [], target_job_family: '后端开发工程师' },
+      extracted_skills: ['Python', 'SQL'],
+      experience_summary: '后端服务开发',
+    };
+    useCandidate.mockReturnValue({
+      candidateProfile: profile,
+      resumeFile: resume,
+      updateCandidateProfile: jest.fn(),
+      updateResumeFile: jest.fn(),
+    });
+    searchJobsWithResume.mockResolvedValue({
+      jobs: [{
+        id: 'j-upload',
+        title: '后端开发工程师',
+        company_name: '示例公司',
+        description: 'Python 服务端开发',
+        required_skills: ['Python'],
+        preferred_skills: [],
+        rerank_score: 0.91,
+        search_metadata: {},
+      }],
+    });
+
+    render(wrap(<RecommendationsPage />));
+    await waitFor(() => expect(searchJobsWithResume).toHaveBeenCalledWith(
+      expect.objectContaining({ query: expect.stringContaining('Python'), limit: 10 }),
+      resume,
+      'auto'
+    ));
+    await waitFor(() => expect(screen.getByText(/找到 1 个推荐岗位/)).toBeTruthy());
+    expect(recommendJobs).not.toHaveBeenCalled();
   });
 });

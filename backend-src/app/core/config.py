@@ -38,6 +38,21 @@ class Settings(BaseSettings):
     SENTENCE_TRANSFORMER_MODEL: str = "BAAI/bge-m3"
     ENABLE_SPACY_MODEL: bool = True
     ENABLE_SENTENCE_TRANSFORMER: bool = True
+    # Optional resume extraction enhancement.  Matching remains local and
+    # closed-set; the LLM is used only to structure resume evidence.
+    # LLM is the default extraction enhancement when an API key is present;
+    # the parser always falls back to the local extractor when unavailable.
+    ENABLE_LLM_RESUME_PARSER: bool = True
+    # Uploaded resumes use the local v2 role-first matcher by default. Set to
+    # `legacy_hybrid` only when the ES/KG runtime has been explicitly started.
+    RESUME_MATCHING_PIPELINE: str = "canonical_two_stage"
+    LLM_RESUME_PROVIDER: str = "gpt"
+    LLM_RESUME_API_KEY: Optional[str] = None
+    LLM_RESUME_BASE_URL: str = "https://code28.ccwu.cc/v1"
+    LLM_RESUME_MODEL: str = "gpt-5.6-terra"
+    LLM_RESUME_TIMEOUT: int = 150
+    LLM_RESUME_MAX_TEXT_CHARS: int = 12000
+    LLM_RESUME_MAX_TOKENS: int = 600
     SEMANTIC_EMBEDDING_MODEL: str = "BAAI/bge-m3"
     SEMANTIC_EMBEDDING_DEVICE: str = "cpu"
     SEMANTIC_EMBEDDING_BATCH_SIZE: int = 16

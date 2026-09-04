@@ -8,22 +8,48 @@ from ..services.hybrid_search_service import HybridSearchService
 from ..services.resume_service import ResumeService
 from ..services.elasticsearch_service import ElasticsearchService
 from ..services.knowledge_graph_service import KnowledgeGraphService
+from ..services.canonical_two_stage_matching_service import CanonicalTwoStageMatchingService
+from ..core.config import settings
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# Initialize services
-hybrid_search_service = HybridSearchService()
+# External services are intentionally lazy. The local canonical upload path
+# does not require ES, Neo4j, vectors, or Fusion, so constructing them while
+# importing this router would make an otherwise self-contained demo unusable.
+hybrid_search_service: Optional[HybridSearchService] = None
 resume_service = ResumeService()
-es_service = ElasticsearchService()
-kg_service = KnowledgeGraphService()
+es_service: Optional[ElasticsearchService] = None
+kg_service: Optional[KnowledgeGraphService] = None
+canonical_two_stage_service = CanonicalTwoStageMatchingService()
+
+
+def _hybrid_service() -> HybridSearchService:
+    global hybrid_search_service
+    if hybrid_search_service is None:
+        hybrid_search_service = HybridSearchService()
+    return hybrid_search_service
+
+
+def _elasticsearch_service() -> ElasticsearchService:
+    global es_service
+    if es_service is None:
+        es_service = ElasticsearchService()
+    return es_service
+
+
+def _knowledge_graph_service() -> KnowledgeGraphService:
+    global kg_service
+    if kg_service is None:
+        kg_service = KnowledgeGraphService()
+    return kg_service
 
 @router.post("/search", response_model=JobSearchResult)
 async def search_jobs(query: JobSearchQuery):
     """Search for jobs using hybrid search (Elasticsearch + Knowledge Graph)"""
     try:
-        results = hybrid_search_service.search_jobs_with_semantic_matching(query)
+        results = _hybrid_service().search_jobs_with_semantic_matching(query)
         return results
     except Exception as e:
         logger.error(f"Error in job search: {e}")
@@ -42,7 +68,11 @@ async def search_jobs_with_resume(
     visa_sponsorship: Optional[bool] = Form(None),
     required_skills: List[str] = Form([]),
     preferred_skills: List[str] = Form([]),
-    limit: int = Form(20)
+    limit: int = Form(20),
+    # The interactive upload path uses the local canonical matcher by
+    # default. Full hybrid matching is an explicit request-level opt-in.
+    parser_mode: str = Form("auto"),
+    pipeline_mode: str = Form("lightweight"),
 ):
     """Search for jobs with resume-based candidate matching"""
     try:
@@ -72,14 +102,31 @@ async def search_jobs_with_resume(
         # Process resume to extract candidate profile
         file_path = os.path.join(resume_service.upload_dir, upload_record.file_name)
         candidate_profile = await resume_service.process_resume_file(
-            file_path, candidate_id
+            file_path, candidate_id, mode=parser_mode
         )
         
-        # Perform hybrid search with candidate matching
-        results = hybrid_search_service.search_jobs_with_semantic_matching(
-            search_query, candidate_profile.candidate
-        )
+        # The default upload path is the verified, self-contained v2
+        # role-first matcher. Legacy hybrid remains opt-in for deployments
+        # whose external ES/KG services are deliberately available.
+        requested_pipeline = (pipeline_mode or "lightweight").strip().lower()
+        if requested_pipeline not in {"lightweight", "full"}:
+            raise HTTPException(status_code=422, detail="pipeline_mode must be lightweight or full")
+        use_full_pipeline = requested_pipeline == "full" or settings.RESUME_MATCHING_PIPELINE == "legacy_hybrid"
+        if use_full_pipeline:
+            results = _hybrid_service().search_jobs_with_semantic_matching(
+                search_query, candidate_profile.candidate
+            )
+        else:
+            results = canonical_two_stage_service.match(
+                candidate_profile.candidate, search_query, limit=limit
+            )
         
+        if results.explanations is None:
+            results.explanations = {}
+        results.explanations.update({
+            "runtime_pipeline_mode": "full" if use_full_pipeline else "lightweight",
+            "parser_mode": parser_mode or "auto",
+        })
         return results
         
     except Exception as e:
@@ -90,7 +137,7 @@ async def search_jobs_with_resume(
 async def get_job_by_id(job_id: str):
     """Get a specific job by ID"""
     try:
-        job = es_service.get_job_by_id(job_id)
+        job = _elasticsearch_service().get_job_by_id(job_id)
         if not job:
             raise HTTPException(status_code=404, detail="Job not found")
         return job
@@ -107,7 +154,7 @@ async def get_similar_jobs(
 ):
     """Get similar jobs based on content similarity"""
     try:
-        similar_jobs = es_service.get_similar_jobs(job_id, limit)
+        similar_jobs = _elasticsearch_service().get_similar_jobs(job_id, limit)
         return similar_jobs
     except Exception as e:
         logger.error(f"Error getting similar jobs: {e}")
@@ -118,12 +165,12 @@ async def create_job(job: Job):
     """Create a new job posting"""
     try:
         # Index in Elasticsearch
-        success = es_service.index_job(job)
+        success = _elasticsearch_service().index_job(job)
         if not success:
             raise HTTPException(status_code=500, detail="Failed to index job in Elasticsearch")
         
         # Create node in knowledge graph
-        kg_success = kg_service.create_job_node(job)
+        kg_success = _knowledge_graph_service().create_job_node(job)
         if not kg_success:
             logger.warning(f"Failed to create job node in knowledge graph for job {job.id}")
         
@@ -143,12 +190,12 @@ async def update_job(job_id: str, job: Job):
         job.id = job_id
         
         # Update in Elasticsearch
-        success = es_service.index_job(job)
+        success = _elasticsearch_service().index_job(job)
         if not success:
             raise HTTPException(status_code=500, detail="Failed to update job in Elasticsearch")
         
         # Update in knowledge graph (delete and recreate for simplicity)
-        kg_service.create_job_node(job)
+        _knowledge_graph_service().create_job_node(job)
         
         return {"message": "Job updated successfully", "job_id": job_id}
         
@@ -163,7 +210,7 @@ async def delete_job(job_id: str):
     """Delete a job posting"""
     try:
         # Delete from Elasticsearch
-        success = es_service.delete_job(job_id)
+        success = _elasticsearch_service().delete_job(job_id)
         if not success:
             raise HTTPException(status_code=404, detail="Job not found")
         
@@ -180,7 +227,7 @@ async def bulk_create_jobs(jobs: List[Job]):
     """Bulk create multiple job postings"""
     try:
         # Bulk index in Elasticsearch
-        result = es_service.bulk_index_jobs(jobs)
+        result = _elasticsearch_service().bulk_index_jobs(jobs)
         
         if "error" in result:
             raise HTTPException(status_code=500, detail=f"Bulk indexing error: {result['error']}")
@@ -190,7 +237,7 @@ async def bulk_create_jobs(jobs: List[Job]):
         failed_jobs = []
         
         for job in jobs:
-            kg_success = kg_service.create_job_node(job)
+            kg_success = _knowledge_graph_service().create_job_node(job)
             if kg_success:
                 successful_jobs.append(job.id)
             else:
@@ -214,7 +261,7 @@ async def bulk_create_jobs(jobs: List[Job]):
 async def get_market_trends(skill: str):
     """Get market trends for a specific skill"""
     try:
-        trends = hybrid_search_service.analyze_job_market_trends([skill])
+        trends = _hybrid_service().analyze_job_market_trends([skill])
         return trends
     except Exception as e:
         logger.error(f"Error getting market trends: {e}")
@@ -227,7 +274,7 @@ async def get_job_recommendations(
 ):
     """Get personalized job recommendations for a candidate"""
     try:
-        recommendations = hybrid_search_service.get_job_recommendations(candidate, limit)
+        recommendations = _hybrid_service().get_job_recommendations(candidate, limit)
         return recommendations
     except Exception as e:
         logger.error(f"Error getting job recommendations: {e}")
@@ -236,7 +283,10 @@ async def get_job_recommendations(
 @router.post("/upload-resume", response_model=CandidateProfile)
 async def upload_and_process_resume(
     resume_file: UploadFile = File(...),
-    candidate_id: Optional[str] = None
+    candidate_id: Optional[str] = None,
+    # Keep the default deterministic and local; `llm` remains an explicit
+    # opt-in for offline or operator-driven experiments.
+    parser_mode: str = Form("auto")
 ):
     """Upload and process a resume file with enhanced name extraction"""
     try:
@@ -252,7 +302,7 @@ async def upload_and_process_resume(
         # Process resume to extract candidate profile
         file_path = os.path.join(resume_service.upload_dir, upload_record.file_name)
         candidate_profile = await resume_service.process_resume_file(
-            file_path, candidate_id
+            file_path, candidate_id, mode=parser_mode
         )
         
         # Log the extracted name for verification

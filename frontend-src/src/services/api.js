@@ -66,10 +66,14 @@ export const searchJobs = async (searchParams) => {
   }
 };
 
-export const createResumeSearchForm = (searchParams, resumeFile) => {
+export const createResumeSearchForm = (searchParams, resumeFile, parserMode = 'auto') => {
   const formData = new FormData();
   formData.append('resume_file', resumeFile);
   formData.append('query', searchParams.query || '');
+  // Keep the interactive upload path dependency-light. The backend still
+  // supports `llm`, but callers must opt into it explicitly because it is
+  // slower and is not required for the normal frontend flow.
+  formData.append('parser_mode', parserMode);
 
   const optionalFields = [
     'location',
@@ -80,6 +84,7 @@ export const createResumeSearchForm = (searchParams, resumeFile) => {
     'remote_allowed',
     'visa_sponsorship',
     'limit',
+    'pipeline_mode',
   ];
   optionalFields.forEach((field) => {
     const value = searchParams[field];
@@ -93,9 +98,9 @@ export const createResumeSearchForm = (searchParams, resumeFile) => {
   return formData;
 };
 
-export const searchJobsWithResume = async (searchParams, resumeFile) => {
+export const searchJobsWithResume = async (searchParams, resumeFile, parserMode = 'auto') => {
   try {
-    const formData = createResumeSearchForm(searchParams, resumeFile);
+    const formData = createResumeSearchForm(searchParams, resumeFile, parserMode);
 
     const response = await api.post('/jobs/search-with-resume', formData, {
       headers: {
@@ -133,10 +138,11 @@ export const getSimilarJobs = async (jobId, limit = 10) => {
 };
 
 // Resume Processing API
-export const uploadResume = async (resumeFile) => {
+export const uploadResume = async (resumeFile, parserMode = 'auto') => {
   try {
     const formData = new FormData();
     formData.append('resume_file', resumeFile);
+    formData.append('parser_mode', parserMode);
     
     const response = await api.post('/jobs/upload-resume', formData, {
       headers: {

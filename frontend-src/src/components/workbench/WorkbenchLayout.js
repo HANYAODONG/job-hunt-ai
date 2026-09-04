@@ -12,6 +12,7 @@ import {
   RadarChartOutlined,
   SafetyCertificateOutlined,
   SearchOutlined,
+  SettingOutlined,
   TeamOutlined,
   UserOutlined,
 } from '@ant-design/icons';
@@ -31,12 +32,14 @@ const enterpriseItems = [
   { key: '/signals', icon: <RadarChartOutlined />, label: '岗位演化中心', badge: 18 },
   { key: '/jd-quality', icon: <SafetyCertificateOutlined />, label: 'JD 质检' },
   { key: '/graph', icon: <ClusterOutlined />, label: '全景图谱' },
+  { key: '/settings', icon: <SettingOutlined />, label: '系统设置' },
 ];
 
 const candidateItems = [
   { key: '/diagnosis', icon: <FileSearchOutlined />, label: '人岗诊断' },
   { key: '/learning', icon: <BookOutlined />, label: '学习路径' },
   { key: '/graph', icon: <ClusterOutlined />, label: '全景图谱' },
+  { key: '/settings', icon: <SettingOutlined />, label: '系统设置' },
 ];
 
 const WorkbenchLayout = () => {
@@ -158,7 +161,7 @@ const WorkbenchLayout = () => {
   };
   const commandItems = navItems.map((item) => ({
     ...item,
-    meta: item.key === '/graph' ? 'Capability graph' : item.key === '/diagnosis' ? 'Person-role diagnosis' : item.key === '/learning' ? 'Learning plan' : item.key === '/signals' ? 'Role evolution center' : item.key === '/jd-quality' ? 'JD quality audit' : item.key === '/recruitment' ? 'Job postings' : 'Candidate review',
+    meta: item.key === '/graph' ? 'Capability graph' : item.key === '/diagnosis' ? 'Person-role diagnosis' : item.key === '/learning' ? 'Learning plan' : item.key === '/signals' ? 'Role evolution center' : item.key === '/jd-quality' ? 'JD quality audit' : item.key === '/recruitment' ? 'Job postings' : item.key === '/settings' ? 'Runtime control' : 'Candidate review',
   }));
   const matchingCommands = commandItems.filter((item) => `${item.label} ${item.meta}`.toLowerCase().includes(commandQuery.toLowerCase()));
   const executeCommand = (key) => {

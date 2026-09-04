@@ -15,6 +15,7 @@ export const routeLoaders = Object.freeze({
   '/recommendations': () => import('./pages/RecommendationsPage'),
   '/personalized-recommendations': () => import('./pages/PersonalizedRecommendationsPage'),
   '/fusion-demo': () => import('./pages/FusionDemoPage'),
+  '/settings': () => import('./pages/RuntimeSettingsPage'),
   '/login': () => import('./pages/LoginPage'),
   '/register': () => import('./pages/RegisterPage'),
 });

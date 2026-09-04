@@ -20,7 +20,7 @@ import {
   ReloadOutlined,
 } from '@ant-design/icons';
 import { useQuery, useMutation } from 'react-query';
-import { uploadResume } from '../services/api';
+import { searchJobsWithResume, uploadResume } from '../services/api';
 import { recommendJobs } from '../services/fusionApi';
 import { useCandidate } from '../contexts/CandidateContext';
 import FusionScoreCard from '../components/FusionScoreCard';
@@ -58,8 +58,42 @@ const buildCandidateQuery = (candidateProfile) => {
     .trim();
 };
 
+/** Convert the legacy JobSearchResult job contract to the card contract. */
+const normalizeUploadedJob = (job) => {
+  const metadata = job.search_metadata || {};
+  const explanation = metadata.match_explanation || {};
+  const components = explanation.components || {};
+  const skillDetails = components['Skill Match']?.details || {};
+  const componentScore = (name) => Number(components[name]?.score || 0);
+
+  return {
+    job_id: job.id,
+    final_score: Number(job.rerank_score || 0),
+    score_breakdown: {
+      skill_coverage: componentScore('Skill Match'),
+      semantic_score: componentScore('Job Description Match'),
+    },
+    explanation: {
+      reason: skillDetails.matched_skills?.length
+        ? `匹配技能：${skillDetails.matched_skills.join('、')}`
+        : '已根据简历画像完成岗位匹配。',
+      matched_skills: skillDetails.matched_skills || [],
+      missing_skills: skillDetails.missing_skills || [],
+    },
+    meta: {
+      title: job.title,
+      company: job.company_name,
+      standard_job: job.job_family,
+      location: job.location?.city,
+      salary: job.salary
+        ? `${job.salary.min_salary || ''}-${job.salary.max_salary || ''}`
+        : '',
+    },
+  };
+};
+
 const RecommendationsPage = () => {
-  const { candidateProfile, updateCandidateProfile, updateResumeFile } = useCandidate();
+  const { candidateProfile, resumeFile, updateCandidateProfile, updateResumeFile } = useCandidate();
 
   const uploadMutation = useMutation(uploadResume, {
     onSuccess: (data) => {
@@ -76,6 +110,23 @@ const RecommendationsPage = () => {
     async () => {
       if (!candidateProfile) return [];
       const queryText = buildCandidateQuery(candidateProfile);
+      // An uploaded resume must use the real resume-aware endpoint. The
+      // sample Fusion endpoint remains available only for the built-in demo
+      // candidate, so an upload can never silently render sample results.
+      if (resumeFile) {
+        const result = await searchJobsWithResume(
+          {
+            query: queryText || candidateProfile.candidate?.target_job_family || 'software engineer',
+            page: 1,
+            page_size: 10,
+            limit: 10,
+          },
+          resumeFile,
+          'auto'
+        );
+        return (result.jobs || []).map(normalizeUploadedJob);
+      }
+
       const result = await recommendJobs({
         candidateId: candidateProfile.candidate?.id,
         queryText,
@@ -249,7 +300,9 @@ const RecommendationsPage = () => {
       <Row justify="center" style={{ marginTop: '16px' }}>
         <Col>
           <Text type="secondary" style={{ fontSize: 12 }}>
-            数据来源：POST /api/v1/fusion/recommend（sample 链路：真实后端计算）
+            {resumeFile
+              ? '数据来源：POST /api/v1/jobs/search-with-resume（自动简历解析）'
+              : '数据来源：POST /api/v1/fusion/recommend（示例候选人 sample 链路）'}
           </Text>
         </Col>
       </Row>

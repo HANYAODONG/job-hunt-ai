@@ -30,7 +30,12 @@ it('builds resume search form data and uses the search contracts', async () => {
   const resume = new File(['resume'], 'resume.pdf', { type: 'application/pdf' });
   const params = { query: 'Python', location: '合肥', min_salary: 1, remote_allowed: true, required_skills: ['Python'], preferred_skills: ['RAG'] };
   const form = createResumeSearchForm(params, resume);
-  expect([...form.entries()]).toEqual(expect.arrayContaining([['query', 'Python'], ['location', '合肥'], ['required_skills', 'Python']]));
+  expect([...form.entries()]).toEqual(expect.arrayContaining([
+    ['query', 'Python'],
+    ['location', '合肥'],
+    ['required_skills', 'Python'],
+    ['parser_mode', 'auto'],
+  ]));
   await searchJobs(params);
   await searchJobsWithResume(params, resume);
   await searchJobsWithReranking(params, 'RAG', true);

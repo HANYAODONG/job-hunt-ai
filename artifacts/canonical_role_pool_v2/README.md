@@ -19,4 +19,4 @@
 
 ## 使用边界
 
-本目录是 release candidate。接受前不要替换运行时默认路径。接受后，使用 `canonical_jobs.jsonl` 作为 BM25、向量、Fusion 和图谱导入的共同输入，并把运行时岗位目录切换到与该版本配套的 `canonical_roles.csv`。v1 文件保持不变，可随时回滚。
+本目录是当前默认运行版本。运行时使用 `canonical_jobs.jsonl` 作为轻量匹配和图谱的共同输入；完整链路启用时，BM25、向量、Fusion 和图谱导入也应使用同一文件，并把岗位目录切换到配套的 `canonical_roles.csv`。v1 文件保持不变，可随时回滚。
