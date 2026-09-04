@@ -10,7 +10,13 @@ import {
   roleCatalogData,
 } from '../data/mockTalentData';
 import { recruitmentCandidatesData, recruitmentJobsData } from '../data/mockRecruitmentData';
-import { getJobById, getJobRecommendations, getMarketTrends, uploadResume } from './api';
+import {
+  getJobById,
+  getJobRecommendations,
+  getMarketTrends,
+  searchJobsWithResume,
+  uploadResume,
+} from './api';
 import {
   analyzeKnowledgeGraphGap,
   generateLearningPlan,
@@ -116,6 +122,15 @@ const normalizeTextList = (values = []) => (Array.isArray(values) ? values : [va
   .map((value) => value.trim())
   .filter(Boolean);
 
+const readRuntimePreference = (key, fallback) => {
+  try {
+    const value = localStorage.getItem(key);
+    return value || fallback;
+  } catch {
+    return fallback;
+  }
+};
+
 const extractSkills = (candidateProfile) => {
   const candidate = candidateProfile.candidate || {};
   return candidateProfile.extracted_skills?.length
@@ -169,6 +184,8 @@ const normalizeLiveDiagnosis = (candidateProfile, recommendations, jobs, pipelin
       target: matches[0]?.role || 'target role pending',
       confidence: null,
       skills,
+      experienceCount: candidate.experience?.length || 0,
+      yearsExperience: Number(candidate.years_experience) || 0,
       experience: candidateProfile.experience_summary
         || `Parsed ${candidate.experience?.length || 0} work or project experience records.`,
     },
@@ -178,6 +195,80 @@ const normalizeLiveDiagnosis = (candidateProfile, recommendations, jobs, pipelin
       mode: pipelineWarning ? 'legacy-fallback' : 'legacy',
       warning: pipelineWarning,
       capabilities: ['resume parsing', 'legacy job recommendation'],
+    },
+  };
+};
+
+const normalizeCanonicalDiagnosis = (candidateProfile, searchResult) => {
+  const candidate = candidateProfile.candidate || {};
+  const jobs = searchResult?.jobs || [];
+  const selectedRole = searchResult?.explanations?.selected_canonical_role || '';
+  const roleCandidates = searchResult?.explanations?.top_role_candidates || [];
+  const selectedRoleJdCandidates = searchResult?.explanations?.selected_role_jd_candidates || [];
+  const generatedAt = new Date().toLocaleString('zh-CN', { hour12: false });
+  // Prefer the backend's Top-3 *distinct third-level roles*. The first role
+  // remains the closed-set winner; the other two are alternatives, each with
+  // a representative JD only as explanation evidence.
+  const displayCandidates = roleCandidates.length
+    ? roleCandidates.map((candidateRole) => ({
+      job: candidateRole.representative_job,
+      roleScore: candidateRole.role_score,
+    })).filter((candidate) => candidate.job)
+    : jobs.slice(0, 3).map((job) => ({ job, roleScore: null }));
+  const matches = displayCandidates.map(({ job, roleScore }, index) => {
+    const metadata = job.search_metadata || {};
+    const explanation = metadata.match_explanation || {};
+    const details = explanation.components?.['Skill Match']?.details || {};
+    const matchingSkills = normalizeTextList(details.matched_skills);
+    const missingSkills = normalizeTextList(details.missing_skills);
+    const role = metadata.canonical_role || job.job_family || job.title || `Job ${index + 1}`;
+    return {
+      id: job.id,
+      role,
+      family: metadata.canonical_direction || 'v2 功能型三级岗位',
+      company: job.company_name || '',
+      version: 'canonical role pool v2',
+      roleScore: toPercent(roleScore ?? metadata.role_match_score ?? job.rerank_score),
+      score: toPercent(job.rerank_score),
+      jdFitScore: toPercent(metadata.jd_fit_score ?? job.rerank_score),
+      roleConfidence: toPercent(roleScore ?? metadata.role_confidence ?? metadata.role_match_score),
+      reason: matchingSkills.length
+        ? `基于岗位内技能证据匹配：${matchingSkills.slice(0, 5).join('、')}`
+        : '已在匹配到的三级标准岗位内完成 JD 排序。',
+      gaps: makeGapItems(missingSkills, '岗位'),
+      matchingSkills,
+      evidenceCoverage: toPercent(explanation.components?.['Job Description Match']?.score),
+      jdQuality: metadata.jd_quality || null,
+      requiredSkillGroupCount: metadata.required_skill_group_count ?? null,
+      jdCandidates: index === 0 ? selectedRoleJdCandidates : [],
+      jobTitle: job.title || '',
+      canonicalRoleId: metadata.canonical_role_id || null,
+      canonicalRole: metadata.canonical_role || role,
+      canonicalDirection: metadata.canonical_direction || null,
+      roleMappingStatus: 'mapped',
+      job,
+    };
+  });
+
+  return {
+    source: 'live',
+    generatedAt,
+    profile: {
+      name: candidate.name || 'unknown candidate',
+      target: selectedRole || matches[0]?.role || 'target role pending',
+      confidence: null,
+      skills: extractSkills(candidateProfile),
+      experienceCount: candidate.experience?.length || 0,
+      yearsExperience: Number(candidate.years_experience) || 0,
+      experience: candidateProfile.experience_summary
+        || `Parsed ${candidate.experience?.length || 0} work or project experience records.`,
+    },
+    matches,
+    gaps: matches[0]?.gaps || [],
+    pipeline: {
+      mode: 'canonical-two-stage',
+      warning: null,
+      capabilities: ['enhanced resume parsing', 'canonical role selection', 'in-role JD ranking'],
     },
   };
 };
@@ -364,8 +455,30 @@ const runFullDiagnosisPipeline = async (candidateProfile) => {
   return normalizeFullDiagnosis(candidateProfile, hits, gapByJobId, rankedResults);
 };
 
-const diagnoseUploadedResume = async (resumeFile) => {
-  const candidateProfile = await uploadResume(resumeFile);
+const diagnoseUploadedResume = async (resumeFile, parserModeOverride, pipelineModeOverride) => {
+  const parserMode = parserModeOverride || readRuntimePreference('resumeParserMode', 'auto');
+  const pipelineMode = pipelineModeOverride || readRuntimePreference('matchingPipelineMode', 'lightweight');
+  const candidateProfile = await uploadResume(resumeFile, parserMode);
+  // The dependency-light local runtime returns canonical v2 results directly.
+  // Use that result before attempting the older multi-service diagnosis chain.
+  try {
+    const canonicalResult = await searchJobsWithResume(
+      {
+        query: buildCandidateQuery(candidateProfile) || 'software engineer',
+        page: 1,
+        page_size: 10,
+        limit: 10,
+        pipeline_mode: pipelineMode,
+      },
+      resumeFile,
+      parserMode,
+    );
+    if (canonicalResult?.explanations?.matching_pipeline === 'canonical_two_stage_v2') {
+      return normalizeCanonicalDiagnosis(candidateProfile, canonicalResult);
+    }
+  } catch (canonicalError) {
+    console.warn('Canonical resume matching unavailable, trying full diagnosis pipeline:', canonicalError);
+  }
   try {
     return await runFullDiagnosisPipeline(candidateProfile);
   } catch (pipelineError) {
@@ -384,9 +497,9 @@ const diagnoseUploadedResume = async (resumeFile) => {
 
 // Only resume diagnosis has a complete backend contract. Other workbench modules
 // intentionally remain on mock data until their talent-intelligence APIs exist.
-export const diagnoseCandidate = ({ resumeFile } = {}) => {
+export const diagnoseCandidate = ({ resumeFile, parserMode, pipelineMode } = {}) => {
   if (!resumeFile || process.env.REACT_APP_USE_RESUME_MOCK === 'true') return Promise.resolve(diagnosisData);
-  return diagnoseUploadedResume(resumeFile);
+  return diagnoseUploadedResume(resumeFile, parserMode, pipelineMode);
 };
 export const getDataGovernance = () => mockOnly(governanceData);
 export const getEvaluationReport = () => mockOnly(evaluationData);

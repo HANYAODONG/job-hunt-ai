@@ -1,0 +1,102 @@
+{
+  "status": "passed",
+  "base_url": "http://127.0.0.1:18080",
+  "routes": [
+    {
+      "workspace_role": "candidate",
+      "route": "/",
+      "final_url": "http://127.0.0.1:18080/diagnosis",
+      "title": "JobMatch AI - Semantic Job Search",
+      "body_text_length": 49,
+      "severe_console_errors": []
+    },
+    {
+      "workspace_role": "candidate",
+      "route": "/graph",
+      "final_url": "http://127.0.0.1:18080/graph",
+      "title": "JobMatch AI - Semantic Job Search",
+      "body_text_length": 410,
+      "severe_console_errors": []
+    },
+    {
+      "workspace_role": "candidate",
+      "route": "/diagnosis",
+      "final_url": "http://127.0.0.1:18080/diagnosis",
+      "title": "JobMatch AI - Semantic Job Search",
+      "body_text_length": 409,
+      "severe_console_errors": []
+    },
+    {
+      "workspace_role": "candidate",
+      "route": "/learning",
+      "final_url": "http://127.0.0.1:18080/learning",
+      "title": "JobMatch AI - Semantic Job Search",
+      "body_text_length": 565,
+      "severe_console_errors": []
+    },
+    {
+      "workspace_role": "candidate",
+      "route": "/recommendations",
+      "final_url": "http://127.0.0.1:18080/recommendations",
+      "title": "JobMatch AI - Semantic Job Search",
+      "body_text_length": 225,
+      "severe_console_errors": []
+    },
+    {
+      "workspace_role": "candidate",
+      "route": "/settings",
+      "final_url": "http://127.0.0.1:18080/settings",
+      "title": "JobMatch AI - Semantic Job Search",
+      "body_text_length": 417,
+      "severe_console_errors": []
+    },
+    {
+      "workspace_role": "enterprise",
+      "route": "/recruitment",
+      "final_url": "http://127.0.0.1:18080/recruitment",
+      "title": "JobMatch AI - Semantic Job Search",
+      "body_text_length": 67,
+      "severe_console_errors": []
+    },
+    {
+      "workspace_role": "enterprise",
+      "route": "/candidates",
+      "final_url": "http://127.0.0.1:18080/candidates",
+      "title": "JobMatch AI - Semantic Job Search",
+      "body_text_length": 67,
+      "severe_console_errors": []
+    },
+    {
+      "workspace_role": "enterprise",
+      "route": "/signals",
+      "final_url": "http://127.0.0.1:18080/signals",
+      "title": "JobMatch AI - Semantic Job Search",
+      "body_text_length": 82,
+      "severe_console_errors": []
+    },
+    {
+      "workspace_role": "enterprise",
+      "route": "/jd-quality",
+      "final_url": "http://127.0.0.1:18080/jd-quality",
+      "title": "JobMatch AI - Semantic Job Search",
+      "body_text_length": 2390,
+      "severe_console_errors": []
+    },
+    {
+      "workspace_role": "enterprise",
+      "route": "/graph",
+      "final_url": "http://127.0.0.1:18080/graph",
+      "title": "JobMatch AI - Semantic Job Search",
+      "body_text_length": 428,
+      "severe_console_errors": []
+    },
+    {
+      "workspace_role": "enterprise",
+      "route": "/settings",
+      "final_url": "http://127.0.0.1:18080/settings",
+      "title": "JobMatch AI - Semantic Job Search",
+      "body_text_length": 435,
+      "severe_console_errors": []
+    }
+  ]
+}

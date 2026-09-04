@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { Alert, App as AntdApp, Button, Skeleton, Tag, Upload } from 'antd';
-import { ArrowRightOutlined, CheckCircleFilled, FilePdfOutlined, InboxOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
+import { ArrowRightOutlined, CheckCircleFilled, FilePdfOutlined, InboxOutlined, SafetyCertificateOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import PageHeading from '../components/workbench/PageHeading';
 import TechnicalInspector from '../components/workbench/TechnicalInspector';
 import { diagnoseCandidate } from '../services/talentApi';
@@ -23,6 +23,39 @@ const scoreLabels = {
   graph: '图谱关联度',
 };
 
+const clampRadarScore = (value) => Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
+const readDiagnosisSetting = (key, fallback) => {
+  try { return localStorage.getItem(key) || fallback; } catch { return fallback; }
+};
+
+// The axes stay stable across roles for comparison, while role-specific
+// evidence (JD coverage and role alignment) supplies the first three scores.
+const buildCapabilityRadar = (analysis, selectedMatch) => {
+  if (!analysis || !selectedMatch) return [];
+  const profile = analysis.profile || {};
+  const skills = Array.isArray(profile.skills) ? profile.skills : [];
+  const experienceCount = Number(profile.experienceCount) || 0;
+  const years = Number(profile.yearsExperience) || 0;
+  const experienceText = String(profile.experience || '');
+  const segmentMatch = experienceText.match(/(\d+)\s*段/);
+  const yearMatch = experienceText.match(/(\d+(?:\.\d+)?)\s*年/);
+  const inferredSegments = experienceCount || Number(segmentMatch?.[1]) || 0;
+  const inferredYears = years || Number(yearMatch?.[1]) || 0;
+  const practicalDepth = inferredYears > 0
+    ? (inferredYears / 5) * 100
+    : (inferredSegments / 3) * 100;
+  const evidenceCompleteness = (skills.length / 10) * 60 + (inferredSegments / 3) * 40;
+
+  return [
+    { subject: '技能覆盖', score: clampRadarScore(selectedMatch.evidenceCoverage ?? selectedMatch.score) },
+    { subject: '具体 JD 适配', score: clampRadarScore(selectedMatch.score) },
+    { subject: '岗位契合', score: clampRadarScore(selectedMatch.roleScore ?? selectedMatch.score) },
+    { subject: '技能广度', score: clampRadarScore((skills.length / 12) * 100) },
+    { subject: '实践深度', score: clampRadarScore(practicalDepth) },
+    { subject: '证据充分度', score: clampRadarScore(evidenceCompleteness) },
+  ];
+};
+
 gsap.registerPlugin(useGSAP);
 
 const DiagnosisPage = () => {
@@ -33,6 +66,8 @@ const DiagnosisPage = () => {
   const [error, setError] = useState(null);
   const [selectedRoleId, setSelectedRoleId] = useState(null);
   const [selectedGap, setSelectedGap] = useState('Agent 工作流');
+  const [parserMode, setParserMode] = useState(() => readDiagnosisSetting('resumeParserMode', 'auto'));
+  const [pipelineMode] = useState(() => readDiagnosisSetting('matchingPipelineMode', 'lightweight'));
   const [roleContext] = useState(() => {
     try { return JSON.parse(localStorage.getItem('roleEvolutionContext') || 'null'); } catch { return null; }
   });
@@ -70,7 +105,7 @@ const DiagnosisPage = () => {
     setError(null);
     try {
       const resumeFile = typeof File !== 'undefined' && file instanceof File ? file : null;
-      const result = await diagnoseCandidate({ resumeFile });
+      const result = await diagnoseCandidate({ resumeFile, parserMode, pipelineMode });
       setAnalysis(result);
       setSelectedRoleId(result.matches?.[0]?.id || null);
       setSelectedGap(result.matches?.[0]?.gaps?.[0]?.skill || result.gaps?.[0]?.skill || '岗位适配');
@@ -91,6 +126,7 @@ const DiagnosisPage = () => {
 
   const matches = analysis?.matches || [];
   const selectedMatch = matches.find((match) => match.id === selectedRoleId) || matches[0];
+  const capabilityRadar = buildCapabilityRadar(analysis, selectedMatch);
   const selectedGaps = selectedMatch?.gaps || analysis?.gaps || [];
   const selectedAction = gapActions[selectedGap] || {
     title: `围绕“${selectedGap}”形成可验证的项目证据`,
@@ -139,6 +175,19 @@ const DiagnosisPage = () => {
             <p>支持 PDF、DOC、DOCX，单文件不超过 10 MB</p>
             <Button type="primary" loading={loading}>选择文件</Button>
           </Upload.Dragger>
+          <div className="diagnosis-parser-control">
+            <div><span>简历解析方式</span><small>{parserMode === 'llm' ? '本次上传将使用大模型提取技能证据' : '自动模式：LLM 可用时优先使用，否则回退本地解析'}</small></div>
+            <Button
+              type={parserMode === 'llm' ? 'primary' : 'default'}
+              icon={<ThunderboltOutlined />}
+              onClick={() => {
+                const nextMode = parserMode === 'llm' ? 'auto' : 'llm';
+                setParserMode(nextMode);
+                try { localStorage.setItem('resumeParserMode', nextMode); } catch { /* browser storage may be unavailable */ }
+              }}
+              disabled={loading}
+            >{parserMode === 'llm' ? '已选择大模型解析' : '使用大模型解析'}</Button>
+          </div>
           <button className="sample-resume-button" onClick={() => startDiagnosis()} disabled={loading}><FilePdfOutlined /><span><strong>陈同学-前端与AI项目简历.pdf</strong><small>使用脱敏示例快速查看完整诊断</small></span><ArrowRightOutlined /></button>
         </div>
         <aside className="diagnosis-target-panel diagnosis-auto-panel">
@@ -151,16 +200,24 @@ const DiagnosisPage = () => {
         <section className="diagnosis-match-selector" aria-label="自动匹配岗位">
           <header><div><span>AUTOMATIC ROLE MATCHES</span><h2>选择一个目标岗位继续诊断</h2></div><p>匹配基于当前简历画像与已发布岗位版本</p></header>
           <div>{matches.map((match, index) => <button type="button" key={match.id} className={match.id === selectedMatch?.id ? 'active' : ''} onClick={() => selectRole(match)}>
-            <span>{String(index + 1).padStart(2, '0')} · {match.family}</span><strong>{match.role}</strong><p>{match.reason}</p><footer><small>{match.version}</small><b>{match.score}</b></footer>
+            <span>{String(index + 1).padStart(2, '0')} · {match.family}</span><strong>{match.role}</strong><p>{match.reason}</p><footer><small>三级岗位归属置信度</small><b>{match.roleScore ?? match.score}</b></footer>
           </button>)}</div>
         </section>
 
         <section className="diagnosis-report-workspace">
         <main className="diagnosis-report">
           <header className="diagnosis-report-header">
-            <div><span>{analysis.profile.name} / 已确认目标岗位</span><h2>{selectedMatch?.role} <small>{selectedMatch?.version}</small></h2><p>{analysis.profile.experience}</p></div>
-            <div className="overall-match"><strong>{selectedMatch?.score}</strong><span>综合匹配度</span><small><SafetyCertificateOutlined /> {analysis.profile.confidence == null ? '后端未提供画像置信度' : `画像置信度 ${analysis.profile.confidence}%`}</small></div>
+            <div><span>{analysis.profile.name} / 已确认目标岗位</span><h2>{selectedMatch?.role} <small>{selectedMatch?.version}</small></h2><p>{selectedMatch?.jobTitle || analysis.profile.experience}</p></div>
+            <div className="overall-match"><strong>{selectedMatch?.score ?? 0}</strong><span>具体 JD 适配度</span><small><SafetyCertificateOutlined /> 三级岗位归属置信度 {selectedMatch?.roleScore ?? 0}% · 技能覆盖 {selectedMatch?.evidenceCoverage ?? 0}%</small></div>
           </header>
+
+          {selectedMatch?.jdCandidates?.length > 0 && <section className="selected-role-jd-candidates" aria-label="选中三级岗位内的具体岗位">
+            <header><span>IN-ROLE JD RANKING</span><strong>{selectedMatch.role} 下的具体 JD</strong><small>先确定三级岗位，再只在该岗位集合内排序</small></header>
+            <div>{selectedMatch.jdCandidates.slice(0, 5).map((jd, index) => <div key={jd.job_id} className="selected-role-jd-row">
+              <b>{String(index + 1).padStart(2, '0')}</b><span><strong>{jd.title}</strong><small>{jd.jd_quality === 'low_information' ? '要求信息较少，建议人工核验' : `技能覆盖 ${Math.round((jd.skill_coverage || 0) * 100)}%`}</small></span><em>{Math.round((jd.jd_fit_score || 0) * 100)}%</em>
+            </div>)}</div>
+          </section>}
+
 
           <section className="profile-skill-confirmation">
             <header><span>已确认能力画像</span><button>编辑画像</button></header>
@@ -192,6 +249,9 @@ const DiagnosisPage = () => {
           status="已生成"
           version={selectedMatch?.version || '当前 JD'}
           confidence={analysis.profile.confidence}
+          hideFacts
+          hideHeader
+          capabilityRadar={capabilityRadar}
           explanation={[...selectedGaps.filter((gap) => gap.skill === selectedGap), ...selectedGaps.filter((gap) => gap.skill !== selectedGap)].map((gap) => gap.reason)}
           evidence={analysis.source === 'live' ? [
             { source: '简历解析结果', confidence: '后端实际提取', excerpt: analysis.profile.skills.join('、') || '未提取到明确技能', collectedAt: analysis.generatedAt },

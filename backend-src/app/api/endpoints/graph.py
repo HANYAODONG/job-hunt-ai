@@ -33,7 +33,12 @@ def _sorted_categories(categories: set[str]) -> list[str]:
     return known + sorted(categories - set(known))
 
 
-def build_standard_role_graph(records: list[dict], year: int | None = None) -> dict:
+def build_standard_role_graph(
+    records: list[dict],
+    year: int | None = None,
+    *,
+    include_active_catalog_roles: bool = False,
+) -> dict:
     """Aggregate job postings into category -> direction -> standard role."""
     # 年份过滤
     if year is not None:
@@ -66,6 +71,20 @@ def build_standard_role_graph(records: list[dict], year: int | None = None) -> d
     direction_skills: defaultdict[tuple[str, str], Counter[str]] = defaultdict(Counter)
     distinct_skills: set[str] = set()
     relationship_count = 0
+
+    # Keep the graph's role identity layer aligned with the released catalog.
+    # A role can be active before its first JD arrives; represent it as a
+    # zero-count node instead of silently dropping it from the taxonomy.
+    if include_active_catalog_roles:
+        from app.services.canonical_role_pool import CanonicalRolePool
+
+        for catalog_role in CanonicalRolePool().roles.values():
+            if catalog_role.status != "active":
+                continue
+            roles.setdefault(
+                (catalog_role.domain, catalog_role.direction, catalog_role.role_name),
+                {"count": 0, "skills": Counter(), "needs_review": 0},
+            )
 
     for record in records:
         category = str(record.get("standard_category") or "").strip()
@@ -209,7 +228,8 @@ async def get_capability_graph(year: int | None = None):
     
     _graph_cache[cache_key] = build_standard_role_graph(
         talent_data_service.list_standard_role_records(),
-        year=year
+        year=year,
+        include_active_catalog_roles=True,
     )
     _graph_cache_at[cache_key] = now
     return _graph_cache[cache_key]

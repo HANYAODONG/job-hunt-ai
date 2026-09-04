@@ -1,0 +1,1198 @@
+{
+  "version": "v5_pymupdf_extractable",
+  "samples": 100,
+  "items": [
+    {
+      "sample_id": "UPLOAD-001",
+      "candidate_id": "resume_001162_exp00_0",
+      "pdf": "resumes/UPLOAD-001-resume_001162_exp00_0.pdf",
+      "pdf_sha256": "1b96f035dcf52c29037e35a4af6beebd047f5384fbe1ea2fa4e12b61a17818d1",
+      "gold_role": "advertising_algorithm",
+      "accepted_jd_ids": [
+        "JOB02806",
+        "JOB07623",
+        "JOB08162"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-002",
+      "candidate_id": "resume_000200_exp03_1",
+      "pdf": "resumes/UPLOAD-002-resume_000200_exp03_1.pdf",
+      "pdf_sha256": "e148799d7868074d403898ba97d8b11d0f1024f17b3e797b2cdf83672fcdea99",
+      "gold_role": "agent_algorithm",
+      "accepted_jd_ids": [
+        "JOB05856",
+        "JOB11277",
+        "JOB11383"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-003",
+      "candidate_id": "resume_002213_exp03_3",
+      "pdf": "resumes/UPLOAD-003-resume_002213_exp03_3.pdf",
+      "pdf_sha256": "002bbec45b860fc8151a2535642dbc38cd03deba0113663245ba2db43247e412",
+      "gold_role": "agent_application",
+      "accepted_jd_ids": [
+        "JOB05431",
+        "JOB09891",
+        "JOB10450"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-004",
+      "candidate_id": "resume_004374_exp01_1",
+      "pdf": "resumes/UPLOAD-004-resume_004374_exp01_1.pdf",
+      "pdf_sha256": "1526e976ed6cfad8e5d02c32380dc978570b820f977287e9f0abda437baee7dc",
+      "gold_role": "ai_application",
+      "accepted_jd_ids": [
+        "JOB00472",
+        "JOB01957",
+        "JOB02024"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-005",
+      "candidate_id": "resume_002816_exp03_2",
+      "pdf": "resumes/UPLOAD-005-resume_002816_exp03_2.pdf",
+      "pdf_sha256": "b5a489c55606e74d8a20ed51a228b8bbe559e52e9359c1e4d50b04c90a4dc3a2",
+      "gold_role": "ai_platform_infra",
+      "accepted_jd_ids": [
+        "JOB04358",
+        "JOB05273",
+        "JOB07963"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-006",
+      "candidate_id": "resume_std_006019_exp08_3",
+      "pdf": "resumes/UPLOAD-006-resume_std_006019_exp08_3.pdf",
+      "pdf_sha256": "042bc54c82f6933e145a31f00fa7ef9d65c4d38b2e40a7f549d58c864b428923",
+      "gold_role": "ai_product",
+      "accepted_jd_ids": [
+        "JOB00224",
+        "JOB00318",
+        "JOB00411"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-007",
+      "candidate_id": "resume_std_005520_exp10_4",
+      "pdf": "resumes/UPLOAD-007-resume_std_005520_exp10_4.pdf",
+      "pdf_sha256": "aad5fdfa9d39e44db96c4dbe33630cc86392a234bf9001d663c88f982996f01a",
+      "gold_role": "ai_security_engineering",
+      "accepted_jd_ids": [
+        "JOB00467",
+        "JOB00483",
+        "JOB00572"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-008",
+      "candidate_id": "resume_000165_exp05_2",
+      "pdf": "resumes/UPLOAD-008-resume_000165_exp05_2.pdf",
+      "pdf_sha256": "49c5517a5a4e805c3edc954ae637d262d11a93c6ab5a5cf0685d35a2c2bbb4ef",
+      "gold_role": "aigc_algorithm",
+      "accepted_jd_ids": [
+        "JOB03082",
+        "JOB03630",
+        "JOB07876"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-009",
+      "candidate_id": "resume_003758_exp08_3",
+      "pdf": "resumes/UPLOAD-009-resume_003758_exp08_3.pdf",
+      "pdf_sha256": "6e9755945e6651dfde60ed323628f8cf1aab99a6a2e441ea7b2f09cce764b843",
+      "gold_role": "algorithm_research",
+      "accepted_jd_ids": [
+        "JOB01257",
+        "JOB10836",
+        "JOB10962"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-010",
+      "candidate_id": "resume_std_005719_exp03_3",
+      "pdf": "resumes/UPLOAD-010-resume_std_005719_exp03_3.pdf",
+      "pdf_sha256": "bba83d42733b61c611c6b85747a381b39c56475e141354ba8723bf16894cf94c",
+      "gold_role": "audio_video_engineering",
+      "accepted_jd_ids": [
+        "JOB04064",
+        "JOB04602",
+        "JOB09312"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-011",
+      "candidate_id": "resume_004643_exp01_0",
+      "pdf": "resumes/UPLOAD-011-resume_004643_exp01_0.pdf",
+      "pdf_sha256": "27a574e0ce38cd633c0278920a804d52b4c91cdf4d380b798bc6748ad0d4394d",
+      "gold_role": "autonomous_driving_algorithm",
+      "accepted_jd_ids": [
+        "JOB09431",
+        "JOB09702",
+        "JOB10104"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-012",
+      "candidate_id": "resume_003587_exp05_2",
+      "pdf": "resumes/UPLOAD-012-resume_003587_exp05_2.pdf",
+      "pdf_sha256": "10f778efcc81dc8c362ccbca31a9b2303077ab19aa48933f1841976b9dc5e164",
+      "gold_role": "backend_engineering",
+      "accepted_jd_ids": [
+        "JOB02339",
+        "JOB05865",
+        "JOB06117"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-013",
+      "candidate_id": "resume_std_005779_exp03_1",
+      "pdf": "resumes/UPLOAD-013-resume_std_005779_exp03_1.pdf",
+      "pdf_sha256": "bdaa32eb4a846d2271b42e737c9c572c105c2f4669ed8245941e94a4e76e65af",
+      "gold_role": "chip_design",
+      "accepted_jd_ids": [
+        "JOB06810",
+        "JOB07385",
+        "JOB11327"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-014",
+      "candidate_id": "resume_std_005840_exp01_0",
+      "pdf": "resumes/UPLOAD-014-resume_std_005840_exp01_0.pdf",
+      "pdf_sha256": "bde575a52d6d013e0c595888d0c8c67f76498ceea5f73afc6b573595f3a91fd8",
+      "gold_role": "chip_test",
+      "accepted_jd_ids": [
+        "JOB01131",
+        "JOB09348",
+        "JOB09451"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-015",
+      "candidate_id": "resume_std_005819_exp01_0",
+      "pdf": "resumes/UPLOAD-015-resume_std_005819_exp01_0.pdf",
+      "pdf_sha256": "6bdf2964a2d1faa5ec3dde23db5a9cdd6a7ae84b57232497d3092b3a366adeb2",
+      "gold_role": "chip_verification",
+      "accepted_jd_ids": [
+        "JOB04021",
+        "JOB04599",
+        "JOB06939"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-016",
+      "candidate_id": "resume_002341_exp10_4",
+      "pdf": "resumes/UPLOAD-016-resume_002341_exp10_4.pdf",
+      "pdf_sha256": "61bbdf862e93c955ecbbab35b3ed58bfefef90687b9243f04d4e7eb7530eec81",
+      "gold_role": "client_engineering",
+      "accepted_jd_ids": [
+        "JOB06723",
+        "JOB06818",
+        "JOB10403"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-017",
+      "candidate_id": "resume_004628_exp01_1",
+      "pdf": "resumes/UPLOAD-017-resume_004628_exp01_1.pdf",
+      "pdf_sha256": "c14f4060835f9724992454ec122955614d11a73c65db933a5948c4046e42bc06",
+      "gold_role": "cloud_engineering",
+      "accepted_jd_ids": [
+        "JOB01847",
+        "JOB04347",
+        "JOB09233"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-018",
+      "candidate_id": "resume_std_005769_exp02_2",
+      "pdf": "resumes/UPLOAD-018-resume_std_005769_exp02_2.pdf",
+      "pdf_sha256": "f96e28eccd1017ea0c3b22d9ed5b331d598d49c0a73121813951b30c3ff10fe8",
+      "gold_role": "communication_engineering",
+      "accepted_jd_ids": [
+        "JOB05890",
+        "JOB05957",
+        "JOB07281"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-019",
+      "candidate_id": "resume_001924_exp00_0",
+      "pdf": "resumes/UPLOAD-019-resume_001924_exp00_0.pdf",
+      "pdf_sha256": "5b48ab4386f9491c8ca9b3db54a28fdcbb9d107d771d4fa0d24c1d884592ce20",
+      "gold_role": "control_algorithm",
+      "accepted_jd_ids": [
+        "JOB07077",
+        "JOB08980",
+        "JOB08997"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-020",
+      "candidate_id": "resume_003606_exp01_1",
+      "pdf": "resumes/UPLOAD-020-resume_003606_exp01_1.pdf",
+      "pdf_sha256": "4ce5390e8a3f0571bd56cf388f63829cf1a00d79d6d7f3cd1d3e1e9b0ef7b84f",
+      "gold_role": "cv_algorithm",
+      "accepted_jd_ids": [
+        "JOB07351",
+        "JOB08224",
+        "JOB10958"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-021",
+      "candidate_id": "resume_004273_exp05_2",
+      "pdf": "resumes/UPLOAD-021-resume_004273_exp05_2.pdf",
+      "pdf_sha256": "187009a80fcfccb4a9e11f4d2e59b34b3170f052eeb46eddb7b895dcc6737068",
+      "gold_role": "data_analysis",
+      "accepted_jd_ids": [
+        "JOB09819",
+        "JOB10233",
+        "JOB10957"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-022",
+      "candidate_id": "resume_000924_exp03_3",
+      "pdf": "resumes/UPLOAD-022-resume_000924_exp03_3.pdf",
+      "pdf_sha256": "af12063a11f18df3acde93f8cf7199a07735d86e982ad69c4efd54956b9e06ba",
+      "gold_role": "data_engineering",
+      "accepted_jd_ids": [
+        "JOB02114",
+        "JOB06405",
+        "JOB06410"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-023",
+      "candidate_id": "resume_005307_exp01_1",
+      "pdf": "resumes/UPLOAD-023-resume_005307_exp01_1.pdf",
+      "pdf_sha256": "4967793bdd9e70c09bda8f9f07cd1ae4342672c11043c6bfb7148c3d89d5acb1",
+      "gold_role": "data_governance",
+      "accepted_jd_ids": [
+        "JOB05139"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-024",
+      "candidate_id": "resume_001064_exp10_4",
+      "pdf": "resumes/UPLOAD-024-resume_001064_exp10_4.pdf",
+      "pdf_sha256": "5e6d087c383e2e98149994fbc12f35c48112606e4a3aa0f2b03730c7b6ea9a05",
+      "gold_role": "data_mining_algorithm",
+      "accepted_jd_ids": [
+        "JOB06487",
+        "JOB06493",
+        "JOB08400"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-025",
+      "candidate_id": "resume_000754_exp00_0",
+      "pdf": "resumes/UPLOAD-025-resume_000754_exp00_0.pdf",
+      "pdf_sha256": "1530d89fb09973f7e1bde149d9c70b04ffbb49924daf96542c6fa9f58f67f164",
+      "gold_role": "data_platform",
+      "accepted_jd_ids": [
+        "JOB01760",
+        "JOB05208",
+        "JOB09430"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-026",
+      "candidate_id": "resume_002957_exp02_0",
+      "pdf": "resumes/UPLOAD-026-resume_002957_exp02_0.pdf",
+      "pdf_sha256": "36b3505e17a4056f7d28f708bf8cf9893ecf9bb6e7f5a4d8d42d7077d9929a13",
+      "gold_role": "data_warehouse",
+      "accepted_jd_ids": [
+        "JOB01001",
+        "JOB01327",
+        "JOB01774"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-027",
+      "candidate_id": "resume_002905_exp02_2",
+      "pdf": "resumes/UPLOAD-027-resume_002905_exp02_2.pdf",
+      "pdf_sha256": "bbac2d7c9ac38767bae2257f1c42e4c83e52f47eb934ea839a74acb6074451b9",
+      "gold_role": "database_engineering",
+      "accepted_jd_ids": [
+        "JOB01018",
+        "JOB08077",
+        "JOB11669"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-028",
+      "candidate_id": "resume_002354_exp05_3",
+      "pdf": "resumes/UPLOAD-028-resume_002354_exp05_3.pdf",
+      "pdf_sha256": "ed36cdadeadfedc1cfbb0168c8b2266d5f550ef5113143fa5cda2131a418d590",
+      "gold_role": "devops_engineering",
+      "accepted_jd_ids": [
+        "JOB03931",
+        "JOB07608",
+        "JOB09489"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-029",
+      "candidate_id": "resume_std_005609_exp08_4",
+      "pdf": "resumes/UPLOAD-029-resume_std_005609_exp08_4.pdf",
+      "pdf_sha256": "05e8aa078768a6f746b5a1913ccfb919a9a9fd1d24077a523c1a62921a61e55a",
+      "gold_role": "driver_software",
+      "accepted_jd_ids": [
+        "JOB06126",
+        "JOB07098",
+        "JOB07437"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-030",
+      "candidate_id": "resume_std_005580_exp02_2",
+      "pdf": "resumes/UPLOAD-030-resume_std_005580_exp02_2.pdf",
+      "pdf_sha256": "ff89adf0d0b9f2000e62976a4d5d5147d7fa9dd4bb64129c0fc881b6b1f79150",
+      "gold_role": "embedded_software",
+      "accepted_jd_ids": [
+        "JOB01044",
+        "JOB01208",
+        "JOB04211"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-031",
+      "candidate_id": "resume_004659_exp00_0",
+      "pdf": "resumes/UPLOAD-031-resume_004659_exp00_0.pdf",
+      "pdf_sha256": "37fd1bb62073cc35b9517fd05505ab047848145799c78b5fbfd6350791dc9449",
+      "gold_role": "frontend_engineering",
+      "accepted_jd_ids": [
+        "JOB02460",
+        "JOB02461",
+        "JOB06455"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-032",
+      "candidate_id": "resume_000392_exp02_2",
+      "pdf": "resumes/UPLOAD-032-resume_000392_exp02_2.pdf",
+      "pdf_sha256": "959a2232ea2e288f0580eeba2a441ad09ebf1fa50ba32ab88fc8bd114586ae04",
+      "gold_role": "fullstack_engineering",
+      "accepted_jd_ids": [
+        "JOB06551",
+        "JOB06624",
+        "JOB07847"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-033",
+      "candidate_id": "resume_std_005700_exp01_0",
+      "pdf": "resumes/UPLOAD-033-resume_std_005700_exp01_0.pdf",
+      "pdf_sha256": "8a4625d8ddf3817a0b9fb8d57f81e32f27a1ab6d663639342d0432f92515c693",
+      "gold_role": "graphics_engineering",
+      "accepted_jd_ids": [
+        "JOB03592",
+        "JOB08950",
+        "JOB09099"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-034",
+      "candidate_id": "resume_std_005989_exp00_0",
+      "pdf": "resumes/UPLOAD-034-resume_std_005989_exp00_0.pdf",
+      "pdf_sha256": "c06491ea76167d3f8ee6c8787546401f3993d21110ee0b25e666159abea86dd5",
+      "gold_role": "hardware_engineering",
+      "accepted_jd_ids": [
+        "JOB07093",
+        "JOB07193",
+        "JOB11498"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-035",
+      "candidate_id": "resume_000559_exp00_0",
+      "pdf": "resumes/UPLOAD-035-resume_000559_exp00_0.pdf",
+      "pdf_sha256": "7386467733ab5c148ca719ff0337a500ec90d11e17d4391c0978e1337c483722",
+      "gold_role": "llm_algorithm",
+      "accepted_jd_ids": [
+        "JOB05828",
+        "JOB06647",
+        "JOB10229"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-036",
+      "candidate_id": "resume_001610_exp03_3",
+      "pdf": "resumes/UPLOAD-036-resume_001610_exp03_3.pdf",
+      "pdf_sha256": "12eebefef9f791444d6e261141fdc20a4e8f5e306bdd24d10178da3d57fefb7f",
+      "gold_role": "llm_application",
+      "accepted_jd_ids": [
+        "JOB00491",
+        "JOB00546",
+        "JOB07506"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-037",
+      "candidate_id": "resume_003954_exp01_1",
+      "pdf": "resumes/UPLOAD-037-resume_003954_exp01_1.pdf",
+      "pdf_sha256": "60524d81e32aa8a5fd96e631291de45f3dd74b6cc134b5411789634371807779",
+      "gold_role": "ml_algorithm",
+      "accepted_jd_ids": [
+        "JOB00494",
+        "JOB00566",
+        "JOB06579"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-038",
+      "candidate_id": "resume_004600_exp02_2",
+      "pdf": "resumes/UPLOAD-038-resume_004600_exp02_2.pdf",
+      "pdf_sha256": "dbdc0661501bfb5a0fe302d7560bd69cfcb460226d66d198c1ecd82a8f2d1768",
+      "gold_role": "model_testing",
+      "accepted_jd_ids": [
+        "JOB09158",
+        "JOB09802",
+        "JOB10267"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-039",
+      "candidate_id": "resume_002596_exp02_2",
+      "pdf": "resumes/UPLOAD-039-resume_002596_exp02_2.pdf",
+      "pdf_sha256": "813e2d03efa0001dce2a15ce725ab617f8bc98bf1db1952bc68de8a5e1db4299",
+      "gold_role": "multimodal_algorithm",
+      "accepted_jd_ids": [
+        "JOB01244",
+        "JOB04298",
+        "JOB11789"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-040",
+      "candidate_id": "resume_002611_exp03_3",
+      "pdf": "resumes/UPLOAD-040-resume_002611_exp03_3.pdf",
+      "pdf_sha256": "d16178014481299ac768ebfe26ef7d5fece414b9308eddeebe86245e5d510554",
+      "gold_role": "network_engineering",
+      "accepted_jd_ids": [
+        "JOB00902",
+        "JOB07798",
+        "JOB09440"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-041",
+      "candidate_id": "resume_002327_exp03_1",
+      "pdf": "resumes/UPLOAD-041-resume_002327_exp03_1.pdf",
+      "pdf_sha256": "d7c87d981403a05ca68e54af87b8c7f649792d641d433db4ae4a9fb5214503f2",
+      "gold_role": "nlp_algorithm",
+      "accepted_jd_ids": [
+        "JOB05625",
+        "JOB06054",
+        "JOB06454"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-042",
+      "candidate_id": "resume_005225_exp03_1",
+      "pdf": "resumes/UPLOAD-042-resume_005225_exp03_1.pdf",
+      "pdf_sha256": "a2592cb2608659486a932ef517aa77710fed176d33014164b76dc59d93f1da42",
+      "gold_role": "operations_engineering",
+      "accepted_jd_ids": [
+        "JOB01341",
+        "JOB04028",
+        "JOB06125"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-043",
+      "candidate_id": "resume_std_005900_exp08_3",
+      "pdf": "resumes/UPLOAD-043-resume_std_005900_exp08_3.pdf",
+      "pdf_sha256": "cda7eb48f63ef37c98479ea3f776794c65e358282f70659176c6d364448030de",
+      "gold_role": "power_engineering",
+      "accepted_jd_ids": [
+        "JOB00381",
+        "JOB06974",
+        "JOB06975"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-044",
+      "candidate_id": "resume_003371_exp10_4",
+      "pdf": "resumes/UPLOAD-044-resume_003371_exp10_4.pdf",
+      "pdf_sha256": "5178945c0957ad2f7de942b6c1415e74073025abbf78a02efc03aca62caafa2c",
+      "gold_role": "quality_engineering",
+      "accepted_jd_ids": [
+        "JOB07252",
+        "JOB08647",
+        "JOB10273"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-045",
+      "candidate_id": "resume_004994_exp05_2",
+      "pdf": "resumes/UPLOAD-045-resume_004994_exp05_2.pdf",
+      "pdf_sha256": "87e31d0ee45f47baa1e48febffd674f09c699732130e5d42f44d8bf5f85ec693",
+      "gold_role": "recommendation_algorithm",
+      "accepted_jd_ids": [
+        "JOB03063",
+        "JOB04524",
+        "JOB05565"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-046",
+      "candidate_id": "resume_002621_exp10_4",
+      "pdf": "resumes/UPLOAD-046-resume_002621_exp10_4.pdf",
+      "pdf_sha256": "4e70869899a83e08479f27901f9a252053c664c1224373afcb678bb1b93bb549",
+      "gold_role": "risk_algorithm",
+      "accepted_jd_ids": [
+        "JOB01951",
+        "JOB07640",
+        "JOB10817"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-047",
+      "candidate_id": "resume_003474_exp08_4",
+      "pdf": "resumes/UPLOAD-047-resume_003474_exp08_4.pdf",
+      "pdf_sha256": "e2fcb8601df12d70e2ba058d153d7f7da5847b57d0fcaefffdfca7e507517800",
+      "gold_role": "robotics_algorithm",
+      "accepted_jd_ids": [
+        "JOB05212",
+        "JOB05395",
+        "JOB09883"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-048",
+      "candidate_id": "resume_std_005659_exp08_3",
+      "pdf": "resumes/UPLOAD-048-resume_std_005659_exp08_3.pdf",
+      "pdf_sha256": "99efbc1e8e0e553264b501c6e622f13e8cb5c1c570b11e2701d16207fd654d49",
+      "gold_role": "robotics_software",
+      "accepted_jd_ids": [
+        "JOB01596"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-049",
+      "candidate_id": "resume_001665_exp00_0",
+      "pdf": "resumes/UPLOAD-049-resume_001665_exp00_0.pdf",
+      "pdf_sha256": "a6395b1f15988298f58bc5dcaee14961fc4c52cfa1b0d15e7ac5b0e16654471b",
+      "gold_role": "search_algorithm",
+      "accepted_jd_ids": [
+        "JOB04782",
+        "JOB05381",
+        "JOB05489"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-050",
+      "candidate_id": "resume_000502_exp10_4",
+      "pdf": "resumes/UPLOAD-050-resume_000502_exp10_4.pdf",
+      "pdf_sha256": "cb9cb1599feec1d50783a4c860d30473a8e33a4f295e43c0fc8409cc366aa66a",
+      "gold_role": "server_engineering",
+      "accepted_jd_ids": [
+        "JOB03714",
+        "JOB10466",
+        "JOB11959"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-051",
+      "candidate_id": "resume_004288_exp03_1",
+      "pdf": "resumes/UPLOAD-051-resume_004288_exp03_1.pdf",
+      "pdf_sha256": "861fda3a65f337ab72d255c1bc8ee0ac6e3f55978db56c177b901a56a0307f3b",
+      "gold_role": "software_architecture",
+      "accepted_jd_ids": [
+        "JOB03317",
+        "JOB11390",
+        "JOB11800"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-052",
+      "candidate_id": "resume_000213_exp03_1",
+      "pdf": "resumes/UPLOAD-052-resume_000213_exp03_1.pdf",
+      "pdf_sha256": "4b32eee11b2ce7042c35756058a4061a6909d39eaf04a3998d3f7964fed6a686",
+      "gold_role": "software_testing",
+      "accepted_jd_ids": [
+        "JOB06858",
+        "JOB07820",
+        "JOB08435"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-053",
+      "candidate_id": "resume_003794_exp01_1",
+      "pdf": "resumes/UPLOAD-053-resume_003794_exp01_1.pdf",
+      "pdf_sha256": "9e39be6342a65cffda21aaa13b4dfa270f7b25d77c9f3e5af77ac5dc3d8a44e4",
+      "gold_role": "solution_engineering",
+      "accepted_jd_ids": [
+        "JOB06343",
+        "JOB11336",
+        "JOB11982"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-054",
+      "candidate_id": "resume_002797_exp03_1",
+      "pdf": "resumes/UPLOAD-054-resume_002797_exp03_1.pdf",
+      "pdf_sha256": "b2bc15138fb5690c85f466827760911e4874c3ba5952680f5ec49a66d7e17f9c",
+      "gold_role": "speech_algorithm",
+      "accepted_jd_ids": [
+        "JOB02072",
+        "JOB05482",
+        "JOB08088"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-055",
+      "candidate_id": "resume_std_005930_exp05_4",
+      "pdf": "resumes/UPLOAD-055-resume_std_005930_exp05_4.pdf",
+      "pdf_sha256": "d9c3f8802043f3f682264437d479640426c2d038740aee06e7ed6d7e9c9c0c86",
+      "gold_role": "structural_engineering",
+      "accepted_jd_ids": [
+        "JOB00289",
+        "JOB04113",
+        "JOB09949"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-056",
+      "candidate_id": "resume_std_005539_exp05_3",
+      "pdf": "resumes/UPLOAD-056-resume_std_005539_exp05_3.pdf",
+      "pdf_sha256": "1a78129e6adc25fcd5d677df064c92b8dafb8ff817131e220cdece09f3e82f98",
+      "gold_role": "system_software",
+      "accepted_jd_ids": [
+        "JOB00484",
+        "JOB11170",
+        "JOB11717"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-057",
+      "candidate_id": "resume_003726_exp01_0",
+      "pdf": "resumes/UPLOAD-057-resume_003726_exp01_0.pdf",
+      "pdf_sha256": "e57814d01432c72f8d51fb17a9b08302187688c41608785c8667be4140f217ca",
+      "gold_role": "technical_support",
+      "accepted_jd_ids": [
+        "JOB10296",
+        "JOB12432",
+        "JOB12465"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-058",
+      "candidate_id": "resume_002746_exp05_3",
+      "pdf": "resumes/UPLOAD-058-resume_002746_exp05_3.pdf",
+      "pdf_sha256": "4a40d83abd4f4a8ef9475e5a9acb9fd226f374d469ec2c9dbea7bd2a1327af41",
+      "gold_role": "test_development",
+      "accepted_jd_ids": [
+        "JOB05852",
+        "JOB07712",
+        "JOB08061"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-059",
+      "candidate_id": "resume_std_005959_exp05_3",
+      "pdf": "resumes/UPLOAD-059-resume_std_005959_exp05_3.pdf",
+      "pdf_sha256": "eed409316b7e19d479662696f88f85789caacbcb93f716dc4bc5f43ae604316b",
+      "gold_role": "thermal_engineering",
+      "accepted_jd_ids": [
+        "JOB00513",
+        "JOB00582",
+        "JOB03107"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-060",
+      "candidate_id": "resume_002459_exp02_1",
+      "pdf": "resumes/UPLOAD-060-resume_002459_exp02_1.pdf",
+      "pdf_sha256": "339c55386d16f0c69926c12315a0ed99f80b9e34cc2ccf02f87850c4d5b06a52",
+      "gold_role": "backend_engineering",
+      "accepted_jd_ids": [
+        "JOB02339",
+        "JOB05865",
+        "JOB06438"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-061",
+      "candidate_id": "resume_002102_exp08_4",
+      "pdf": "resumes/UPLOAD-061-resume_002102_exp08_4.pdf",
+      "pdf_sha256": "39e3138560fd77b4b54ee50ce23891fd45fe2150004fdb16bd20bd4ffaece3aa",
+      "gold_role": "client_engineering",
+      "accepted_jd_ids": [
+        "JOB06723",
+        "JOB06818",
+        "JOB10403"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-062",
+      "candidate_id": "resume_000323_exp02_2",
+      "pdf": "resumes/UPLOAD-062-resume_000323_exp02_2.pdf",
+      "pdf_sha256": "4f947624f207a8cd432a7e58cfc0d64864e2919d8de364f666e6ee68d8b9d5a0",
+      "gold_role": "client_engineering",
+      "accepted_jd_ids": [
+        "JOB06723",
+        "JOB06818",
+        "JOB10403"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-063",
+      "candidate_id": "resume_002214_exp02_1",
+      "pdf": "resumes/UPLOAD-063-resume_002214_exp02_1.pdf",
+      "pdf_sha256": "a39c3023b690842ba1573dff57f0ea00ae56a6d957881df955e1ce218b3362dc",
+      "gold_role": "data_engineering",
+      "accepted_jd_ids": [
+        "JOB00749",
+        "JOB02114",
+        "JOB06410"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-064",
+      "candidate_id": "resume_002138_exp08_3",
+      "pdf": "resumes/UPLOAD-064-resume_002138_exp08_3.pdf",
+      "pdf_sha256": "9c6dd17591ad2e7b9cf59336d2ec37bb65d30891de03e6d38b3877f6bac59deb",
+      "gold_role": "backend_engineering",
+      "accepted_jd_ids": [
+        "JOB07359",
+        "JOB07698",
+        "JOB07824"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-065",
+      "candidate_id": "resume_004350_exp08_3",
+      "pdf": "resumes/UPLOAD-065-resume_004350_exp08_3.pdf",
+      "pdf_sha256": "d2c3e9904b89e4eff61c220e9bbaa60e76997e925e0e69cc470097d4836ea93d",
+      "gold_role": "backend_engineering",
+      "accepted_jd_ids": [
+        "JOB05865",
+        "JOB09530",
+        "JOB10252"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-066",
+      "candidate_id": "resume_003439_exp08_4",
+      "pdf": "resumes/UPLOAD-066-resume_003439_exp08_4.pdf",
+      "pdf_sha256": "6e3da8066bdb5c85aa5484184773e2343be558591c06637285a8ea9c727534c7",
+      "gold_role": "ai_platform_infra",
+      "accepted_jd_ids": [
+        "JOB04358",
+        "JOB05273",
+        "JOB07963"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-067",
+      "candidate_id": "resume_000393_exp03_3",
+      "pdf": "resumes/UPLOAD-067-resume_000393_exp03_3.pdf",
+      "pdf_sha256": "28c15d4e213aca440559c777e47bd95756259598aaf4e2f2a30553e8153180c0",
+      "gold_role": "data_governance",
+      "accepted_jd_ids": [
+        "JOB05139"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-068",
+      "candidate_id": "resume_001939_exp02_2",
+      "pdf": "resumes/UPLOAD-068-resume_001939_exp02_2.pdf",
+      "pdf_sha256": "e50096604a40a56d2a89a9e9c43b8948d22b261688c438a40e605c6ee6ba4c40",
+      "gold_role": "quality_engineering",
+      "accepted_jd_ids": [
+        "JOB07252",
+        "JOB08647",
+        "JOB10273"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-069",
+      "candidate_id": "resume_005357_exp03_2",
+      "pdf": "resumes/UPLOAD-069-resume_005357_exp03_2.pdf",
+      "pdf_sha256": "aaeed65c945ee8c554c5b5ecb2c611246d8dc6a804f1381df95a97096db08b7d",
+      "gold_role": "server_engineering",
+      "accepted_jd_ids": [
+        "JOB03714",
+        "JOB10466",
+        "JOB11959"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-070",
+      "candidate_id": "resume_003287_exp08_3",
+      "pdf": "resumes/UPLOAD-070-resume_003287_exp08_3.pdf",
+      "pdf_sha256": "cd59f8a7e688103c01b2229e99d73ce9f6d73a0376aba15fae273d2b45bb33ce",
+      "gold_role": "data_warehouse",
+      "accepted_jd_ids": [
+        "JOB01001",
+        "JOB01327",
+        "JOB01774"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-071",
+      "candidate_id": "resume_001518_exp01_1",
+      "pdf": "resumes/UPLOAD-071-resume_001518_exp01_1.pdf",
+      "pdf_sha256": "10d07bde4b63cdff8ce9e4c91102bad50825d34738b2554fe5fde1250a2d112a",
+      "gold_role": "cv_algorithm",
+      "accepted_jd_ids": [
+        "JOB08793",
+        "JOB08797",
+        "JOB10958"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-072",
+      "candidate_id": "resume_001603_exp10_4",
+      "pdf": "resumes/UPLOAD-072-resume_001603_exp10_4.pdf",
+      "pdf_sha256": "e2e55a64d0f7598ee7a7be4844131cb4ed0b202d4d05ad41809d599d95fc98ee",
+      "gold_role": "solution_engineering",
+      "accepted_jd_ids": [
+        "JOB11336",
+        "JOB11982",
+        "JOB12360"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-073",
+      "candidate_id": "resume_std_005979_exp03_3",
+      "pdf": "resumes/UPLOAD-073-resume_std_005979_exp03_3.pdf",
+      "pdf_sha256": "ceaa48d27d96ad37e73315b70098b2ab7e45ae4234ccbc145f1d481fd4a624ed",
+      "gold_role": "thermal_engineering",
+      "accepted_jd_ids": [
+        "JOB00513",
+        "JOB00582",
+        "JOB03107"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-074",
+      "candidate_id": "resume_std_006000_exp05_4",
+      "pdf": "resumes/UPLOAD-074-resume_std_006000_exp05_4.pdf",
+      "pdf_sha256": "2d540a314b5ebd9fa300c37565181a789e4bdf6a788956e4d456f38273920f7d",
+      "gold_role": "hardware_engineering",
+      "accepted_jd_ids": [
+        "JOB07093",
+        "JOB07193",
+        "JOB11498"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-075",
+      "candidate_id": "resume_001548_exp05_4",
+      "pdf": "resumes/UPLOAD-075-resume_001548_exp05_4.pdf",
+      "pdf_sha256": "f3b6199ec4f75813bf30c66857f5743705e8c8decd24670b9afa6662fa248a38",
+      "gold_role": "model_testing",
+      "accepted_jd_ids": [
+        "JOB09158",
+        "JOB09802",
+        "JOB10267"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-076",
+      "candidate_id": "resume_004358_exp08_3",
+      "pdf": "resumes/UPLOAD-076-resume_004358_exp08_3.pdf",
+      "pdf_sha256": "992afd20fb7ba85814761888c5eff3a2898e33b62ad856f027b518c7e79808f5",
+      "gold_role": "agent_algorithm",
+      "accepted_jd_ids": [
+        "JOB08368",
+        "JOB11277",
+        "JOB11383"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-077",
+      "candidate_id": "resume_std_005850_exp08_3",
+      "pdf": "resumes/UPLOAD-077-resume_std_005850_exp08_3.pdf",
+      "pdf_sha256": "98d7e7450b8a1eb6a7a0036cacf6d78a752ad3d4ea6bf397831034ac781807ff",
+      "gold_role": "chip_test",
+      "accepted_jd_ids": [
+        "JOB01131",
+        "JOB09348",
+        "JOB09451"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-078",
+      "candidate_id": "resume_005359_exp00_0",
+      "pdf": "resumes/UPLOAD-078-resume_005359_exp00_0.pdf",
+      "pdf_sha256": "1e4b3d5d84f9421ae308ffb7049f6475f5c5c46b469cb094b3ca0517bf093007",
+      "gold_role": "frontend_engineering",
+      "accepted_jd_ids": [
+        "JOB02460",
+        "JOB02461",
+        "JOB06455"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-079",
+      "candidate_id": "resume_000559_exp08_3",
+      "pdf": "resumes/UPLOAD-079-resume_000559_exp08_3.pdf",
+      "pdf_sha256": "055836db7c94696f9f7d297e46c67c082c1925e86d385af7eeb40f8fea3352c9",
+      "gold_role": "llm_algorithm",
+      "accepted_jd_ids": [
+        "JOB05828",
+        "JOB06647",
+        "JOB10229"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-080",
+      "candidate_id": "resume_003269_exp10_4",
+      "pdf": "resumes/UPLOAD-080-resume_003269_exp10_4.pdf",
+      "pdf_sha256": "e8eb53f52db3ee045b1d91cda90969b9d6dc0ca136ac7cbda43f2270f91219a3",
+      "gold_role": "risk_algorithm",
+      "accepted_jd_ids": [
+        "JOB00609",
+        "JOB02734",
+        "JOB07640"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-081",
+      "candidate_id": "resume_std_005609_exp03_2",
+      "pdf": "resumes/UPLOAD-081-resume_std_005609_exp03_2.pdf",
+      "pdf_sha256": "4defb4c1509ad51e88ecc67b4e380c08a1712a0a916d789923a08432f3525549",
+      "gold_role": "driver_software",
+      "accepted_jd_ids": [
+        "JOB06126",
+        "JOB07098",
+        "JOB07437"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-082",
+      "candidate_id": "resume_std_005919_exp10_4",
+      "pdf": "resumes/UPLOAD-082-resume_std_005919_exp10_4.pdf",
+      "pdf_sha256": "fd08494b966bb0ad0faae8f031bd0214eacfff32132863caf776a2d66cd1e2e3",
+      "gold_role": "power_engineering",
+      "accepted_jd_ids": [
+        "JOB00381",
+        "JOB06974",
+        "JOB06975"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-083",
+      "candidate_id": "resume_std_005509_exp03_3",
+      "pdf": "resumes/UPLOAD-083-resume_std_005509_exp03_3.pdf",
+      "pdf_sha256": "419018ef62d12d443000ad7a2a21aa20cbf96d9f91f5a6747235c45f515b56ff",
+      "gold_role": "ai_security_engineering",
+      "accepted_jd_ids": [
+        "JOB00467",
+        "JOB00483",
+        "JOB00572"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-084",
+      "candidate_id": "resume_002756_exp05_2",
+      "pdf": "resumes/UPLOAD-084-resume_002756_exp05_2.pdf",
+      "pdf_sha256": "e801c1667ee7d6b621c778fa7236a36e1d844d979dd56889bfc4c7cde24333c7",
+      "gold_role": "data_mining_algorithm",
+      "accepted_jd_ids": [
+        "JOB06487",
+        "JOB06493",
+        "JOB08400"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-085",
+      "candidate_id": "resume_std_005909_exp01_1",
+      "pdf": "resumes/UPLOAD-085-resume_std_005909_exp01_1.pdf",
+      "pdf_sha256": "ce909bd0266c1c1b4efa299c5731e300f168538795f53984587a9805829b473a",
+      "gold_role": "power_engineering",
+      "accepted_jd_ids": [
+        "JOB00381",
+        "JOB06974",
+        "JOB06975"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-086",
+      "candidate_id": "resume_003049_exp08_3",
+      "pdf": "resumes/UPLOAD-086-resume_003049_exp08_3.pdf",
+      "pdf_sha256": "8169049368897c376e3d219c72508fccdbcfac959d62a80a0b089bbea93ae93a",
+      "gold_role": "software_architecture",
+      "accepted_jd_ids": [
+        "JOB03728",
+        "JOB09894",
+        "JOB11800"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-087",
+      "candidate_id": "resume_001162_exp01_1",
+      "pdf": "resumes/UPLOAD-087-resume_001162_exp01_1.pdf",
+      "pdf_sha256": "1e5dca5aa591880e3f280b110f68a77bd91cafa3bd7026920c0fc0b7994f20f4",
+      "gold_role": "advertising_algorithm",
+      "accepted_jd_ids": [
+        "JOB02806",
+        "JOB07623",
+        "JOB08162"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-088",
+      "candidate_id": "resume_std_005839_exp00_0",
+      "pdf": "resumes/UPLOAD-088-resume_std_005839_exp00_0.pdf",
+      "pdf_sha256": "16e23e9d0e31523db5ffc1afa897572e064fbff8ec8ade03b1b4981af9bc4478",
+      "gold_role": "chip_test",
+      "accepted_jd_ids": [
+        "JOB01131",
+        "JOB09348",
+        "JOB09451"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-089",
+      "candidate_id": "resume_004607_exp02_2",
+      "pdf": "resumes/UPLOAD-089-resume_004607_exp02_2.pdf",
+      "pdf_sha256": "80d9280c910cf4c2c8cb31ab1f2e55dd37d99ece8c5dd742fbc71cbfbce9aa49",
+      "gold_role": "autonomous_driving_algorithm",
+      "accepted_jd_ids": [
+        "JOB09702",
+        "JOB10104",
+        "JOB10305"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-090",
+      "candidate_id": "resume_004517_exp02_1",
+      "pdf": "resumes/UPLOAD-090-resume_004517_exp02_1.pdf",
+      "pdf_sha256": "f84f9f671d95d1292b26b56dca7eb0a3dd90eae2d3f3070124de37c5420a2460",
+      "gold_role": "ai_platform_infra",
+      "accepted_jd_ids": [
+        "JOB01318",
+        "JOB07922",
+        "JOB07963"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-091",
+      "candidate_id": "resume_001614_exp05_2",
+      "pdf": "resumes/UPLOAD-091-resume_001614_exp05_2.pdf",
+      "pdf_sha256": "ffd0489896d0d0160a86bdd1f218268427a6a8cba3cc744fe30e7a661aaac609",
+      "gold_role": "technical_support",
+      "accepted_jd_ids": [
+        "JOB03073",
+        "JOB12432",
+        "JOB12465"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-092",
+      "candidate_id": "resume_std_005669_exp01_1",
+      "pdf": "resumes/UPLOAD-092-resume_std_005669_exp01_1.pdf",
+      "pdf_sha256": "0ab054cf1ee56b6fdedc6ce1a47b818ed63e1963d2c9cd46d74d9d69fa3d0bf2",
+      "gold_role": "robotics_software",
+      "accepted_jd_ids": [
+        "JOB01596"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-093",
+      "candidate_id": "resume_001548_exp02_2",
+      "pdf": "resumes/UPLOAD-093-resume_001548_exp02_2.pdf",
+      "pdf_sha256": "d58b587227f004f679db6c49cfce86c4ecc7876f15bbc020c04ed08dd19a96eb",
+      "gold_role": "model_testing",
+      "accepted_jd_ids": [
+        "JOB09158",
+        "JOB09802",
+        "JOB10267"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-094",
+      "candidate_id": "resume_std_005689_exp01_1",
+      "pdf": "resumes/UPLOAD-094-resume_std_005689_exp01_1.pdf",
+      "pdf_sha256": "3605e173a035229e678366197c48b5b1024421d21fdb1a2220acacd37d27e166",
+      "gold_role": "graphics_engineering",
+      "accepted_jd_ids": [
+        "JOB03592",
+        "JOB08950",
+        "JOB09099"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-095",
+      "candidate_id": "resume_002819_exp10_4",
+      "pdf": "resumes/UPLOAD-095-resume_002819_exp10_4.pdf",
+      "pdf_sha256": "869b2f9e6522674e53fb0cbb78c587d72d09805aab0c8a3422139ef9e04811b1",
+      "gold_role": "risk_algorithm",
+      "accepted_jd_ids": [
+        "JOB02734",
+        "JOB07640",
+        "JOB10817"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-096",
+      "candidate_id": "resume_000748_exp02_2",
+      "pdf": "resumes/UPLOAD-096-resume_000748_exp02_2.pdf",
+      "pdf_sha256": "f65c4257c9bb5be170b6a6116e93f59635b9bc132a8cab99b6332b659efe73cc",
+      "gold_role": "data_platform",
+      "accepted_jd_ids": [
+        "JOB01760",
+        "JOB05208",
+        "JOB09430"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-097",
+      "candidate_id": "resume_std_005589_exp08_3",
+      "pdf": "resumes/UPLOAD-097-resume_std_005589_exp08_3.pdf",
+      "pdf_sha256": "b985d8d453d8cd73b763f52cec94f84b4fb793a9285ed8357bcfcc78967eea6d",
+      "gold_role": "embedded_software",
+      "accepted_jd_ids": [
+        "JOB01044",
+        "JOB01208",
+        "JOB04211"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-098",
+      "candidate_id": "resume_001898_exp03_3",
+      "pdf": "resumes/UPLOAD-098-resume_001898_exp03_3.pdf",
+      "pdf_sha256": "576fa289e05e7b6b92c4437ec1dc227a136f5eb3dc23da23bd7815c96d1a545c",
+      "gold_role": "recommendation_algorithm",
+      "accepted_jd_ids": [
+        "JOB03063",
+        "JOB04524",
+        "JOB05565"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-099",
+      "candidate_id": "resume_004737_exp00_0",
+      "pdf": "resumes/UPLOAD-099-resume_004737_exp00_0.pdf",
+      "pdf_sha256": "af45d2934058c43d0ba7eaec87c3170c38e1115aab139f00cd1dd11bc28f1812",
+      "gold_role": "ai_application",
+      "accepted_jd_ids": [
+        "JOB00472",
+        "JOB01957",
+        "JOB02024"
+      ]
+    },
+    {
+      "sample_id": "UPLOAD-100",
+      "candidate_id": "resume_std_005599_exp01_1",
+      "pdf": "resumes/UPLOAD-100-resume_std_005599_exp01_1.pdf",
+      "pdf_sha256": "a783e6194a59710578e03960f354f73ddba27c064a6c1b80bbc6012c278a255c",
+      "gold_role": "driver_software",
+      "accepted_jd_ids": [
+        "JOB06126",
+        "JOB07098",
+        "JOB07437"
+      ]
+    }
+  ]
+}

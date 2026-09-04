@@ -1,4 +1,4 @@
-import { getJobById, getJobRecommendations, uploadResume } from './api';
+import { getJobById, getJobRecommendations, searchJobsWithResume, uploadResume } from './api';
 import {
   analyzeKnowledgeGraphGap,
   rerankSemantic,
@@ -16,6 +16,7 @@ import {
 jest.mock('./api', () => ({
   getJobById: jest.fn(),
   getJobRecommendations: jest.fn(),
+  searchJobsWithResume: jest.fn(),
   uploadResume: jest.fn(),
 }));
 
@@ -183,6 +184,91 @@ describe('diagnoseCandidate', () => {
     expect(result.matches[0].gaps[0]).toMatchObject({ skill: 'TypeScript', current: 0, target: 100 });
   });
 
+  it('uses the local canonical two-stage result for uploaded resume diagnosis', async () => {
+    const resume = new File(['resume'], 'resume.pdf', { type: 'application/pdf' });
+    uploadResume.mockResolvedValue({
+      candidate: { id: 'candidate-2', name: '本地测试用户', skills: [] },
+      extracted_skills: ['Python'],
+      experience_summary: '后端项目经验',
+    });
+    searchJobsWithResume.mockResolvedValue({
+      explanations: {
+        matching_pipeline: 'canonical_two_stage_v2',
+        selected_canonical_role: '后端开发工程师',
+        top_role_candidates: [{
+          canonical_role_id: 'backend_engineering',
+          canonical_role: '后端开发工程师',
+          role_score: 0.86,
+          representative_job: {
+            id: 'job-v2', title: '高级后端开发工程师', job_family: '后端开发工程师', company_name: '示例企业', rerank_score: 0.86,
+            search_metadata: { canonical_role_id: 'backend_engineering', canonical_role: '后端开发工程师', canonical_direction: '服务端与工程架构', match_explanation: { components: { 'Skill Match': { details: { matched_skills: ['Python'], missing_skills: ['Docker'] } }, 'Job Description Match': { score: 0.5 } } } },
+          },
+        }, {
+          canonical_role_id: 'data_engineering',
+          canonical_role: '数据工程师',
+          role_score: 0.71,
+          representative_job: {
+            id: 'job-data', title: '数据工程师', job_family: '数据工程师', company_name: '示例企业', rerank_score: 0.71,
+            search_metadata: { canonical_role_id: 'data_engineering', canonical_role: '数据工程师', canonical_direction: '数据工程', match_explanation: { components: { 'Skill Match': { details: { matched_skills: ['Python'], missing_skills: ['SQL'] } }, 'Job Description Match': { score: 0.4 } } } },
+          },
+        }],
+      },
+      jobs: [{
+        id: 'job-v2',
+        title: '高级后端开发工程师',
+        job_family: '后端开发工程师',
+        company_name: '示例企业',
+        rerank_score: 0.86,
+        search_metadata: {
+          canonical_role_id: 'backend_engineering',
+          canonical_role: '后端开发工程师',
+          canonical_direction: '服务端与工程架构',
+          match_explanation: {
+            components: {
+              'Skill Match': { details: { matched_skills: ['Python'], missing_skills: ['Docker'] } },
+              'Job Description Match': { score: 0.5 },
+            },
+          },
+        },
+      }, {
+        id: 'job-v2-secondary',
+        title: '后端开发工程师（另一条 JD）',
+        job_family: '后端开发工程师',
+        company_name: '另一家企业',
+        rerank_score: 0.42,
+        search_metadata: {
+          canonical_role_id: 'backend_engineering',
+          canonical_role: '后端开发工程师',
+          canonical_direction: '服务端与工程架构',
+          match_explanation: {
+            components: {
+              'Skill Match': { details: { matched_skills: ['Python'], missing_skills: ['Agentic RL'] } },
+              'Job Description Match': { score: 0.4 },
+            },
+          },
+        },
+      }],
+    });
+
+    const result = await diagnoseCandidate({ resumeFile: resume });
+
+    expect(searchJobsWithResume).toHaveBeenCalledWith(
+      expect.objectContaining({ query: expect.stringContaining('Python'), limit: 10 }),
+      resume,
+      'auto'
+    );
+    expect(result.pipeline.mode).toBe('canonical-two-stage');
+    expect(result.matches).toHaveLength(2);
+    expect(result.matches[0]).toMatchObject({
+      role: '后端开发工程师',
+      family: '服务端与工程架构',
+      score: 86,
+      roleScore: 86,
+    });
+    expect(result.matches[1]).toMatchObject({ role: '数据工程师', family: '数据工程' });
+    expect(getJobRecommendations).not.toHaveBeenCalled();
+  });
+
   it('falls back to the existing recommendation workflow when canonical indexes cannot form a full chain', async () => {
     const resume = new File(['resume'], 'resume.pdf', { type: 'application/pdf' });
     const candidate = {
@@ -214,7 +300,7 @@ describe('diagnoseCandidate', () => {
 
     const result = await diagnoseCandidate({ resumeFile: resume });
 
-    expect(uploadResume).toHaveBeenCalledWith(resume);
+    expect(uploadResume).toHaveBeenCalledWith(resume, 'auto');
     expect(getJobRecommendations).toHaveBeenCalledWith(candidate);
     expect(result.pipeline).toMatchObject({ mode: 'legacy-fallback', warning: 'BM25 索引不可用' });
     expect(result.source).toBe('live');

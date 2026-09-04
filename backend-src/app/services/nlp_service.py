@@ -1,4 +1,7 @@
 from typing import List, Dict, Any, Optional, Tuple
+from pathlib import Path
+import json
+import os
 import logging
 import re
 import numpy as np
@@ -30,6 +33,41 @@ except ImportError:  # pragma: no cover - optional dependency
     TextBlob = None
 
 logger = logging.getLogger(__name__)
+_CANONICAL_VOCABULARY: Optional[List[str]] = None
+
+_RESUME_SECTION_HEADINGS = {
+    "个人简历", "基本信息", "个人概述", "教育背景", "技能栈", "技术栈",
+    "专业技能", "核心技能", "工作经历", "项目经历", "综合能力",
+    "证书", "认证", "联系方式", "求职意向", "自我评价", "获奖经历",
+    "技能", "skills", "technical skills", "experience", "employment",
+    "work experience", "projects", "project experience", "education",
+    "summary", "profile", "contact", "certifications",
+}
+
+
+def _load_canonical_vocabulary() -> List[str]:
+    """Load the reviewed v2 skill vocabulary once; no model download required."""
+    global _CANONICAL_VOCABULARY
+    if _CANONICAL_VOCABULARY is not None:
+        return _CANONICAL_VOCABULARY
+    root = Path(os.getenv("JOB_HUNT_REPO_ROOT", Path(__file__).resolve().parents[3]))
+    path = root / "artifacts" / "canonical_role_pool_v2" / "canonical_jobs.jsonl"
+    values: set[str] = set()
+    try:
+        with path.open("r", encoding="utf-8") as handle:
+            for line in handle:
+                try:
+                    row = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                for value in row.get("required_skills") or row.get("skills") or []:
+                    value = str(value).strip()
+                    if 1 < len(value) <= 40:
+                        values.add(value)
+    except OSError:
+        values = set()
+    _CANONICAL_VOCABULARY = sorted(values, key=lambda value: (-len(value), value.casefold()))
+    return _CANONICAL_VOCABULARY
 
 class NLPService:
     def __init__(self, sentence_transformer_model: Optional[str] = None):
@@ -144,6 +182,10 @@ class NLPService:
         shared evidence dictionary adds Chinese skills, aliases and newer
         frameworks while retaining source-text evidence for every match.
         """
+        # PDF layout can split a token across lines (``Py\nthon``). Repair
+        # only terms that already exist in the reviewed local vocabulary.
+        text = self._repair_split_skill_tokens(text or "")
+
         # Common technical skills patterns
         skill_patterns = [
             r'\b(?:Python|Java|JavaScript|C\+\+|C#|Go|Rust|Swift|Kotlin|PHP|Ruby|Scala|TypeScript)\b',
@@ -164,6 +206,31 @@ class NLPService:
         for pattern in skill_patterns:
             matches = re.findall(pattern, text, re.IGNORECASE)
             skills.update(matches)
+
+        # Lightweight bilingual vocabulary for resumes whose skills are written
+        # in Chinese or wrapped across PDF lines. This avoids requiring a large
+        # embedding model just to recover explicit evidence.
+        extended_terms = (
+            "大模型,大语言模型,机器学习,深度学习,计算机视觉,自然语言处理,推荐算法,广告算法,搜索算法,"
+            "风控算法,数据挖掘,数据工程,数据平台,数据治理,数据分析,数据科学,数据仓库,数据库,"
+            "后端开发,前端开发,全栈开发,客户端开发,嵌入式,驱动开发,系统软件,软件架构,"
+            "自动驾驶,机器人,导航定位,控制算法,芯片设计,芯片验证,芯片测试,FPGA,硬件设计,"
+            "网络安全,安全运营,安全合规,云计算,运维,DevOps,测试开发,软件测试,质量工程,"
+            "产品经理,数据产品,技术产品,项目管理,用户研究,交互设计,视觉设计,原型设计,UI/UX,"
+            "Python,Java,JavaScript,TypeScript,Go,Rust,C/C++,SQL,HTML,CSS,React,Vue,Node.js,"
+            "Spring,Spring Boot,Django,Flask,FastAPI,LangChain,Agent,RAG,Prompt工程,PyTorch,TensorFlow,"
+            "Kubernetes,Docker,Linux,Git,MySQL,PostgreSQL,Redis,Kafka,Elasticsearch,PowerShell"
+        ).split(",")
+        for term in extended_terms:
+            if term.casefold() in text_lower:
+                skills.add(term)
+
+        # Reuse the canonical v2 JD vocabulary for Chinese/domain-specific
+        # skills (embedded, hardware, thermal, security, etc.). This is a
+        # dictionary lookup over local artifacts, not a heavyweight model.
+        for term in _load_canonical_vocabulary():
+            if term.casefold() in text_lower:
+                skills.add(term)
         
         # Extract skills using spaCy NER and POS tagging
         if self.nlp:
@@ -493,26 +560,100 @@ class NLPService:
         """Extract comma-like delimited skills from an explicit resume field."""
         if not text:
             return []
+        text = NLPService._repair_split_skill_tokens(text)
         header_pattern = re.compile(
-            r"^\s*(?:技能栈|技术栈|专业技能|核心技能|skills?|technical skills?)\s*[：:]\s*(.+)$",
+            r"^\s*(?:技能栈|技术栈|专业技能|核心技能|skills?|technical skills?)\s*(?:[：:]\s*(.*))?$",
             re.IGNORECASE,
         )
-        for line in text.splitlines():
-            match = header_pattern.match(line.strip())
-            if not match:
-                continue
-            values = re.split(r"[、,，;；|]", match.group(1))
+        def clean(chunks: List[str]) -> List[str]:
+            values = re.split(r"[、,，;；|]+", " ".join(chunks))
             seen: set[str] = set()
             skills: List[str] = []
             for value in values:
+                # The complete resume text was repaired once before section
+                # parsing; repeating that pass for every token is needlessly
+                # expensive on a 100-resume batch.
                 skill = value.strip().strip("。.")
                 key = skill.casefold()
-                if not skill or len(skill) > 80 or key in seen:
+                if not skill or len(skill) > 40 or key in seen:
+                    continue
+                if NLPService._is_resume_section_heading(skill):
+                    continue
+                if any(mark in skill for mark in (
+                    "工作经历", "项目经历", "综合能力", "个人概述", "教育背景",
+                    "技术栈包括", "累计", "主要覆盖", "能够承担", "负责",
+                    "担任", "参与", "围绕", "项目结果", "技术栈",
+                )):
+                    continue
+                if len(skill.split()) > 5:
                     continue
                 seen.add(key)
                 skills.append(skill)
             return skills
-        return []
+
+        lines = text.splitlines()
+        inline_fallback: List[str] = []
+        for index, line in enumerate(lines):
+            match = header_pattern.match(line.strip())
+            if not match:
+                continue
+            inline_value = (match.group(1) or "").strip()
+            # Prefer a standalone skills section.  Generated and real resumes
+            # often mention ``技能栈：...`` inside the summary before the real
+            # section; treating that first mention as authoritative truncates
+            # the actual list and loses discriminative skills.
+            if inline_value:
+                if not inline_fallback:
+                    inline_fallback = [inline_value]
+                continue
+            chunks = [""]
+            for continuation in lines[index + 1:index + 12]:
+                stripped = continuation.strip()
+                if not stripped or NLPService._is_resume_section_heading(stripped):
+                    break
+                chunks.append(stripped)
+            result = clean(chunks)
+            if result:
+                return result
+        return clean(inline_fallback) if inline_fallback else []
+
+    @staticmethod
+    def _is_resume_section_heading(value: str) -> bool:
+        stripped = re.sub(r"\s+", " ", str(value or "").strip()).strip("：:")
+        return stripped.casefold() in {item.casefold() for item in _RESUME_SECTION_HEADINGS}
+
+    @staticmethod
+    def _repair_split_skill_tokens(text: str) -> str:
+        """Join tokens split by PDF line wrapping in linear time.
+
+        A wrap is joined only when neither side is a standalone resume
+        heading.  This repairs ``Py\\nthon`` and Chinese terms split across
+        lines without the expensive per-vocabulary regex loop.
+        """
+        if not text:
+            return ""
+        lines = str(text).splitlines()
+        if not lines:
+            return str(text)
+        merged: List[str] = []
+        for line in lines:
+            current = line.strip()
+            if not merged:
+                merged.append(current)
+                continue
+            previous = merged[-1]
+            if (
+                previous
+                and current
+                and not NLPService._is_resume_section_heading(previous)
+                and not NLPService._is_resume_section_heading(current)
+                and re.search(r"[A-Za-z0-9\u4e00-\u9fff]$", previous)
+                and re.match(r"^[A-Za-z0-9\u4e00-\u9fff]", current)
+            ):
+                merged[-1] = previous + current
+            else:
+                merged.append(current)
+        return "\n".join(merged)
 
     @staticmethod
     def _extract_years_experience(text: str) -> Optional[int]:

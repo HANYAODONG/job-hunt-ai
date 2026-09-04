@@ -35,6 +35,9 @@ const createGlowTexture = (color) => {
   canvas.width = 256;
   canvas.height = 256;
   const context = canvas.getContext('2d');
+  // Canvas 2D is unavailable in some embedded/test runtimes; keep the
+  // scene mountable with an unpainted texture and let WebGL handle the rest.
+  if (!context) return new THREE.CanvasTexture(canvas);
   const rgb = new THREE.Color(color);
   const red = Math.round(rgb.r * 255);
   const green = Math.round(rgb.g * 255);

@@ -67,6 +67,15 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .inspector-facts span, .inspector-facts strong { display: block; }
 .inspector-facts span { color: var(--wf-faint); font-size: 10px; }
 .inspector-facts strong { margin-top: 4px; color: var(--wf-ink); font-size: 18px; }
+.inspector-radar { padding: 14px 14px 8px; border-bottom: 1px solid var(--wf-line); }
+.inspector-radar > header { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; }
+.inspector-radar > header div { display: grid; gap: 4px; }
+.inspector-radar > header span { color: var(--wf-faint); font-size: 9px; font-weight: 750; }
+.inspector-radar > header strong { color: var(--wf-ink); font-size: 14px; }
+.inspector-radar > header small { color: var(--wf-faint); font-size: 9px; }
+.inspector-radar-chart { height: 292px; margin-top: 2px; }
+.inspector-radar-chart .recharts-tooltip-wrapper { outline: 0; }
+.inspector-radar-chart .recharts-default-tooltip { padding: 7px 9px !important; background: var(--wf-surface) !important; border: 1px solid var(--wf-line-strong) !important; }
 .inspector-tabs { display: grid; grid-template-columns: repeat(3, 1fr); border-bottom: 1px solid var(--wf-line); }
 .inspector-tabs button { min-height: 48px; display: flex; align-items: center; justify-content: center; gap: 5px; padding: 0; color: var(--wf-muted); background: transparent; border: 0; border-bottom: 2px solid transparent; cursor: pointer; }
 .inspector-tabs button { transition: color 180ms ease, background-color 180ms ease, border-color 180ms ease; }
@@ -326,6 +335,17 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .diagnosis-report-header p { max-width: 60ch; margin: 0; color: var(--wf-muted); font-size: 12px; line-height: 1.7; }
 .overall-match { display: grid; min-width: 126px; align-content: start; justify-items: end; }
 .overall-match > strong { color: var(--wf-primary); font-size: 44px; line-height: 1; }.overall-match > span { color: var(--wf-ink); font-size: 11px; }.overall-match > small { margin-top: 8px; color: var(--wf-success); font-size: 9px; }
+.selected-role-jd-candidates { padding: 15px 0 4px; border-bottom: 1px solid var(--wf-line); }
+.selected-role-jd-candidates > header { display: flex; align-items: baseline; gap: 9px; margin-bottom: 6px; }
+.selected-role-jd-candidates > header span { color: var(--wf-faint); font-size: 9px; font-weight: 700; }
+.selected-role-jd-candidates > header strong { color: var(--wf-ink); font-size: 12px; }
+.selected-role-jd-candidates > header small { margin-left: auto; color: var(--wf-faint); font-size: 9px; }
+.selected-role-jd-row { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 9px; align-items: center; min-height: 42px; border-top: 1px solid var(--wf-line); }
+.selected-role-jd-row > b { color: var(--wf-primary); font-size: 9px; }
+.selected-role-jd-row > span { display: grid; gap: 2px; min-width: 0; }
+.selected-role-jd-row > span strong { overflow: hidden; color: var(--wf-ink); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.selected-role-jd-row > span small { color: var(--wf-faint); font-size: 9px; }
+.selected-role-jd-row > em { color: var(--wf-primary); font-size: 12px; font-style: normal; font-weight: 700; }
 .profile-skill-confirmation { padding: 16px 0; border-bottom: 1px solid var(--wf-line); }
 .profile-skill-confirmation header { display: flex; justify-content: space-between; margin-bottom: 9px; color: var(--wf-faint); font-size: 10px; }
 .profile-skill-confirmation button { color: var(--wf-primary); background: none; border: 0; font-size: 10px; cursor: pointer; }

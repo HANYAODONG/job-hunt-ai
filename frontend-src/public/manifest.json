@@ -1,0 +1,9 @@
+{
+  "short_name": "JobMatch AI",
+  "name": "JobMatch AI - Semantic Job Search",
+  "icons": [],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#0066ff",
+  "background_color": "#ffffff"
+}

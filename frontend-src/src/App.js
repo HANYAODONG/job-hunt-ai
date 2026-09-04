@@ -26,6 +26,7 @@ const DiagnosisPage = lazy(routeLoaders['/diagnosis']);
 const LearningPlanPage = lazy(routeLoaders['/learning']);
 const RecruitmentJobsPage = lazy(routeLoaders['/recruitment']);
 const CandidateMatchingPage = lazy(routeLoaders['/candidates']);
+const RuntimeSettingsPage = lazy(routeLoaders['/settings']);
 
 // Create a client
 const queryClient = new QueryClient({
@@ -81,6 +82,7 @@ function App() {
                   <Route path="evolution" element={<Navigate replace to="/signals" />} />
                   <Route path="diagnosis" element={<DiagnosisPage />} />
                   <Route path="learning" element={<LearningPlanPage />} />
+                  <Route path="settings" element={<RuntimeSettingsPage />} />
                   <Route path="governance" element={<Navigate replace to="/" />} />
                   <Route path="evaluation" element={<Navigate replace to="/" />} />
                   <Route path="legacy-home" element={<HomePage />} />

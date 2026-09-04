@@ -19,6 +19,7 @@ DEFAULT_REPO_ROOT = (
 )
 REPO_ROOT = Path(os.getenv("JOB_HUNT_REPO_ROOT", DEFAULT_REPO_ROOT))
 ITERATION_DIR = REPO_ROOT / "artifacts" / "dataset_iteration_05"
+CANONICAL_V2_JOBS_PATH = REPO_ROOT / "artifacts" / "canonical_role_pool_v2" / "canonical_jobs.jsonl"
 CANONICAL_ROLE_POOL_PATH_ENV = "JOB_HUNT_CANONICAL_ROLE_POOL_PATH"
 
 
@@ -82,7 +83,9 @@ class TalentDataService:
     ) -> None:
         configured_jobs_path = os.getenv(CANONICAL_ROLE_POOL_PATH_ENV, "").strip()
         self.jobs_path = jobs_path or (
-            Path(configured_jobs_path) if configured_jobs_path else ITERATION_DIR / "jobs.jsonl"
+            Path(configured_jobs_path)
+            if configured_jobs_path
+            else CANONICAL_V2_JOBS_PATH if CANONICAL_V2_JOBS_PATH.exists() else ITERATION_DIR / "jobs.jsonl"
         )
         self.profiles_path = profiles_path or ITERATION_DIR / "candidate_profiles.jsonl"
         self.state_path = state_path or REPO_ROOT / "artifacts" / "runtime" / "talent_state.json"

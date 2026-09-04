@@ -1,6 +1,6 @@
 {
   "role_pool_version": "v2",
-  "status": "prepared_not_default",
+  "status": "default_active",
   "jobs_path": "D:\\job-hunt\\artifacts\\canonical_role_pool_v2\\canonical_jobs.jsonl",
   "roles_path": "D:\\job-hunt\\backend-src\\app\\data\\canonical_role_pool\\v2\\canonical_roles.csv",
   "role_data_dir": "D:\\job-hunt\\backend-src\\app\\data\\canonical_role_pool\\v2",
