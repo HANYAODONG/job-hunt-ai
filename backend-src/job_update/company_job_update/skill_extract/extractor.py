@@ -37,6 +37,7 @@ class SkillExtractionConfig:
     normalization_cache_path: Path | None = None
     allow_new_skills: bool = True
     normalization_batch_size: int = 80
+    dictionary_only: bool = False
     # Domain adapters may add constraints without forking the shared pipeline.
     system_prompt_appendix: str = ""
     normalization_prompt_appendix: str = ""
@@ -201,6 +202,19 @@ class JobSkillExtractor:
         units: list[dict[str, str]],
         stats: Counter[str],
     ) -> dict[str, Any]:
+        if self.config.dictionary_only:
+            mentions = api.build_dictionary_mentions(units, self.ontology)
+            stats["dictionary_only"] += 1
+            return {
+                "mentions": mentions,
+                "pipeline_stats": {
+                    "llm_first_pass_mentions": 0,
+                    "dictionary_literal_mentions": len(mentions),
+                    "final_deduped_mentions": len(mentions),
+                    "net_new_mentions": len(mentions),
+                },
+            }
+
         # A domain appendix changes LLM behavior, so cached company answers must
         # never be reused by a government-domain extractor (or vice versa).
         cache_digest = f"{self.ontology_digest}:{self.prompt_digest}"

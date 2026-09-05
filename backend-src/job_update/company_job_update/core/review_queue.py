@@ -62,6 +62,7 @@ def create_pending_reviews(
     result: ProcessResult,
     skill_pool_path: Path | None,
     always_queue_job: bool,
+    queue_skill_reviews: bool = True,
 ) -> dict[str, Any]:
     """Queue the job decision and risky skill decisions without writing base data."""
     review_result = serialize_process_result(result, skill_pool_path=skill_pool_path)
@@ -78,7 +79,7 @@ def create_pending_reviews(
         )
 
     skill_reviews: list[dict[str, Any]] = []
-    for skill in review_result["skills"]:
+    for skill in review_result["skills"] if queue_skill_reviews else []:
         if not (skill["is_new_skill_candidate"] or skill["is_low_confidence"]):
             continue
         skill_reviews.append(

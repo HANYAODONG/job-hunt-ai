@@ -4,6 +4,7 @@ from io import BytesIO
 from typing import Any
 
 import pandas as pd
+from starlette.concurrency import run_in_threadpool
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile
 
 from app.services import (
@@ -76,8 +77,12 @@ async def import_csv(
         frame = pd.read_csv(BytesIO(await file.read()), dtype=str, encoding="utf-8-sig").fillna("")
         service = _service(domain)
         if domain == "government":
-            return service.import_csv(frame)
-        return service.import_csv(frame, processing_mode=processing_mode)
+            return await run_in_threadpool(service.import_csv, frame)
+        return await run_in_threadpool(
+            service.import_csv,
+            frame,
+            processing_mode=processing_mode,
+        )
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

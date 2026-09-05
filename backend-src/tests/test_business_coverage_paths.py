@@ -704,7 +704,10 @@ class TestJobServicePurePaths:
         import app.services.job_service as jobs
 
         seen = []
-        monkeypatch.setattr(jobs, "submit_one_dry_run", lambda payload: seen.append(payload) or {"status": "pending"})
+        monkeypatch.setattr(jobs, "_build_system", lambda *args, **kwargs: object())
+        monkeypatch.setattr(jobs, "_ensure_database_initialized", lambda: None)
+        monkeypatch.setattr(jobs.SQLiteJobUpdateStore, "migrate", lambda self: None)
+        monkeypatch.setattr(jobs, "submit_one_dry_run", lambda payload, **kwargs: seen.append(payload) or {"status": "pending"})
         result = jobs.import_csv(pd.DataFrame([{"job_title": "新岗位", "month": "2026-08"}]))
         assert result["count"] == 1
         assert seen[0]["processing_mode"] == "manual"

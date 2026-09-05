@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 import json
 from pathlib import Path
@@ -33,6 +33,7 @@ EVENT_EXPORT_COLUMNS = [
 @dataclass(slots=True)
 class SQLiteJobUpdateStore:
     database_path: Path
+    _schema_ready: bool = field(default=False, init=False, repr=False)
 
     def initialize_from_csv(
         self,
@@ -410,6 +411,8 @@ class SQLiteJobUpdateStore:
         return found
 
     def migrate(self) -> None:
+        if self._schema_ready and self.database_path.exists():
+            return
         self.database_path.parent.mkdir(parents=True, exist_ok=True)
         with self._connect() as conn:
             conn.executescript(
@@ -642,6 +645,7 @@ class SQLiteJobUpdateStore:
             _create_read_model_indexes(conn)
             _create_read_model_views(conn)
             conn.commit()
+        self._schema_ready = True
 
     def _connect(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self.database_path)

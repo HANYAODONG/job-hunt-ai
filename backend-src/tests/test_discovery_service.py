@@ -333,10 +333,13 @@ def test_monthly_csv_import_stamps_a_clearable_batch(monkeypatch):
     import app.services.job_service as jobs
 
     submitted_payloads = []
+    monkeypatch.setattr(jobs, "_build_system", lambda *args, **kwargs: object())
+    monkeypatch.setattr(jobs, "_ensure_database_initialized", lambda: None)
+    monkeypatch.setattr(jobs.SQLiteJobUpdateStore, "migrate", lambda self: None)
     monkeypatch.setattr(
         jobs,
         "submit_one_dry_run",
-        lambda payload: submitted_payloads.append(payload) or {"item_id": f"review-{len(submitted_payloads)}"},
+        lambda payload, **kwargs: submitted_payloads.append(payload) or {"item_id": f"review-{len(submitted_payloads)}"},
     )
 
     result = jobs.import_csv(pd.DataFrame([

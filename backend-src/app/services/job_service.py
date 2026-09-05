@@ -56,7 +56,7 @@ from job_update.company_job_update.core.review_queue import (
 )
 from job_update.company_job_update.core.taxonomy import JobTaxonomy
 from job_update.company_job_update.core.text import clean_text
-from job_update.company_job_update.core.title_cleaning import LLMTitleCleaner
+from job_update.company_job_update.core.title_cleaning import LLMTitleCleaner, RuleBasedTitleCleaner
 
 
 CATEGORY_THRESHOLD = 0.58
@@ -106,21 +106,28 @@ def submit_preview(preview_id: str, processing_mode: str = "auto") -> dict[str, 
     return submit_one_dry_run(payload)
 
 
-def submit_one_dry_run(payload: dict[str, str]) -> dict[str, Any]:
+def submit_one_dry_run(
+    payload: dict[str, str],
+    *,
+    system: JobUpdateSystem | None = None,
+    store: SQLiteJobUpdateStore | None = None,
+    queue_skill_reviews: bool = True,
+) -> dict[str, Any]:
     """Preview a JD, then either merge automatically or create review tasks."""
     progress: list[str] = []
     mode = clean_text(payload.get("processing_mode")).lower() or "auto"
     if mode not in {"auto", "manual"}:
         raise ValueError("processing_mode must be auto or manual")
-    _ensure_database_initialized()
+    if store is None:
+        _ensure_database_initialized()
     posting = _posting_from_payload(payload, source=f"web_app_{mode}")
-    preview = _build_system(progress).process(
+    preview = (system or _build_system(progress)).process(
         posting,
         write=False,
         collect_skills_for_review=True,
     )
     input_payload = _input_payload(payload, posting)
-    store = SQLiteJobUpdateStore(BASE_DATABASE)
+    store = store or SQLiteJobUpdateStore(BASE_DATABASE)
 
     if mode == "auto" and preview.route.status == "existing_job" and preview.route.best_job is not None:
         category = preview.route.best_category.name if preview.route.best_category else ""
@@ -170,6 +177,7 @@ def submit_one_dry_run(payload: dict[str, str]) -> dict[str, Any]:
         result=preview,
         skill_pool_path=BASE_SKILL_POOL,
         always_queue_job=True,
+        queue_skill_reviews=queue_skill_reviews,
     )
     item = queued["job_review"]
     item["result"]["progress"] = progress
@@ -188,6 +196,13 @@ def import_csv(frame: pd.DataFrame, processing_mode: str = "manual") -> dict[str
     # test import without guessing from a title or touching formal role data.
     import_batch_id = f"monthly-csv-{uuid4().hex}"
     rows = normalized.to_dict(orient="records")
+    # Monthly imports are an evidence intake workflow. Use deterministic local
+    # cleaning/extraction and reuse one initialized pipeline for the whole file;
+    # per-row LLM calls made a 12-row demo upload take around one minute.
+    batch_system = _build_system([], deterministic=True)
+    _ensure_database_initialized()
+    batch_store = SQLiteJobUpdateStore(BASE_DATABASE)
+    batch_store.migrate()
     items = [
         submit_one_dry_run({
             **row,
@@ -195,7 +210,7 @@ def import_csv(frame: pd.DataFrame, processing_mode: str = "manual") -> dict[str
             "source": "monthly_csv_import",
             "import_kind": "monthly_csv",
             "import_batch_id": import_batch_id,
-        })
+        }, system=batch_system, store=batch_store, queue_skill_reviews=False)
         for row in rows
     ]
     return {
@@ -402,7 +417,20 @@ def review_skill(
     )
 
 
-def _build_system(progress_messages: list[str]) -> JobUpdateSystem:
+def _build_system(
+    progress_messages: list[str],
+    *,
+    deterministic: bool = False,
+) -> JobUpdateSystem:
+    if deterministic:
+        skill_extractor = ExistingSkillExtractAdapter(
+            provider="deepseek",
+            dictionary_only=True,
+            normalize_unknowns_with_api=False,
+            load_env=False,
+        )
+    else:
+        skill_extractor = _skill_extractor()
     return JobUpdateSystem(
         taxonomy=JobTaxonomy.from_csv(BASE_TITLE_DICTIONARY),
         frequency_store=FrequencyStore(BASE_EVENT_STREAM, BASE_FREQUENCY_OUTPUT),
@@ -420,9 +448,9 @@ def _build_system(progress_messages: list[str]) -> JobUpdateSystem:
         candidate_skill_store=RoleSkillCandidateStore(BASE_DATABASE),
         database_store=SQLiteJobUpdateStore(BASE_DATABASE),
         similarity=_similarity(),
-        route_adjudicator=_route_adjudicator(),
-        title_cleaner=_title_cleaner(),
-        skill_extractor=_skill_extractor(),
+        route_adjudicator=None if deterministic else _route_adjudicator(),
+        title_cleaner=RuleBasedTitleCleaner() if deterministic else _title_cleaner(),
+        skill_extractor=skill_extractor,
         category_threshold=CATEGORY_THRESHOLD,
         job_threshold=JOB_THRESHOLD,
         tie_delta=TIE_DELTA,
