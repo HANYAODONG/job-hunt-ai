@@ -99,8 +99,8 @@ After installation, access the application at:
 | Service | URL | Description |
 |---------|-----|-------------|
 | **Frontend** | http://localhost:18080 | Main web interface |
-| **Backend API** | http://localhost:8000 | REST API endpoints |
-| **API Documentation** | http://localhost:8000/docs | Interactive API docs (Swagger) |
+| **Backend API** | http://localhost:18088 | REST API endpoints |
+| **API Documentation** | http://localhost:18088/docs | Interactive API docs (Swagger) |
 | **Elasticsearch** | http://localhost:9200 | Search engine |
 | **Neo4j Browser** | http://localhost:7474 | Graph database UI |
 
@@ -210,7 +210,7 @@ The system understands natural language and semantic meaning, not just keywords.
 
 ### 4. API Documentation
 
-Visit http://localhost:8000/docs to:
+Visit http://localhost:18088/docs to:
 
 - Explore all API endpoints
 - Try API calls interactively
@@ -242,14 +242,15 @@ If you have port conflicts, edit `.env`:
 
 ```env
 FRONTEND_PORT=18080
+BACKEND_PORT=18088
 ```
 
 The compose mapping is:
 
 ```yaml
 ports:
-  - "${FRONTEND_PORT:-3001}:3000"  # Set FRONTEND_PORT in .env
-  - "8000:8000"  # Change 8000 to another port
+  - "${FRONTEND_PORT:-18080}:3000"  # Set FRONTEND_PORT in .env
+  - "${BACKEND_PORT:-18088}:8000"  # Set BACKEND_PORT in .env
 ```
 
 ## Managing the Application
@@ -325,7 +326,7 @@ Edit `docker-compose.yml` and change the port numbers:
 ```yaml
 # Change this:
 ports:
-  - "${FRONTEND_PORT:-3001}:3000"
+  - "${FRONTEND_PORT:-18080}:3000"
 
 # To this (example):
 ports:
@@ -356,7 +357,7 @@ This can take 2-3 minutes on first startup.
 
 **Check backend is running:**
 ```bash
-curl http://localhost:8000/health
+curl http://localhost:18088/health
 ```
 
 **Check Docker network:**
@@ -478,13 +479,13 @@ The backend provides a REST API endpoint to ingest jobs from CSV files. This end
 
 ```bash
 # Basic ingestion with default parameters
-curl -X POST "http://localhost:8000/api/v1/csv/ingest-csv" \
+curl -X POST "http://localhost:18088/api/v1/csv/ingest-csv" \
   -H "accept: application/json" \
   -H "Content-Type: multipart/form-data" \
   -F "file=@jobs/SDE-Nov21.csv"
 
 # Advanced ingestion with custom parameters
-curl -X POST "http://localhost:8000/api/v1/csv/ingest-csv" \
+curl -X POST "http://localhost:18088/api/v1/csv/ingest-csv" \
   -H "accept: application/json" \
   -H "Content-Type: multipart/form-data" \
   -F "file=@jobs/SDE-Nov21.csv" \
@@ -526,17 +527,17 @@ To load your own job data:
 
 **Search jobs:**
 ```bash
-curl "http://localhost:8000/api/v1/search?query=python+developer"
+curl "http://localhost:18088/api/v1/search?query=python+developer"
 ```
 
 **Get job by ID:**
 ```bash
-curl "http://localhost:8000/api/v1/jobs/1"
+curl "http://localhost:18088/api/v1/jobs/1"
 ```
 
 **Upload resume:**
 ```bash
-curl -X POST "http://localhost:8000/api/v1/resume/analyze" \
+curl -X POST "http://localhost:18088/api/v1/resume/analyze" \
   -F "file=@resume.pdf"
 ```
 
@@ -545,7 +546,7 @@ curl -X POST "http://localhost:8000/api/v1/resume/analyze" \
 ### Check Documentation
 
 - [Quick Start Guide](./QUICK_START.md) - Detailed usage examples
-- [API Documentation](http://localhost:8000/docs) - When running
+- [API Documentation](http://localhost:18088/docs) - When running
 
 ### Common Issues
 
