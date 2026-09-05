@@ -54,13 +54,287 @@ export const TALENT_API_CAPABILITIES = Object.freeze({
 const mockOnly = async (fallback) => fallback;
 
 export const getTalentOverview = () => mockOnly(dashboardData);
-export const getDiscoveryCandidates = () => mockOnly(discoveryCandidates);
-export const getMarketChangeCandidates = () => mockOnly(marketChangeCandidates);
-export const reviewDiscoveryCandidate = (id, decision) => mockOnly({
-  id,
-  decision,
-  status: decision === 'publish' ? 'published' : 'rejected',
-});
+
+const normalizeDiscoveryReview = (item) => {
+  if (item?.candidate_id) {
+    const source = item.source || {};
+    const definition = item.definition || {};
+    const skills = (item.skills || []).map(skillName).filter(Boolean);
+    const routeScore = Number(item.candidate_jobs?.[0]?.score || 0);
+    const stageStatus = item.stage === 'published'
+      ? '已发布'
+      : item.stage === 'awaiting_publish'
+        ? '待正式发布'
+        : '待审核';
+    return {
+      id: item.candidate_id,
+      maintenanceId: item.maintenance_id || '',
+      stage: item.stage || 'candidate',
+      name: source.job_title || item.title || '未命名岗位候选',
+      status: stageStatus,
+      confidence: Math.round(Math.max(0, Math.min(1, routeScore)) * 100),
+      evidence: Number(item.source_count || 1),
+      sourceCount: Number(item.source_count || 1),
+      sources: [{
+        source: '原始 JD 审核队列',
+        confidence: '原始 JD',
+        excerpt: source.responsibility || source.requirement || '未提供职责或要求',
+        collectedAt: source.month || item.updated_at || '本地审核记录',
+      }],
+      signals: [item.route_reason || '岗位与现有标准岗位边界不清', source.requirement || '未提供岗位要求'],
+      skills,
+      domain: item.best_category || '待归类',
+      updatedAt: item.updated_at || source.month || '',
+      version: item.stage === 'published' ? '正式岗位 v1.0' : '候选定义 v0.1',
+      routeStatus: item.route_status || 'potential_new_job',
+      definition: {
+        coreResponsibilities: definition.core_responsibilities || [],
+        requiredSkills: definition.required_skills || skills,
+        bonusSkills: definition.bonus_skills || [],
+        scenarios: definition.application_scenarios || [],
+        evidenceNote: definition.evidence_note || '由原始 JD 证据生成，发布前需人工核验。',
+      },
+      raw: item,
+    };
+  }
+  const route = item?.result?.route || {};
+  const source = item?.input || {};
+  const bestScore = Number(route.best_job?.score ?? route.best_category?.score ?? 0);
+  const skills = (item?.result?.skills || []).map(skillName).filter(Boolean);
+  const definition = item?.result?.definition || {};
+  return {
+    id: item?.item_id,
+    name: source.job_title || item?.result?.job_title || '未命名岗位候选',
+    status: item?.status === 'submitted_dictionary_maintenance' ? '待正式发布' : '待审核',
+    confidence: Math.round(Math.max(0, Math.min(1, bestScore)) * 100),
+    evidence: 1,
+    sourceCount: 1,
+    sources: [{
+      source: source.source || 'JD 审核队列',
+      confidence: '原始 JD',
+      excerpt: source.responsibility || source.requirement || '未提供职责或要求',
+      collectedAt: source.month || item?.updated_at || '本地审核记录',
+    }],
+    signals: [route.reason || '岗位与现有标准岗位边界不清', source.requirement || '未提供岗位要求'],
+    skills,
+    domain: route.best_category?.name || '待归类',
+    updatedAt: item?.updated_at || item?.created_at || source.month || '',
+    version: '候选定义 v0.1',
+    routeStatus: route.status || 'potential_new_job',
+    definition: {
+      coreResponsibilities: definition.core_responsibilities || [],
+      requiredSkills: definition.required_skills || skills,
+      bonusSkills: definition.bonus_skills || [],
+      scenarios: definition.application_scenarios || [],
+      evidenceNote: definition.evidence_note || '由原始 JD 证据生成，发布前需人工核验。',
+    },
+    raw: item,
+  };
+};
+
+export const getDiscoveryCandidates = async () => {
+  if (!roleEvolutionLiveEnabled) return discoveryCandidates;
+  try {
+    const rows = await roleEvolutionRequest(roleEvolutionPath(
+      '/jd-update/discovery/candidates?domain=company',
+      '/api/discovery/candidates?domain=company',
+    ));
+    return (Array.isArray(rows) ? rows : [])
+      .filter((item) => item?.candidate_id || (item?.review_type === 'job' && item?.result?.route?.status !== 'existing_job'))
+      .map(normalizeDiscoveryReview);
+  } catch {
+    return discoveryCandidates;
+  }
+};
+
+export const getDiscoveryBatch = async (month = '', threshold = 10, standardJob = '') => {
+  if (!roleEvolutionLiveEnabled) {
+    const candidates = discoveryCandidates.map((item) => item?.candidate_id || item?.result ? normalizeDiscoveryReview(item) : item);
+    return {
+      month: month || '演示批次',
+      available_months: [],
+      input_jd_count: 0,
+      deduplicated_jd_count: 0,
+      unmapped_jd_count: candidates.length,
+      cluster_count: candidates.length,
+      trigger_threshold: threshold,
+      threshold_rule: '去重后的同类 JD 数量 > 10，且需保留来源证据后进入人工审核',
+      method: '前端回退候选（仅演示）',
+      candidates: candidates.map((candidate, index) => ({
+        cluster_id: `DEMO-${index + 1}`,
+        title: candidate.name,
+        supporting_jd_count: candidate.evidence || 0,
+        deduplicated_jd_count: candidate.evidence || 0,
+        source_count: candidate.sourceCount || 1,
+        threshold,
+        threshold_met: (candidate.evidence || 0) > threshold,
+        status: candidate.status || '观察中',
+        workflow_stage: candidate.status || '待审核',
+        candidate,
+        evidence: [candidate],
+      })),
+      guardrails: ['候选聚类不会自动写入正式岗位池', '正式三级岗位必须经过人工复核并分配 canonical_role_id'],
+    };
+  }
+  try {
+    const query = new URLSearchParams({ domain: 'company', threshold: String(threshold) });
+    if (month) query.set('month', month);
+    if (standardJob) query.set('standard_job', standardJob);
+    return await roleEvolutionRequest(roleEvolutionPath(
+      `/jd-update/discovery/batch?${query.toString()}`,
+      `/api/discovery/batch?${query.toString()}`,
+    ));
+  } catch {
+    const candidates = await getDiscoveryCandidates();
+    return {
+      month: month || '', available_months: [], input_jd_count: 0, deduplicated_jd_count: 0,
+      unmapped_jd_count: candidates.length, cluster_count: candidates.length,
+      trigger_threshold: threshold, threshold_rule: '去重后的同类 JD 数量 > 10，且需保留来源证据后进入人工审核',
+      method: '审核队列回退（只读）', candidates: candidates.map((candidate, index) => ({
+        cluster_id: `QUEUE-${index + 1}`, title: candidate.name,
+        supporting_jd_count: candidate.evidence || 0, deduplicated_jd_count: candidate.evidence || 0,
+        source_count: candidate.sourceCount || 1, threshold, threshold_met: (candidate.evidence || 0) > threshold,
+        status: candidate.status || '观察中', workflow_stage: candidate.status || '待审核', candidate, evidence: [candidate],
+      })), guardrails: ['候选聚类不会自动写入正式岗位池'],
+    };
+  }
+};
+
+export const importMonthlyJds = async (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await fetch(`${roleEvolutionBaseUrl.replace(/\/$/, '')}${roleEvolutionPath(
+    '/jd-update/submissions/import?domain=company&processing_mode=manual',
+    '/api/jd-update/submissions/import?domain=company&processing_mode=manual',
+  )}`, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!response.ok) {
+    let detail = '';
+    try { detail = (await response.json()).detail || ''; } catch { /* ignore malformed error bodies */ }
+    throw new Error(detail || '月度 JD 导入失败');
+  }
+  return response.json();
+};
+
+export const deleteImportedMonth = async (month) => {
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month || '')) {
+    throw new Error('请选择需要清理的月份');
+  }
+  const query = new URLSearchParams({ domain: 'company', month });
+  return roleEvolutionRequest(roleEvolutionPath(
+    `/jd-update/discovery/imported-month?${query.toString()}`,
+    `/api/discovery/imported-month?${query.toString()}`,
+  ), { method: 'DELETE' });
+};
+
+export const runSyntheticNewRoleFixture = async () => {
+  if (!roleEvolutionLiveEnabled) {
+    return {
+      synthetic_only: true,
+      production_state_changed: false,
+      fixture_jd_count: 12,
+      route_statuses: ['potential_new_job'],
+      batch: { month: '2026-08', unmapped_jd_count: 12, cluster_count: 1 },
+      result_summary: {
+        title: '边缘智能体编排工程师', supporting_jd_count: 12,
+        threshold: 10, threshold_met: true, status: '待人工审核',
+      },
+    };
+  }
+  return roleEvolutionRequest(roleEvolutionPath(
+    '/jd-update/discovery/fixtures/synthetic-new-role?domain=company',
+    '/api/discovery/fixtures/synthetic-new-role?domain=company',
+  ), { method: 'POST' });
+};
+
+export const getMarketChangeCandidates = async () => {
+  if (!roleEvolutionLiveEnabled) return marketChangeCandidates;
+  try {
+    const rows = await roleEvolutionRequest(roleEvolutionPath(
+      '/jd-update/cross-validation/candidates?domain=company',
+      '/api/cross-validation/candidates?domain=company',
+    ));
+    return (Array.isArray(rows) ? rows : []).map((item) => ({
+      id: `SKILL-${item.standard_job}-${item.skill}`,
+      name: item.standard_job || '岗位能力变化',
+      status: '待审核',
+      confidence: Math.round(Number(item.confidence || item.score || 0) * 100),
+      evidence: Number(item.evidence_count || 1),
+      sourceCount: Number(item.evidence_count || 1),
+      sources: [{ source: '岗位技能交叉验证', confidence: '后端候选能力池', excerpt: item.skill || '', collectedAt: item.updated_at || '' }],
+      signals: [`发现候选能力：${item.skill || '未命名能力'}`],
+      skills: [item.skill].filter(Boolean),
+      domain: item.standard_job || '岗位能力变化',
+      updatedAt: item.updated_at || '',
+      version: '能力候选 v0.1',
+      definition: { coreResponsibilities: [], requiredSkills: [item.skill].filter(Boolean), bonusSkills: [], scenarios: [], evidenceNote: '来自岗位能力交叉验证候选。' },
+      raw: item,
+    }));
+  } catch {
+    return marketChangeCandidates;
+  }
+};
+
+export const reviewDiscoveryCandidate = async (id, decision, definition = {}) => {
+  if (!roleEvolutionLiveEnabled) return { id, decision, status: decision === 'publish' ? 'published' : 'rejected' };
+  if (decision !== 'publish') {
+    const reviewId = definition.maintenanceId || id;
+    return roleEvolutionRequest(roleEvolutionPath(
+      `/jd-update/discovery/${encodeURIComponent(reviewId)}/reject?domain=company`,
+      `/api/discovery/${encodeURIComponent(reviewId)}/reject?domain=company`,
+    ), { method: 'POST' });
+  }
+  if (definition.maintenanceId) {
+    return roleEvolutionRequest(roleEvolutionPath(
+      `/jd-update/discovery/${encodeURIComponent(definition.maintenanceId)}/publish?domain=company`,
+      `/api/discovery/${encodeURIComponent(definition.maintenanceId)}/publish?domain=company`,
+    ), { method: 'POST' });
+  }
+  return roleEvolutionRequest(roleEvolutionPath(
+    `/jd-update/discovery/${encodeURIComponent(id)}/submit-proposal?domain=company`,
+    `/api/discovery/${encodeURIComponent(id)}/submit-proposal?domain=company`,
+  ), {
+    method: 'POST',
+    body: JSON.stringify({
+      standard_category: definition.category || '',
+      standard_job_title: definition.name || '',
+      match_keywords: definition.keywords || definition.name || '',
+      core_responsibilities: definition.coreResponsibilities || [],
+      required_skills: definition.requiredSkills || [],
+      bonus_skills: definition.bonusSkills || [],
+      application_scenarios: definition.scenarios || [],
+      evidence_note: definition.evidenceNote || '',
+      skills: definition.skills || [],
+    }),
+  });
+};
+
+export const reviewPendingJob = async (itemId, action, payload = {}) => {
+  const path = action === 'confirm'
+    ? `/jd-update/reviews/${encodeURIComponent(itemId)}/confirm-existing?domain=company`
+    : `/jd-update/reviews/${encodeURIComponent(itemId)}/submit-new-job-proposal?domain=company`;
+  const body = action === 'confirm'
+    ? {
+      standard_job_title: payload.standard_job_title || '',
+      standard_category: payload.standard_category || '',
+      skills: payload.skills || [],
+    }
+    : {
+      standard_category: payload.standard_category || '',
+      standard_job_title: payload.standard_job_title || '',
+      match_keywords: payload.match_keywords || payload.standard_job_title || '',
+      core_responsibilities: payload.core_responsibilities || [],
+      required_skills: payload.required_skills || [],
+      bonus_skills: payload.bonus_skills || [],
+      application_scenarios: payload.application_scenarios || [],
+      evidence_note: payload.evidence_note || '',
+      source_review_ids: payload.source_review_ids || [],
+      skills: payload.skills || [],
+    };
+  return roleEvolutionRequest(path, { method: 'POST', body: JSON.stringify(body) });
+};
 
 export const getCapabilityGraph = (year) => {
   const url = year ? `/api/v1/graph?year=${year}` : '/api/v1/graph';
@@ -568,6 +842,8 @@ const skillName = (skill) => {
   return skill?.skill || skill?.normalized_skill || skill?.name || skill?.raw_skill || '';
 };
 
+const asList = (value) => Array.isArray(value) ? value : [];
+
 const normalizeProcessResult = (item, input = {}) => {
   const result = item?.result || item || {};
   const route = result.route || {};
@@ -595,6 +871,40 @@ const normalizeProcessResult = (item, input = {}) => {
     updatedAt,
     input,
     raw: item,
+  };
+};
+
+const normalizeLiveEffect = (effect) => {
+  const changes = effect?.changes || {};
+  const added = asList(changes.added).map(skillName).filter(Boolean);
+  const increased = asList(changes.increased).map(skillName).filter(Boolean);
+  const decreased = asList(changes.decreased).map(skillName).filter(Boolean);
+  const removed = asList(changes.removed).map(skillName).filter(Boolean);
+  const signalSkills = asList(effect?.signal_skills).map(skillName).filter(Boolean);
+  const summary = effect?.summary || {};
+  const summaryParts = [
+    added.length && `新增 ${added.length} 项技能`,
+    increased.length && `${increased.length} 项技能需求上升`,
+    decreased.length && `${decreased.length} 项技能需求下降`,
+    removed.length && `移除 ${removed.length} 项技能`,
+  ].filter(Boolean);
+  return {
+    effectId: effect?.effect_id || 'EV-confirmed',
+    id: effect?.effect_id || 'EV-confirmed',
+    role: effect?.standard_job || '已确认岗位更新',
+    version: effect?.month || '当前版本',
+    status: '已生效',
+    summary: summaryParts.length
+      ? `已基于确认 JD 更新岗位画像：${summaryParts.join('；')}。`
+      : '该 JD 已归入岗位画像，但未改变已记录的技能频率。',
+    added,
+    removed,
+    modified: [...increased.map((skill) => `${skill} ↑`), ...decreased.map((skill) => `${skill} ↓`)],
+    evidence: signalSkills.length || Number(summary.signal_skills || 0),
+    candidateSkillCount: 0,
+    updatedAt: effect?.created_at || effect?.month || '',
+    input: { month: effect?.month || '', job_title: effect?.standard_job || '' },
+    raw: effect,
   };
 };
 
@@ -627,6 +937,48 @@ const normalizeAnalytics = (raw, fallback) => {
     }))
     : fallback.migration;
   return { ...fallback, trend, lifecycle, migration };
+};
+
+const normalizeRoleEvolution = (profileCompare, role) => {
+  const changes = profileCompare?.changes || {};
+  const added = asList(changes.added).map(skillName).filter(Boolean);
+  const removed = asList(changes.removed).map(skillName).filter(Boolean);
+  const increased = asList(changes.increased).map(skillName).filter(Boolean);
+  const decreased = asList(changes.decreased).map(skillName).filter(Boolean);
+  const fromMonth = profileCompare?.from_month || '起始月份';
+  const toMonth = profileCompare?.to_month || '当前月份';
+  const latestProfile = asList(profileCompare?.to_profile);
+  const summary = profileCompare?.summary || {};
+  return {
+    id: `PROFILE-${role}-${toMonth}`,
+    role: profileCompare?.standard_job || role,
+    version: `${fromMonth} 至 ${toMonth}`,
+    status: '时序画像对比',
+    summary: `基于 ${fromMonth} 至 ${toMonth} 的版本化 JD 画像：新增 ${Number(summary.added || added.length)} 项能力；需求上升 ${Number(summary.increased || increased.length)} 项；需求下降 ${Number(summary.decreased || decreased.length)} 项。`,
+    added,
+    removed,
+    modified: [...increased.map((skill) => `${skill} ↑`), ...decreased.map((skill) => `${skill} ↓`)],
+    evidence: latestProfile.length,
+    candidateSkillCount: 0,
+    updatedAt: latestProfile[0]?.updated_at || toMonth,
+    input: { month: toMonth, job_title: profileCompare?.standard_job || role },
+    raw: { signal_skills: latestProfile.map(skillName).filter(Boolean) },
+  };
+};
+
+const profileVersions = (profileCompare) => {
+  const from = asList(profileCompare?.from_profile);
+  const to = asList(profileCompare?.to_profile);
+  const build = (month, rows, summary) => ({
+    version: month || '未提供月份',
+    date: rows[0]?.updated_at || month || '',
+    summary,
+  });
+  if (!profileCompare?.from_month && !profileCompare?.to_month) return [];
+  return [
+    build(profileCompare.from_month, from, `起始画像：${from.length} 项可用技能证据。`),
+    build(profileCompare.to_month, to, `最新画像：${to.length} 项可用技能证据。`),
+  ];
 };
 
 const roleEvolutionFallback = () => ({
@@ -674,7 +1026,7 @@ export const getRoleEvolutionWorkspace = async () => {
     const jobNames = Array.isArray(jobsResponse) ? jobsResponse : [];
     const analyticsRole = jobNames.includes(fallback.analytics.role) ? fallback.analytics.role : (jobNames[0] || fallback.analytics.role);
     const standardJobQuery = `&standard_job=${encodeURIComponent(analyticsRole)}`;
-    const [overview, reviewItems, optimization, trend, lifecycle, migration] = await Promise.all([
+    const [overview, reviewItems, optimization, trend, lifecycle, migration, latestEffect] = await Promise.all([
       roleEvolutionRequest(roleEvolutionPath('/jd-update/analytics/overview?domain=company', '/api/analytics/overview?domain=company')),
       roleEvolutionRequest(roleEvolutionPath('/jd-update/reviews?domain=company', '/api/review/items?domain=company')),
       roleEvolutionRequest(roleEvolutionPath(
@@ -684,19 +1036,25 @@ export const getRoleEvolutionWorkspace = async () => {
       roleEvolutionRequest(roleEvolutionPath(`/jd-update/analytics/job-trend?domain=company${standardJobQuery}`, `/api/analytics/job-trend?domain=company${standardJobQuery}`)),
       roleEvolutionRequest(roleEvolutionPath(`/jd-update/analytics/lifecycle?domain=company${standardJobQuery}`, `/api/analytics/lifecycle?domain=company${standardJobQuery}`)),
       roleEvolutionRequest(roleEvolutionPath('/jd-update/analytics/skill-migration?domain=company', '/api/analytics/skill-migration?domain=company')),
+      roleEvolutionRequest(roleEvolutionPath('/jd-update/live-evolution/latest?domain=company', '/api/live-evolution/latest?domain=company')),
     ]);
     const profileRows = Array.isArray(optimization?.skills) ? optimization.skills : [];
     const latestReview = Array.isArray(reviewItems) ? reviewItems[0] : null;
-    const latest = latestReview ? normalizeProcessResult(latestReview) : fallback.latest;
+    const latest = latestEffect ? normalizeLiveEffect(latestEffect) : (latestReview ? normalizeProcessResult(latestReview) : fallback.latest);
     return {
       ...fallback,
       jobs: jobNames.length ? jobNames.map((name) => ({ name, summary: '来自岗位技能演化数据源的岗位画像。', requiredSkills: [] })) : fallback.jobs,
       pending: Array.isArray(reviewItems) ? reviewItems : fallback.pending,
       latest,
-      analytics: normalizeAnalytics(
-        { trend, lifecycle, migration },
-        { ...fallback.analytics, role: analyticsRole, ...(overview || {}) },
-      ),
+      analytics: {
+        ...normalizeAnalytics(
+          { trend, lifecycle, migration },
+          { ...fallback.analytics, role: analyticsRole, ...(overview || {}) },
+        ),
+        // Version windows must come from the selected role's profile comparison.
+        // Do not carry static fallback versions into a live workspace.
+        versions: [],
+      },
       optimization: profileRows.length ? {
         ...fallback.optimization,
         name: optimization.standard_job || fallback.optimization.name,
@@ -752,7 +1110,23 @@ export const getRoleAnalytics = async (params = {}) => {
       roleEvolutionRequest(endpoint('/jd-update/analytics/skill-migration', '/api/analytics/skill-migration')),
       roleEvolutionRequest(endpoint('/jd-update/analytics/profile-compare', '/api/analytics/profile-compare')),
     ]);
-    return { overview, trend, lifecycle, migration, profileCompare };
+    const fallback = roleEvolutionFallback().analytics;
+    const role = params.standard_job || profileCompare?.standard_job || fallback.role;
+    return {
+      overview,
+      trend,
+      lifecycle,
+      migration,
+      profileCompare,
+      analytics: {
+        ...normalizeAnalytics(
+        { trend, lifecycle, migration },
+        { ...fallback, role, ...(overview || {}) },
+        ),
+        versions: profileVersions(profileCompare),
+      },
+      roleEvolution: normalizeRoleEvolution(profileCompare, role),
+    };
   } catch {
     return roleEvolutionFallback().analytics;
   }

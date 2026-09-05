@@ -699,6 +699,16 @@ class TestJobServicePurePaths:
         assert jobs._category_for_job("后端开发工程师", {"top_jobs": [{"name": "后端开发工程师", "metadata": {"category": "研发"}}]}) == "研发"
         assert jobs._generate_job_id("2026-02", "后端开发工程师").startswith("web_202602_")
 
+    def test_monthly_import_defaults_to_manual_review_mode(self, monkeypatch):
+        import pandas as pd
+        import app.services.job_service as jobs
+
+        seen = []
+        monkeypatch.setattr(jobs, "submit_one_dry_run", lambda payload: seen.append(payload) or {"status": "pending"})
+        result = jobs.import_csv(pd.DataFrame([{"job_title": "新岗位", "month": "2026-08"}]))
+        assert result["count"] == 1
+        assert seen[0]["processing_mode"] == "manual"
+
     def test_preview_and_submit_paths_use_public_update_contract(self, monkeypatch):
         import app.services.job_service as jobs
 

@@ -99,7 +99,10 @@ class LLMRouteAdjudicator:
     ) -> RouteAdjudicationDecision:
         api_key = os.getenv(self.api_key_env)
         if not api_key:
-            raise RuntimeError(f"Missing API key. Set ${self.api_key_env} before route adjudication.")
+            return RouteAdjudicationDecision(
+                route_status="potential_new_job",
+                reason="LLM route adjudication is unavailable; deferred to manual review",
+            )
 
         result = self._api.call_chat_api(
             api_key=api_key,

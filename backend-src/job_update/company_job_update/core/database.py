@@ -382,6 +382,33 @@ class SQLiteJobUpdateStore:
             conn.commit()
         return self.get_review_item(review_id)
 
+    def delete_review_items(self, review_ids: list[str]) -> list[str]:
+        """Delete an explicitly selected set of review-queue records.
+
+        Review records are deliberately separate from the formal job, skill,
+        and profile tables.  Callers must resolve the complete, safe set of
+        queue IDs before invoking this method.
+        """
+        ids = list(dict.fromkeys(str(review_id).strip() for review_id in review_ids if str(review_id).strip()))
+        if not ids:
+            return []
+        self.migrate()
+        placeholders = ", ".join("?" for _ in ids)
+        with self._connect() as conn:
+            rows = conn.execute(
+                f"SELECT review_id FROM review_queue WHERE review_id IN ({placeholders})",
+                ids,
+            ).fetchall()
+            found = [str(row["review_id"]) for row in rows]
+            if found:
+                found_placeholders = ", ".join("?" for _ in found)
+                conn.execute(
+                    f"DELETE FROM review_queue WHERE review_id IN ({found_placeholders})",
+                    found,
+                )
+            conn.commit()
+        return found
+
     def migrate(self) -> None:
         self.database_path.parent.mkdir(parents=True, exist_ok=True)
         with self._connect() as conn:
