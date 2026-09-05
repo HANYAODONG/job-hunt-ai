@@ -2,6 +2,17 @@
 
 A complete AI-powered job matching system featuring semantic search, knowledge graphs, and intelligent job recommendations.
 
+## Docker Deployment
+
+The repository includes local-source `Dockerfile` and Docker Compose configuration. See [Docker容器化部署说明](docs/Docker容器化部署说明.md) for the complete Chinese deployment, verification, shutdown, and troubleshooting procedure.
+
+```powershell
+Copy-Item .env.example .env
+docker compose up -d --build
+```
+
+Open <http://localhost:18080> after all services are running.
+
 ## Features
 
 - **Semantic Job Search**: Natural language queries with AI understanding

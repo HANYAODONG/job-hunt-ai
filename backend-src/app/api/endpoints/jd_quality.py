@@ -44,11 +44,15 @@ def audit_batch(body: JobQualityBatchRequest):
 @router.get("/sample")
 def audit_sample(
     limit: int = Query(default=30, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
     use_llm: bool = False,
     llm_limit: int = Query(default=5, ge=0, le=20),
 ):
-    jobs = service.load_sample_jobs(limit)
-    return service.audit_batch(jobs, use_llm=use_llm, llm_limit=llm_limit)
+    jobs = service.load_sample_jobs(limit, offset)
+    result = service.audit_batch(jobs, use_llm=use_llm, llm_limit=llm_limit)
+    result["summary"]["sample_offset"] = offset
+    result["summary"]["sample_end"] = offset + len(jobs)
+    return result
 
 
 @router.get("/summary")

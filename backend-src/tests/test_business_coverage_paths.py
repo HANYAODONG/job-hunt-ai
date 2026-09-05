@@ -1028,3 +1028,32 @@ class TestEndpointContracts:
         assert first == second and first["source"] == "canonical_standard_role_taxonomy"
         monkeypatch.setattr(graph.talent_data_service, "list_standard_role_jobs", lambda *args: [{"job_id": "j1"}])
         assert asyncio.run(graph.get_standard_role_jobs("研发", "后端", "后端开发工程师", limit=999, offset=-1)) == [{"job_id": "j1"}]
+
+    def test_graph_year_over_year_growth_uses_previous_snapshot(self):
+        from app.api.endpoints.graph import build_standard_role_graph
+
+        def record(year, role="后端开发工程师"):
+            return {
+                "publish_time": f"{year}-06-01",
+                "standard_category": "软件工程",
+                "standard_direction": "服务端与通用开发",
+                "standard_role": role,
+                "is_mapped_canonical_role": True,
+                "skills": ["Python"],
+            }
+
+        records = [
+            record(2024), record(2024),
+            record(2025), record(2025), record(2025),
+            record(2025, "全栈开发工程师"),
+        ]
+        baseline = build_standard_role_graph(records, year=2024)
+        current = build_standard_role_graph(records, year=2025)
+        domain = current["tree"]["children"][0]
+        roles = domain["children"][0]["children"]
+
+        assert baseline["tree"]["growth"] == "基准年"
+        assert current["tree"]["growth"] == "+100.0%"
+        assert domain["growth"] == "+100.0%"
+        assert next(node for node in roles if node["label"] == "后端开发工程师")["growth"] == "+50.0%"
+        assert next(node for node in roles if node["label"] == "全栈开发工程师")["growth"] == "新增"

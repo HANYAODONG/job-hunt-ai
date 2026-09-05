@@ -43,7 +43,7 @@ from job_update.company_job_update.core.frequency_store import FrequencyStore
 from job_update.company_job_update.core.models import JobPosting, ProcessResult
 from job_update.company_job_update.core.route_adjudication import LLMRouteAdjudicator
 from job_update.company_job_update.core.service import JobUpdateSystem
-from job_update.company_job_update.core.similarity import Text2VecSimilarity
+from job_update.company_job_update.core.similarity import LexicalSimilarity, Text2VecSimilarity
 from job_update.company_job_update.core.skill_extraction import ExistingSkillExtractAdapter
 from job_update.company_job_update.core.skill_pool_store import SkillPoolStore
 from job_update.company_job_update.core.skill_lifecycle_store import SkillLifecycleStore
@@ -71,7 +71,7 @@ LLM_UNCERTAIN_TAKE_TOP1_THRESHOLD = 0.82
 TEXT2VEC_MODEL = os.getenv("JOB_UPDATE_TEXT2VEC_MODEL", "shibing624/text2vec-base-chinese")
 
 
-_SIMILARITY: Text2VecSimilarity | None = None
+_SIMILARITY: Text2VecSimilarity | LexicalSimilarity | None = None
 _TITLE_CLEANER: LLMTitleCleaner | None = None
 _ROUTE_ADJUDICATOR: LLMRouteAdjudicator | None = None
 _SKILL_EXTRACTOR: ExistingSkillExtractAdapter | None = None
@@ -511,10 +511,17 @@ def _normalize_import_frame(frame: pd.DataFrame) -> pd.DataFrame:
     return output[output["job_title"].astype(str).str.strip() != ""].reset_index(drop=True)
 
 
-def _similarity() -> Text2VecSimilarity:
+def _similarity() -> Text2VecSimilarity | LexicalSimilarity:
     global _SIMILARITY
     if _SIMILARITY is None:
-        _SIMILARITY = Text2VecSimilarity(TEXT2VEC_MODEL)
+        mode = os.getenv("JOB_UPDATE_SIMILARITY_MODE", "semantic").strip().lower()
+        if mode == "lexical":
+            _SIMILARITY = LexicalSimilarity()
+        else:
+            try:
+                _SIMILARITY = Text2VecSimilarity(TEXT2VEC_MODEL)
+            except (ImportError, OSError, RuntimeError):
+                _SIMILARITY = LexicalSimilarity()
     return _SIMILARITY
 
 

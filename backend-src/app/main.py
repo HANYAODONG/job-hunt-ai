@@ -23,6 +23,7 @@ from .api.endpoints.talent import router as talent_router
 from .api.endpoints.jd_quality import router as jd_quality_router
 from .api.endpoints.diagnosis import router as diagnosis_router
 from .api.endpoints.learning import router as learning_router
+from .api.endpoints.career_assistant import router as career_assistant_router
 
 # Configure logging
 logging.basicConfig(
@@ -80,6 +81,7 @@ app.include_router(talent_router, prefix="/api/v1/talent", tags=["talent"])
 app.include_router(jd_quality_router, prefix="/api/v1/jd-quality", tags=["jd-quality"])
 app.include_router(diagnosis_router, prefix="/api/v1/diagnosis", tags=["diagnosis"])
 app.include_router(learning_router, prefix="/api/v1/learning", tags=["learning"])
+app.include_router(career_assistant_router, prefix="/api/v1/career-assistant", tags=["career-assistant"])
 
 # Health check endpoint
 @app.get("/health")

@@ -33,6 +33,46 @@ def _sorted_categories(categories: set[str]) -> list[str]:
     return known + sorted(categories - set(known))
 
 
+def _record_taxonomy(record: dict) -> tuple[str, str, str] | None:
+    category = str(record.get("standard_category") or "").strip()
+    role = str(record.get("standard_role") or record.get("job_family") or "").strip()
+    if not category or not role:
+        return None
+    if record.get("is_mapped_canonical_role"):
+        canonical_category = category
+        direction = str(record.get("standard_direction") or "").strip()
+    else:
+        canonical_category, inferred_direction = get_canonical_taxonomy(category, role)
+        direction = str(record.get("standard_direction") or inferred_direction).strip()
+    return canonical_category, direction, role
+
+
+def _posting_counts(records: list[dict]) -> dict[str, Counter]:
+    counts = {
+        "category": Counter(),
+        "direction": Counter(),
+        "role": Counter(),
+    }
+    for record in records:
+        taxonomy = _record_taxonomy(record)
+        if taxonomy is None:
+            continue
+        category, direction, role = taxonomy
+        counts["category"][category] += 1
+        counts["direction"][(category, direction)] += 1
+        counts["role"][(category, direction, role)] += 1
+    return counts
+
+
+def _growth_label(current: int, previous: int, has_previous_snapshot: bool) -> str:
+    if not has_previous_snapshot:
+        return "基准年"
+    if previous == 0:
+        return "新增" if current > 0 else "—"
+    growth = (current - previous) / previous * 100
+    return f"{growth:+.1f}%" if growth else "0.0%"
+
+
 def build_standard_role_graph(
     records: list[dict],
     year: int | None = None,
@@ -40,11 +80,20 @@ def build_standard_role_graph(
     include_active_catalog_roles: bool = False,
 ) -> dict:
     """Aggregate job postings into category -> direction -> standard role."""
-    # 年份过滤
+    all_records = records
+    previous_counts = {"category": Counter(), "direction": Counter(), "role": Counter()}
+    has_previous_snapshot = False
     if year is not None:
         year_str = str(year)
+        previous_year_str = str(year - 1)
+        previous_records = [
+            record for record in all_records
+            if str(record.get("publish_time", "")).strip().startswith(previous_year_str)
+        ]
+        has_previous_snapshot = bool(previous_records)
+        previous_counts = _posting_counts(previous_records)
         records = [
-            r for r in records
+            r for r in all_records
             if str(r.get("publish_time", "")).strip().startswith(year_str)
         ]
     
@@ -87,16 +136,10 @@ def build_standard_role_graph(
             )
 
     for record in records:
-        category = str(record.get("standard_category") or "").strip()
-        role = str(record.get("standard_role") or record.get("job_family") or "").strip()
-        if not category or not role:
+        taxonomy = _record_taxonomy(record)
+        if taxonomy is None:
             continue
-        if record.get("is_mapped_canonical_role"):
-            canonical_category = category
-            direction = str(record.get("standard_direction") or "").strip()
-        else:
-            canonical_category, inferred_direction = get_canonical_taxonomy(category, role)
-            direction = str(record.get("standard_direction") or inferred_direction).strip()
+        canonical_category, direction, role = taxonomy
         skills = [str(skill).strip() for skill in record.get("skills") or [] if str(skill).strip()]
         key = (canonical_category, direction, role)
         role_data = roles.setdefault(key, {"count": 0, "skills": Counter(), "needs_review": 0})
@@ -118,7 +161,11 @@ def build_standard_role_graph(
         "label": f"岗位银河{year_label}",
         "type": "root",
         "count": len(roles),
-        "growth": "+0%",
+        "growth": _growth_label(
+            sum(item["count"] for item in roles.values()),
+            sum(previous_counts["category"].values()),
+            has_previous_snapshot,
+        ),
         "detail": f"当前图谱包含 {len(roles)} 个标准岗位，来自 {sum(item['count'] for item in roles.values())} 条招聘数据。",
         "skills": ["标准岗位分类", "能力映射", "岗位演化"],
         "children": [],
@@ -133,7 +180,11 @@ def build_standard_role_graph(
             "label": category,
             "type": "domain",
             "count": category_total,
-            "growth": "+0%",
+            "growth": _growth_label(
+                category_total,
+                previous_counts["category"][category],
+                has_previous_snapshot,
+            ),
             "detail": f"一级标准分类，包含 {len(directions)} 个岗位方向与 {sum(len(items) for items in directions.values())} 个标准岗位。",
             "skills": _top_skills(category_skills[category]),
             "children": [],
@@ -158,7 +209,11 @@ def build_standard_role_graph(
                 "role_count": role_count,
                 "is_single_role": is_single_role,
                 "taxonomy_status": taxonomy_status,
-                "growth": "+0%",
+                "growth": _growth_label(
+                    family_total,
+                    previous_counts["direction"][(category, direction)],
+                    has_previous_snapshot,
+                ),
                 "detail": (
                     f"岗位方向，当前数据包含 1 个标准岗位、{family_total} 条招聘数据；"
                     f"{taxonomy_status}。"
@@ -175,7 +230,11 @@ def build_standard_role_graph(
                         "standard_direction": direction,
                         "standard_role": role,
                         "count": data["count"],
-                        "growth": "+0%",
+                        "growth": _growth_label(
+                            data["count"],
+                            previous_counts["role"][(category, direction, role)],
+                            has_previous_snapshot,
+                        ),
                         "detail": (
                             f"标准岗位，汇总 {data['count']} 条招聘数据。"
                             if not data["needs_review"]

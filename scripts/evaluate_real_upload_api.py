@@ -51,7 +51,7 @@ def main() -> None:
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument(
         "--parser-mode",
-        choices=("auto", "local", "llm"),
+        choices=("auto", "local", "llm", "vision"),
         default="auto",
     )
     args = parser.parse_args()

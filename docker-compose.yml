@@ -60,6 +60,10 @@ services:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
       - DEEPSEEK_MODEL=${DEEPSEEK_MODEL:-deepseek-chat}
+      - CAREER_ASSISTANT_API_KEY=${CAREER_ASSISTANT_API_KEY:-}
+      - CAREER_ASSISTANT_MODEL=${CAREER_ASSISTANT_MODEL:-deepseek-chat}
+      - CAREER_ASSISTANT_TIMEOUT=${CAREER_ASSISTANT_TIMEOUT:-60}
+      - CAREER_ASSISTANT_MAX_TOKENS=${CAREER_ASSISTANT_MAX_TOKENS:-900}
       - DEEPSEEK_BASE_URL=${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
       - ENABLE_LLM_RESUME_PARSER=${ENABLE_LLM_RESUME_PARSER:-true}
       - LLM_RESUME_PROVIDER=${LLM_RESUME_PROVIDER:-deepseek}
@@ -69,7 +73,13 @@ services:
       - LLM_RESUME_TIMEOUT=${LLM_RESUME_TIMEOUT:-150}
       - LLM_RESUME_MAX_TEXT_CHARS=${LLM_RESUME_MAX_TEXT_CHARS:-12000}
       - LLM_RESUME_MAX_TOKENS=${LLM_RESUME_MAX_TOKENS:-1200}
+      - LLM_RESUME_VISION_MODEL=${LLM_RESUME_VISION_MODEL:-deepseek-v4-flash-vision-exp}
+      - LLM_RESUME_VISION_MAX_TOKENS=${LLM_RESUME_VISION_MAX_TOKENS:-2400}
+      - LLM_RESUME_VISION_MAX_PAGES=${LLM_RESUME_VISION_MAX_PAGES:-6}
+      - LLM_RESUME_VISION_DPI=${LLM_RESUME_VISION_DPI:-144}
+      - LLM_RESUME_VISION_JPEG_QUALITY=${LLM_RESUME_VISION_JPEG_QUALITY:-78}
       - JOB_UPDATE_TEXT2VEC_MODEL=${JOB_UPDATE_TEXT2VEC_MODEL:-shibing624/text2vec-base-chinese}
+      - JOB_UPDATE_SIMILARITY_MODE=${JOB_UPDATE_SIMILARITY_MODE:-lexical}
       - ENABLE_SPACY_MODEL=${ENABLE_SPACY_MODEL:-false}
       - ENABLE_SENTENCE_TRANSFORMER=${ENABLE_SENTENCE_TRANSFORMER:-false}
       # Demo startup stays deterministic and avoids repeated model-download retries.
@@ -86,6 +96,7 @@ services:
       - ./uploads:/app/uploads
       - ./artifacts:/app/artifacts
       - ./backend-src/app:/app/app
+      - ./backend-src/job_update:/app/job_update
       - ./backend-src/scripts:/app/scripts
     depends_on:
       elasticsearch:

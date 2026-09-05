@@ -20,7 +20,7 @@ const writeSettings = (pipeline, parser) => {
   } catch { /* storage may be unavailable in a restricted browser */ }
 };
 
-const parserLabels = { auto: '自动（LLM 优先）', local: '仅本地快速解析', llm: '强制大模型解析' };
+const parserLabels = { auto: '自动（文本LLM优先）', local: '仅本地快速解析', llm: '文本大模型解析', vision: '多模态视觉解析' };
 
 const RuntimeSettingsPage = () => {
   const { message } = AntdApp.useApp();
@@ -34,7 +34,8 @@ const RuntimeSettingsPage = () => {
   const parserDescription = useMemo(() => ({
     auto: '检测到可用的大模型配置时优先调用 LLM；不可用或超时则自动回退本地解析。',
     local: '使用本地轻量解析器，不发起外部大模型请求，适合快速联调和离线环境。',
-    llm: '强制调用大模型解析。若服务不可用，本次上传会直接返回错误，不自动回退。',
+    llm: '先提取 PDF 文本，再由大模型补充有原文证据的技能与工作年限。',
+    vision: '将 PDF 页面渲染为图片交给多模态模型，只整理匹配需要的技能与工作年限。',
   }[parser]), [parser]);
 
   const save = () => { writeSettings(pipeline, parser); setSaved(true); message.success('运行设置已保存'); };
@@ -56,7 +57,7 @@ const RuntimeSettingsPage = () => {
         <Card className="runtime-setting-panel" title={<><ApiOutlined /> 简历解析</>}>
           <div className="runtime-setting-copy"><Typography.Text strong>大模型解析是显式可控的</Typography.Text><Typography.Paragraph type="secondary">{parserDescription}</Typography.Paragraph></div>
           <Segmented block value={parser} onChange={(value) => { setParser(value); setSaved(false); }} options={Object.entries(parserLabels).map(([value, label]) => ({ label, value }))} />
-          <div className="runtime-parser-status"><Tag color={parser === 'llm' ? 'blue' : parser === 'local' ? 'default' : 'green'}>{parserLabels[parser]}</Tag><span>当前上传任务生效</span></div>
+          <div className="runtime-parser-status"><Tag color={parser === 'vision' ? 'purple' : parser === 'llm' ? 'blue' : parser === 'local' ? 'default' : 'green'}>{parserLabels[parser]}</Tag><span>当前上传任务生效</span></div>
         </Card>
       </div>
 

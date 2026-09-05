@@ -53,6 +53,11 @@ class Settings(BaseSettings):
     LLM_RESUME_TIMEOUT: int = 150
     LLM_RESUME_MAX_TEXT_CHARS: int = 12000
     LLM_RESUME_MAX_TOKENS: int = 1200
+    LLM_RESUME_VISION_MODEL: str = "deepseek-v4-flash-vision-exp"
+    LLM_RESUME_VISION_MAX_TOKENS: int = 2400
+    LLM_RESUME_VISION_MAX_PAGES: int = 6
+    LLM_RESUME_VISION_DPI: int = 144
+    LLM_RESUME_VISION_JPEG_QUALITY: int = 78
     SEMANTIC_EMBEDDING_MODEL: str = "BAAI/bge-m3"
     SEMANTIC_EMBEDDING_DEVICE: str = "cpu"
     SEMANTIC_EMBEDDING_BATCH_SIZE: int = 16
@@ -74,6 +79,10 @@ class Settings(BaseSettings):
     DEEPSEEK_API_KEY: Optional[str] = None
     DEEPSEEK_MODEL: str = "deepseek-chat"
     DEEPSEEK_BASE_URL: str = "https://api.deepseek.com"
+    CAREER_ASSISTANT_API_KEY: Optional[str] = None
+    CAREER_ASSISTANT_MODEL: str = "deepseek-chat"
+    CAREER_ASSISTANT_TIMEOUT: int = 60
+    CAREER_ASSISTANT_MAX_TOKENS: int = 900
     GPT_API_KEY: Optional[str] = None
     GPT_MODEL: str = "gpt-4.1-mini"
     GPT_BASE_URL: str = "https://api.openai.com/v1"

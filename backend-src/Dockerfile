@@ -24,12 +24,20 @@ RUN pip install --no-cache-dir \
     --index-url "${TORCH_INDEX_URL}" \
     "torch==${TORCH_VERSION}"
 
-# Install Python dependencies (use Aliyun mirror for China mainland, with longer timeout)
+# Keep the package index configurable. The official CDN is substantially
+# faster on the current deployment network; mainland users can override it.
+ARG PYPI_INDEX_URL=https://pypi.org/simple
 RUN pip install --no-cache-dir \
     --default-timeout=300 \
-    -i https://mirrors.aliyun.com/pypi/simple/ \
-    --trusted-host mirrors.aliyun.com \
+    --index-url "${PYPI_INDEX_URL}" \
     -r requirements.txt
+
+# Keep PDF page rendering in its own layer. Updating this optional visual
+# parser dependency must not invalidate the much larger ML dependency layer.
+RUN pip install --no-cache-dir \
+    --default-timeout=300 \
+    --index-url "${PYPI_INDEX_URL}" \
+    "PyMuPDF>=1.24.0,<2.0.0"
 
 # Download spaCy model
 # RUN python -m spacy download en_core_web_sm

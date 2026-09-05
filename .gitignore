@@ -48,6 +48,8 @@ frontend-src/coverage/
 .DS_Store
 Thumbs.db
 backend-src/job_update/company_job_update/data/versions/**
+!backend-src/job_update/company_job_update/data/versions/company_large_v2/
+!backend-src/job_update/company_job_update/data/versions/company_large_v2/standard_job_title_dictionary.csv
 !backend-src/job_update/company_job_update/data/README.md
 backend-src/job_update/government_job_update/data/base/**
 !backend-src/job_update/government_job_update/data/README.md

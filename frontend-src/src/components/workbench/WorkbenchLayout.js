@@ -18,6 +18,7 @@ import {
 } from '@ant-design/icons';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { preloadRoute } from '../../routeLoaders';
+import CareerAssistant from './CareerAssistant';
 import './workbench.css';
 import './workflow.css';
 import './v0-upgrade.css';
@@ -256,6 +257,7 @@ const WorkbenchLayout = () => {
         </section>
       </div>}
       <Content className="workbench-content"><div className="route-stage" ref={routeRef}><Outlet context={{ workspaceRole }} /></div></Content>
+      {!enterpriseMode && <CareerAssistant pathname={location.pathname} />}
     </Layout>
   );
 };

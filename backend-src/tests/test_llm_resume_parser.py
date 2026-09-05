@@ -12,6 +12,12 @@ class FakeClient:
         return self.response
 
 
+class FakeVisionClient(FakeClient):
+    def complete(self, *, system_prompt, payload, image_data_urls=None, model=None, max_tokens=None):
+        self.calls.append((system_prompt, payload, image_data_urls, model, max_tokens))
+        return self.response
+
+
 def test_llm_resume_parser_accepts_only_verified_known_skills():
     client = FakeClient(
         {
@@ -72,3 +78,47 @@ def test_resume_service_maps_frontend_local_parser_mode(monkeypatch):
     result = service.parse_resume_text("Python", mode="local")
 
     assert result["skills"] == ["Python"]
+
+
+def test_vision_parser_sends_rendered_pages_and_keeps_closed_skill_set(monkeypatch):
+    client = FakeVisionClient(
+        {
+            "skills": [
+                {"name": "Python", "evidence": "Python"},
+                {"name": "InventedSkill", "evidence": "InventedSkill"},
+            ],
+            "years_experience": 3,
+        }
+    )
+    parser = LLMResumeParser(client=client, enabled=True)
+    monkeypatch.setattr(parser, "_render_pdf_pages", lambda _: ["data:image/jpeg;base64,abc"])
+
+    result = parser.parse_vision(
+        "resume.pdf",
+        fallback={"skills": [], "experience": [], "education": []},
+        source_text="技能：Python",
+    )
+
+    assert result["llm_used"] is True
+    assert result["parser_mode"] == "vision"
+    assert result["skills"] == ["Python"]
+    assert client.calls[0][2] == ["data:image/jpeg;base64,abc"]
+    assert client.calls[0][3] == "deepseek-v4-flash-vision-exp"
+    assert client.calls[0][4] == 2400
+
+
+def test_vision_parser_accepts_known_skill_for_image_only_pdf(monkeypatch):
+    client = FakeVisionClient(
+        {"skills": [{"name": "Python", "evidence": "技能栏：Python"}]}
+    )
+    parser = LLMResumeParser(client=client, enabled=True)
+    monkeypatch.setattr(parser, "_render_pdf_pages", lambda _: ["data:image/jpeg;base64,abc"])
+
+    result = parser.parse_vision(
+        "scan.pdf",
+        fallback={"skills": [], "experience": [], "education": []},
+        source_text="",
+    )
+
+    assert result["skills"] == ["Python"]
+    assert result["parser_mode"] == "vision"

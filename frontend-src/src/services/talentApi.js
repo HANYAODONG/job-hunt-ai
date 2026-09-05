@@ -784,23 +784,19 @@ export const getLearningPlan = async () => {
   if (!target?.role) return learningPlanData;
 
   try {
+    const requestedSkills = (target.gaps || [])
+      .map((gap) => (typeof gap === 'string' ? gap : gap?.skill))
+      .filter(Boolean);
     const raw = await generateLearningPlan({
       targetRole: target.role,
-      missingSkills: (target.gaps || []).map((gap) => (typeof gap === 'string' ? gap : gap?.skill)).filter(Boolean),
+      missingSkills: requestedSkills,
       targetVersion: target.version,
       matchScore: target.score != null ? Number(target.score) / 100 : null,
     });
 
-    return {
-      profile: raw.profile || '求职者',
-      targetRole: raw.target_role || target.role,
-      targetVersion: raw.target_version || target.version,
-      matchScore: raw.match_score != null ? Math.round(raw.match_score * 100) : target.score,
-      progress: raw.progress || 0,
-      currentStage: raw.current_stage || '阶段 1',
-      updatedAt: raw.updated_at || new Date().toLocaleString('zh-CN', { hour12: false }),
-      gapCount: raw.gap_count || (raw.stages || []).length,
-      stages: (raw.stages || []).map((stage) => ({
+    const rawStages = Array.isArray(raw.stages) ? raw.stages : [];
+    const stages = rawStages.length > 0
+      ? rawStages.map((stage) => ({
         id: stage.id,
         phase: stage.phase || stage.learning_stage || '阶段 1',
         title: stage.title,
@@ -810,7 +806,33 @@ export const getLearningPlan = async () => {
         tasks: stage.tasks || [],
         outcome: stage.outcome,
         skill: stage.skill,
-      })),
+      }))
+      : ['岗位核心技能深化', '项目实战验证', '面试表达与复盘'].map((skill, index) => ({
+        id: `stage-${index + 1}`,
+        phase: `阶段 ${index + 1}`,
+        title: `${skill}专项实践`,
+        duration: '1 周',
+        status: index === 0 ? '进行中' : '未开始',
+        goal: `围绕${target.role}开展${skill}，形成可展示、可验证的求职证据。`,
+        tasks: [
+          `梳理${target.role}的${skill}要求`,
+          `完成一项${skill}实践任务`,
+          '记录成果、评测结果与改进说明',
+        ],
+        outcome: `${skill}实践成果与复盘说明`,
+        skill,
+      }));
+
+    return {
+      profile: raw.profile || '求职者',
+      targetRole: raw.target_role || target.role,
+      targetVersion: raw.target_version || target.version,
+      matchScore: raw.match_score != null ? Math.round(raw.match_score * 100) : target.score,
+      progress: raw.progress || 0,
+      currentStage: raw.current_stage || '阶段 1',
+      updatedAt: raw.updated_at || new Date().toLocaleString('zh-CN', { hour12: false }),
+      gapCount: raw.gap_count || stages.length,
+      stages,
     };
   } catch (error) {
     console.warn('Learning plan API unavailable, falling back to mock:', error);
@@ -1173,9 +1195,10 @@ export const getMarketRuntimeStatus = async () => {
 };
 export const importMarketCsv = (file) => ingestMarketCsv(file);
 
-export const getJdQualitySample = async ({ limit = 30, useLlm = false, llmLimit = 5 } = {}) => {
+export const getJdQualitySample = async ({ limit = 30, offset = 0, useLlm = false, llmLimit = 5 } = {}) => {
   const query = new URLSearchParams({
     limit: String(limit),
+    offset: String(offset),
     use_llm: String(useLlm),
     llm_limit: String(llmLimit),
   });

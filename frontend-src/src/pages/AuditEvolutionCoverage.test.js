@@ -12,7 +12,7 @@ beforeAll(() => { window.matchMedia = () => ({ matches: false, addListener: jest
 const wrap = (ui) => <AntdApp><MemoryRouter>{ui}</MemoryRouter></AntdApp>;
 
 describe('JD quality audit and role evolution', () => {
-  it('filters audit samples by risk and runs LLM refresh', async () => {
+  it('filters audit samples by risk and loads the next batch', async () => {
     getJdQualitySample.mockResolvedValue({ items: [
       { job_id: 'j1', title: '后端岗位', risk_level: 'high', inflation_score: .8, noise_score: .2, evidence_risk: .4, local_summary: '需复核', evidence: ['技能堆叠'], graph_policy: 'hold_for_review', suspected_inflated_skills: ['Python'] },
       { job_id: 'j2', title: '数据岗位', risk_level: 'low', inflation_score: .1, noise_score: .1, evidence_risk: .1, local_summary: '可信', evidence: [], graph_policy: 'allow_with_trace' },
@@ -22,8 +22,9 @@ describe('JD quality audit and role evolution', () => {
     expect(screen.getByText('后端岗位')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: /高风险 1/ }));
     expect(screen.queryByText('数据岗位')).toBeNull();
-    fireEvent.click(screen.getByText('DeepSeek 增强总结'));
-    await waitFor(() => expect(getJdQualitySample).toHaveBeenCalledWith(expect.objectContaining({ useLlm: true })));
+    fireEvent.click(screen.getByText('换一批'));
+    await waitFor(() => expect(getJdQualitySample).toHaveBeenCalledWith(expect.objectContaining({ offset: 30, useLlm: false })));
+    await waitFor(() => expect(screen.getByText(/第 31-32 条/)).toBeTruthy());
   });
 
   it('switches role versions and opens evidence drawer', async () => {

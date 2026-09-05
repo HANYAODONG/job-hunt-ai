@@ -6,6 +6,7 @@ import {
   ExperimentOutlined,
   RadarChartOutlined,
   ReloadOutlined,
+  SwapOutlined,
   SafetyCertificateOutlined,
   ThunderboltOutlined,
   WarningOutlined,
@@ -70,14 +71,17 @@ const JdQualityPage = () => {
   const [loading, setLoading] = useState(true);
   const [useLlm, setUseLlm] = useState(false);
   const [limit, setLimit] = useState(30);
+  const [offset, setOffset] = useState(0);
   const [selectedRisk, setSelectedRisk] = useState('all');
 
-  const loadData = async (llm = useLlm, nextLimit = limit) => {
+  const loadData = async (llm = useLlm, nextLimit = limit, nextOffset = offset) => {
     setLoading(true);
     try {
-      const result = await getJdQualitySample({ limit: nextLimit, useLlm: llm, llmLimit: 5 });
+      const result = await getJdQualitySample({ limit: nextLimit, offset: nextOffset, useLlm: llm, llmLimit: 5 });
       setData(result);
       setUseLlm(llm);
+      setOffset(result.summary?.sample_offset ?? nextOffset);
+      setSelectedRisk('all');
       if (llm && result.summary?.llm_warning) message.warning(result.summary.llm_warning);
     } catch (error) {
       message.error(error.message || 'JD 质量审核接口不可用');
@@ -88,8 +92,10 @@ const JdQualityPage = () => {
 
   const handleLimitChange = (value) => {
     setLimit(value);
-    loadData(useLlm, value);
+    loadData(useLlm, value, 0);
   };
+
+  const loadNextBatch = () => loadData(false, limit, offset + limit);
 
   useEffect(() => {
     loadData(false);
@@ -133,6 +139,7 @@ const JdQualityPage = () => {
           style={{ width: 130 }}
         />
         <Button icon={<ReloadOutlined />} loading={loading} onClick={() => loadData(false)}>规则审核</Button>
+        <Button icon={<SwapOutlined />} loading={loading} onClick={loadNextBatch}>换一批</Button>
         <Button type="primary" icon={<ThunderboltOutlined />} loading={loading} onClick={() => loadData(true)}>
           DeepSeek 增强总结
         </Button>
@@ -142,7 +149,7 @@ const JdQualityPage = () => {
         <div className="jd-quality-radar-panel">
           <div className="jd-quality-radar-header">
             <span><RadarChartOutlined /> LIVE JD SCREENING</span>
-            <b>{items.length || 0} 条 JD</b>
+            <b>第 {offset + 1}-{offset + items.length} 条 · {items.length || 0} 条 JD</b>
           </div>
           <div className="jd-quality-radar-stage">
             <div className="jd-quality-scan-line" />

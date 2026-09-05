@@ -41,7 +41,16 @@ class ResumeService:
             # Extract candidate profile using NLP
             # Do not let an omitted mode unexpectedly activate a configured
             # remote LLM in the normal upload path.
-            profile_data = self.parse_resume_text(text, mode=mode or "enhanced")
+            selected_mode = (mode or "enhanced").lower()
+            if selected_mode == "vision":
+                fallback = self._parse_with_enhanced(text)
+                profile_data = self.llm_resume_parser.parse_vision(
+                    file_path,
+                    fallback=fallback,
+                    source_text=text,
+                )
+            else:
+                profile_data = self.parse_resume_text(text, mode=selected_mode)
             # Keep the upload contract total even when an optional parser
             # rejects malformed configuration or returns a partial object.
             # The caller should receive a usable empty profile, not a 500
@@ -86,8 +95,14 @@ class ResumeService:
             # stable API value mapped to the dependency-light enhanced parser.
             if mode == "local":
                 mode = "enhanced"
-            if mode not in {"auto", "llm", "enhanced", "spacy"}:
-                raise ValueError("mode must be one of: auto, llm, local, enhanced, spacy")
+            if mode not in {"auto", "llm", "vision", "enhanced", "spacy"}:
+                raise ValueError("mode must be one of: auto, llm, vision, local, enhanced, spacy")
+            if mode == "vision":
+                fallback = self._parse_with_enhanced(text)
+                fallback["parser_mode"] = "enhanced"
+                fallback["llm_used"] = False
+                fallback["llm_warning"] = "Vision mode requires an uploaded PDF file"
+                return fallback
             if mode == "spacy":
                 return self._parse_with_spacy(text)
             if mode in {"llm", "auto"}:

@@ -1,5 +1,10 @@
 from app.services.jd_quality_service import JdQualityService
+import app.services.jd_quality_service as jd_quality_module
+import json
+import tempfile
 import unittest
+from pathlib import Path
+from unittest.mock import patch
 
 
 class JdQualityServiceTest(unittest.TestCase):
@@ -57,6 +62,21 @@ class JdQualityServiceTest(unittest.TestCase):
         self.assertEqual(result["summary"]["total"], 2)
         self.assertEqual(len(result["items"]), 2)
         self.assertIn("overall_summary", result["summary"])
+
+    def test_sample_loader_uses_full_pool_and_offset(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            rows = [{"job_id": f"JOB-{index:03d}", "title": f"岗位{index}"} for index in range(40)]
+            (root / "jobs.jsonl").write_text(
+                "\n".join(json.dumps(row, ensure_ascii=False) for row in rows) + "\n",
+                encoding="utf-8",
+            )
+            with patch.object(jd_quality_module, "DATASET_ITERATION_ROOT", root):
+                selected = JdQualityService().load_sample_jobs(limit=10, offset=10)
+
+        self.assertEqual(len(selected), 10)
+        self.assertEqual(selected[0]["job_id"], "JOB-010")
+        self.assertEqual(selected[-1]["job_id"], "JOB-019")
 
 
 if __name__ == "__main__":

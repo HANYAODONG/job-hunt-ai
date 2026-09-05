@@ -128,6 +128,15 @@ describe('workbench business pages', () => {
     fireEvent.click(screen.getByText('更新进度'));
   });
 
+  it('does not crash when the learning plan has no stages', async () => {
+    getLearningPlan.mockResolvedValue({
+      profile: '候选人', targetRole: '后端开发工程师', targetVersion: 'v2', stages: [],
+    });
+    render(wrap(<LearningPlanPage />));
+    await waitFor(() => expect(screen.getByText('暂无可生成的学习阶段')).toBeTruthy());
+    expect(screen.getByText('重新诊断')).toBeTruthy();
+  });
+
   it('loads role catalog, searches by skill and navigates', async () => {
     getRoleCatalog.mockResolvedValue([role, { ...role, id: 'r2', name: '数据工程师', requiredSkills: [{ name: 'Spark', trend: '0%', level: 70 }, { name: 'SQL', trend: '0%', level: 60 }] }]);
     render(wrap(<RoleLibraryPage />));

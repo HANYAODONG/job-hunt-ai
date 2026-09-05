@@ -1,11 +1,12 @@
 import React, { useRef, useState } from 'react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
-import { Alert, App as AntdApp, Button, Skeleton, Tag, Upload } from 'antd';
+import { Alert, App as AntdApp, Button, Skeleton, Space, Tag, Upload } from 'antd';
 import { ArrowRightOutlined, CheckCircleFilled, FilePdfOutlined, InboxOutlined, SafetyCertificateOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import PageHeading from '../components/workbench/PageHeading';
 import TechnicalInspector from '../components/workbench/TechnicalInspector';
 import { diagnoseCandidate } from '../services/talentApi';
+import { saveDiagnosisAssistantContext } from '../services/careerAssistantContext';
 import { useNavigate } from 'react-router-dom';
 import '../components/workbench/candidate-flow.css';
 
@@ -108,6 +109,7 @@ const DiagnosisPage = () => {
       const result = await diagnoseCandidate({ resumeFile, parserMode, pipelineMode });
       setAnalysis(result);
       setSelectedRoleId(result.matches?.[0]?.id || null);
+      saveDiagnosisAssistantContext(result, file.name, result.matches?.[0]?.id || null);
       setSelectedGap(result.matches?.[0]?.gaps?.[0]?.skill || result.gaps?.[0]?.skill || '岗位适配');
       message.success(result.source === 'live'
         ? (result.pipeline?.mode === 'full' ? '完整人岗智能匹配流水线已完成' : '简历解析完成，已从现有推荐服务生成结果')
@@ -136,6 +138,7 @@ const DiagnosisPage = () => {
   const selectRole = (match) => {
     setSelectedRoleId(match.id);
     setSelectedGap(match.gaps[0]?.skill || 'Agent 工作流');
+    saveDiagnosisAssistantContext(analysis, null, match.id);
   };
 
   const createLearningPlan = () => {
@@ -176,17 +179,19 @@ const DiagnosisPage = () => {
             <Button type="primary" loading={loading}>选择文件</Button>
           </Upload.Dragger>
           <div className="diagnosis-parser-control">
-            <div><span>简历解析方式</span><small>{parserMode === 'llm' ? '本次上传将使用大模型提取技能证据' : '自动模式：LLM 可用时优先使用，否则回退本地解析'}</small></div>
-            <Button
-              type={parserMode === 'llm' ? 'primary' : 'default'}
-              icon={<ThunderboltOutlined />}
-              onClick={() => {
-                const nextMode = parserMode === 'llm' ? 'auto' : 'llm';
-                setParserMode(nextMode);
-                try { localStorage.setItem('resumeParserMode', nextMode); } catch { /* browser storage may be unavailable */ }
-              }}
-              disabled={loading}
-            >{parserMode === 'llm' ? '已选择大模型解析' : '使用大模型解析'}</Button>
+            <div><span>简历解析方式</span><small>{parserMode === 'vision' ? '直接读取 PDF 页面图像并整理匹配字段' : parserMode === 'llm' ? '从 PDF 文本补充有证据的技能' : '自动模式：文本 LLM 可用时优先，否则回退本地解析'}</small></div>
+            <Space.Compact>
+              {[['auto', '自动'], ['llm', '文本大模型'], ['vision', '多模态视觉']].map(([value, label]) => <Button
+                key={value}
+                type={parserMode === value ? 'primary' : 'default'}
+                icon={value === 'auto' ? null : <ThunderboltOutlined />}
+                onClick={() => {
+                  setParserMode(value);
+                  try { localStorage.setItem('resumeParserMode', value); } catch { /* browser storage may be unavailable */ }
+                }}
+                disabled={loading}
+              >{label}</Button>)}
+            </Space.Compact>
           </div>
           <button className="sample-resume-button" onClick={() => startDiagnosis()} disabled={loading}><FilePdfOutlined /><span><strong>陈同学-前端与AI项目简历.pdf</strong><small>使用脱敏示例快速查看完整诊断</small></span><ArrowRightOutlined /></button>
         </div>

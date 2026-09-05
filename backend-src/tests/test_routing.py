@@ -7,6 +7,7 @@ from job_update.company_job_update.core.route_adjudication import (
     RouteAdjudicationDecision,
 )
 from job_update.company_job_update.core.service import JobUpdateSystem
+from job_update.company_job_update.core.similarity import LexicalSimilarity
 from job_update.company_job_update.core.taxonomy import JobTaxonomy, StandardJob
 from job_update.company_job_update.core.taxonomy_gap_guard import detect_taxonomy_gap
 
@@ -14,6 +15,13 @@ from job_update.company_job_update.core.taxonomy_gap_guard import detect_taxonom
 class FixedSimilarity:
     def score(self, query: str, candidates):
         return [1.0 if "大模型算法工程师" in candidate else 0.1 for candidate in candidates]
+
+
+def test_lexical_similarity_is_deterministic_and_ranks_exact_title_first() -> None:
+    similarity = LexicalSimilarity()
+    scores = similarity.score("Backend Engineer", ["Data Engineer", "Backend Engineer"])
+    assert scores[1] == 1.0
+    assert scores[1] > scores[0]
 
 
 def test_route_existing_job_by_exact_title() -> None:

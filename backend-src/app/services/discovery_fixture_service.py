@@ -10,6 +10,7 @@ from __future__ import annotations
 import csv
 import json
 from datetime import datetime
+import os
 from pathlib import Path
 import shutil
 from uuid import uuid4
@@ -23,11 +24,12 @@ from job_update.company_job_update.core.service import JobUpdateSystem
 from job_update.company_job_update.core.taxonomy import JobTaxonomy
 
 
-ROOT = Path(__file__).resolve().parents[3]
+ROOT = Path(os.getenv("JOB_HUNT_REPO_ROOT") or Path(__file__).resolve().parents[3])
+BACKEND_ROOT = ROOT / "backend-src" if (ROOT / "backend-src").exists() else ROOT
 FIXTURE = ROOT / "artifacts/discovery_synthetic_fixture/synthetic_new_role_jds.csv"
 RUN_ROOT = ROOT / "artifacts/discovery_synthetic_fixture/runs"
 REPORT = ROOT / "artifacts/discovery_synthetic_fixture/synthetic_discovery_report.json"
-BASE_DICTIONARY = ROOT / "backend-src/job_update/company_job_update/data/versions/company_large_v2/standard_job_title_dictionary.csv"
+BASE_DICTIONARY = BACKEND_ROOT / "job_update/company_job_update/data/versions/company_large_v2/standard_job_title_dictionary.csv"
 
 
 class _LowNoveltySimilarity:
@@ -68,7 +70,15 @@ def run_synthetic_new_role_fixture() -> dict:
     run_dir.mkdir(parents=True)
 
     dictionary = run_dir / "standard_job_title_dictionary.csv"
-    shutil.copyfile(BASE_DICTIONARY, dictionary)
+    if BASE_DICTIONARY.exists():
+        shutil.copyfile(BASE_DICTIONARY, dictionary)
+    else:
+        dictionary.write_text(
+            "standard_job_title,standard_category,match_keywords\n"
+            "后端开发工程师,软件研发,后端|服务端|Backend\n"
+            "大模型应用工程师,AI应用,大模型.*应用|LLM.*应用|智能体|Agent\n",
+            encoding="utf-8-sig",
+        )
     event_stream = run_dir / "job_update_event_stream.csv"
     event_stream.write_text(
         "job_id,month,standard_job,job_title,job_responsibility,job_requirement,skills\n",

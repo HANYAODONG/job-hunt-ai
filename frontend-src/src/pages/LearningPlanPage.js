@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
-import { App as AntdApp, Button, Progress, Skeleton } from 'antd';
+import { App as AntdApp, Button, Empty, Progress, Skeleton } from 'antd';
 import { CheckOutlined, ClockCircleOutlined, FileDoneOutlined, PlayCircleOutlined, ReloadOutlined } from '@ant-design/icons';
 import PageHeading from '../components/workbench/PageHeading';
 import TechnicalInspector from '../components/workbench/TechnicalInspector';
 import { getLearningPlan } from '../services/talentApi';
+import { saveLearningAssistantContext } from '../services/careerAssistantContext';
 import { useNavigate } from 'react-router-dom';
 import '../components/workbench/candidate-flow.css';
 
@@ -40,7 +41,8 @@ const LearningPlanPage = () => {
     getLearningPlan().then((result) => {
       let target = null;
       try { target = JSON.parse(localStorage.getItem('careerTarget')); } catch { target = null; }
-      const stages = target?.gaps?.length ? result.stages.map((stage, index) => {
+      const resultStages = Array.isArray(result?.stages) ? result.stages.filter(Boolean) : [];
+      const stages = target?.gaps?.length ? resultStages.map((stage, index) => {
         const skill = target.gaps[index] || stage.skill;
         if (skill === stage.skill) return stage;
         return {
@@ -51,9 +53,10 @@ const LearningPlanPage = () => {
           tasks: [`梳理${skill}的岗位要求`, `完成${skill}最小实践`, '记录评测结果与改进说明'],
           outcome: `${skill}实践项目与复盘说明`,
         };
-      }) : result.stages;
+      }) : resultStages;
       const nextPlan = target ? { ...result, targetRole: target.role, targetVersion: target.version, matchScore: target.score, stages } : result;
       setPlan(nextPlan);
+      saveLearningAssistantContext(nextPlan);
       setActiveId(stages.find((stage) => stage.status === '进行中')?.id || stages[0]?.id);
     });
   }, []);
@@ -61,6 +64,17 @@ const LearningPlanPage = () => {
 
   const activeStage = plan.stages.find((stage) => stage.id === activeId) || plan.stages[0];
   const statusIcon = { '已完成': <CheckOutlined />, '进行中': <PlayCircleOutlined />, '未开始': <ClockCircleOutlined /> };
+
+  if (!activeStage) {
+    return (
+      <div className="workbench-page learning-plan-page" ref={pageRef}>
+        <PageHeading eyebrow="GROWTH PLAN" title="学习与改进计划" description="当前诊断没有产生可用的能力缺口，请返回诊断页重新选择目标岗位。">
+          <Button icon={<ReloadOutlined />} onClick={() => navigate('/diagnosis')}>重新诊断</Button>
+        </PageHeading>
+        <section className="learning-workspace"><Empty description="暂无可生成的学习阶段" /></section>
+      </div>
+    );
+  }
 
   return (
     <div className="workbench-page learning-plan-page" ref={pageRef}>

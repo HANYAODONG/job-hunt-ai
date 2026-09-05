@@ -48,6 +48,8 @@ def build_live_update_effect(*, standard_job: str, standard_category: str, month
         new_frequency = _number(new, "monthly_skill_frequency")
         old_count = _number(old, "monthly_skill_count")
         new_count = _number(new, "monthly_skill_count")
+        has_counts = bool(old and new and "monthly_skill_count" in old and "monthly_skill_count" in new)
+        movement = new_count - old_count if has_counts else new_frequency - old_frequency
         row = dict(new or old or {})
         row.update({"skill": skill, "from_monthly_skill_frequency": old_frequency if old else None,
                     "to_monthly_skill_frequency": new_frequency if new else None,
@@ -59,9 +61,9 @@ def build_live_update_effect(*, standard_job: str, standard_category: str, month
         # A monthly JD batch can grow while a stable skill keeps the same
         # mention count. Its relative frequency then falls mechanically; that
         # is not evidence of declining market demand.
-        elif new_count > old_count:
+        elif movement > 0:
             changes["increased"].append(row)
-        elif new_count < old_count:
+        elif movement < 0:
             changes["decreased"].append(row)
         elif _truthy(old.get("is_core_skill")) and _truthy(new.get("is_core_skill")):
             changes["stable_core"].append(row)

@@ -193,23 +193,28 @@ def _generic_noise_hits(text: str) -> list[str]:
 class JdQualityService:
     """Audits JD inflation and noisy requirements before skills enter the graph."""
 
-    def load_sample_jobs(self, limit: int = 30) -> list[dict[str, Any]]:
+    def load_sample_jobs(self, limit: int = 30, offset: int = 0) -> list[dict[str, Any]]:
         candidates = [
-            DATASET_ITERATION_ROOT / "sample_pack" / "jobs_sample.jsonl",
             DATASET_ITERATION_ROOT / "jobs.jsonl",
+            DATASET_ITERATION_ROOT / "sample_pack" / "jobs_sample.jsonl",
         ]
         for path in candidates:
             if path.exists():
                 jobs = []
+                seen = 0
                 with path.open("r", encoding="utf-8-sig") as file:
                     for line in file:
-                        if line.strip():
-                            jobs.append(json.loads(line))
+                        if not line.strip():
+                            continue
+                        if seen < offset:
+                            seen += 1
+                            continue
+                        jobs.append(json.loads(line))
                         if len(jobs) >= limit:
                             break
                 if jobs:
                     return jobs
-        return self._fallback_jobs()[:limit]
+        return self._fallback_jobs()[offset:offset + limit]
 
     def audit_job(self, job: dict[str, Any], *, use_llm: bool = False) -> dict[str, Any]:
         audit = self._rule_audit(job)
