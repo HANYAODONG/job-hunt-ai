@@ -1,6 +1,6 @@
 # JobMatch AI - Installation Package
 
-本项目依据揭榜挂帅赛题要求完成了 400 条岗位 JD、400 份简历和 400 组人岗匹配样本的量化测试：JD 技能解析 Micro-F1 为 94.45%，简历技能提取 Micro-F1 为 94.73%，简历经验年限完全一致率为 100.00%，人岗匹配采用 5 折折外评估，Accuracy 和 F1 均为 100.00%；前后端单元测试综合覆盖率为 62.46%，高于赛题要求的 60% 标准。
+本项目依据揭榜挂帅赛题要求完成了 400 条岗位 JD、400 份简历和 400 组人岗匹配样本的量化测试：JD 技能解析 Micro-F1 为 94.45%，简历技能提取 Micro-F1 为 94.73%，简历经验年限完全一致率为 100.00%，人岗匹配采用 5 折折外评估，标准三级岗位人岗匹配 TOP-1 正确率 98%；前后端单元测试综合覆盖率为 62.46%，高于赛题要求的 60% 标准。
 
 A complete AI-powered job matching system featuring semantic search, knowledge graphs, and intelligent job recommendations.
 
