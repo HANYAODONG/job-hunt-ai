@@ -6,8 +6,14 @@ from typing import Any
 import pandas as pd
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile
 
-from app.services import analytics_service, government_job_service, job_service
-from app.services.live_update_effect_service import get_live_update_effect
+from app.services import (
+    analytics_service,
+    discovery_fixture_service,
+    discovery_service,
+    government_job_service,
+    job_service,
+)
+from app.services.live_update_effect_service import get_latest_live_update_effect, get_live_update_effect
 from app.services.profile_override_service import save_profile_overrides
 from app.models.jd_update import (
     CandidateSkillReviewInput,
@@ -16,6 +22,7 @@ from app.models.jd_update import (
     JdSubmitInput,
     JdSubmissionInput,
     NewJobReviewInput,
+    ProcessingMode,
     ProfileOverrideInput,
     SkillReviewInput,
 )
@@ -63,10 +70,14 @@ def submit(payload: JdSubmitInput) -> dict[str, Any]:
 async def import_csv(
     file: UploadFile = File(...),
     domain: Domain = Query("company"),
+    processing_mode: ProcessingMode = Query("manual"),
 ) -> dict[str, Any]:
     try:
         frame = pd.read_csv(BytesIO(await file.read()), dtype=str, encoding="utf-8-sig").fillna("")
-        return _service(domain).import_csv(frame)
+        service = _service(domain)
+        if domain == "government":
+            return service.import_csv(frame)
+        return service.import_csv(frame, processing_mode=processing_mode)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -74,6 +85,108 @@ async def import_csv(
 @router.get("/reviews")
 def reviews(domain: Domain = Query("company")) -> list[dict[str, Any]]:
     return _service(domain).get_review_items()
+
+
+@router.get("/discovery/candidates")
+def discovery_candidates(domain: Domain = Query("company")) -> list[dict[str, Any]]:
+    """Return source-backed new-role candidates and their workflow stage."""
+    if domain == "government":
+        return []
+    try:
+        return discovery_service.list_candidates()
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/discovery/batch")
+def discovery_batch(
+    month: str | None = None,
+    threshold: int = Query(10, ge=1, le=1000),
+    standard_job: str | None = None,
+    domain: Domain = Query("company"),
+) -> dict[str, Any]:
+    """Return a read-only monthly new-role discovery snapshot."""
+    if domain == "government":
+        return discovery_service.batch_summary(month, threshold=threshold, standard_job=standard_job) | {"candidates": []}
+    try:
+        return discovery_service.batch_summary(month, threshold=threshold, standard_job=standard_job)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.delete("/discovery/imported-month")
+def clear_discovery_imported_month(
+    month: str = Query(..., description="Month to clear in YYYY-MM format"),
+    domain: Domain = Query("company"),
+) -> dict[str, Any]:
+    """Clear only unpublished imported review data for one selected month."""
+    if domain == "government":
+        raise HTTPException(status_code=400, detail="政府岗位数据域暂不启用月度导入清理")
+    try:
+        return discovery_service.clear_imported_month(month)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/discovery/fixtures/synthetic-new-role")
+def run_synthetic_new_role_fixture(domain: Domain = Query("company")) -> dict[str, Any]:
+    """Run an isolated, repeatable new-role discovery fixture.
+
+    This endpoint is for validating the workflow.  It does not write to the
+    selected company dataset, the formal dictionary, or the production SQLite
+    database.
+    """
+    if domain == "government":
+        raise HTTPException(status_code=400, detail="政府岗位数据域暂不启用新岗位发现验证夹具")
+    try:
+        return discovery_fixture_service.run_synthetic_new_role_fixture()
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/discovery/{item_id}/submit-proposal")
+def submit_discovery_proposal(
+    item_id: str,
+    payload: NewJobReviewInput,
+    domain: Domain = Query("company"),
+) -> dict[str, Any]:
+    if domain == "government":
+        raise HTTPException(status_code=400, detail="政府岗位数据域暂不启用新岗位发现发布")
+    try:
+        return discovery_service.submit_proposal(item_id, payload.model_dump())
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/discovery/{item_id}/reject")
+def reject_discovery_candidate(item_id: str, domain: Domain = Query("company")) -> dict[str, Any]:
+    if domain == "government":
+        raise HTTPException(status_code=400, detail="政府岗位数据域暂不启用新岗位发现审核")
+    try:
+        return discovery_service.reject_candidate(item_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/discovery/{maintenance_id}/publish")
+def publish_discovery_candidate(
+    maintenance_id: str,
+    domain: Domain = Query("company"),
+) -> dict[str, Any]:
+    if domain == "government":
+        raise HTTPException(status_code=400, detail="政府岗位数据域暂不启用新岗位发现发布")
+    try:
+        return discovery_service.publish_candidate(maintenance_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.get("/cross-validation/candidates")
@@ -101,6 +214,11 @@ def review_cross_validation_candidate(
         )
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/live-evolution/latest")
+def latest_live_evolution(domain: Domain = Query("company")) -> dict[str, Any] | None:
+    return get_latest_live_update_effect(domain)
 
 
 @router.get("/live-evolution/{effect_id}")
@@ -166,6 +284,14 @@ def submit_new_job_proposal(
             match_keywords=payload.match_keywords,
             merge_database=True,
             skills=payload.skills,
+            source_review_ids=payload.source_review_ids,
+            definition={
+                "core_responsibilities": payload.core_responsibilities,
+                "required_skills": payload.required_skills,
+                "bonus_skills": payload.bonus_skills,
+                "application_scenarios": payload.application_scenarios,
+                "evidence_note": payload.evidence_note,
+            },
         )
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

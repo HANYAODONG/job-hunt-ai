@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-from job_update.company_job_update.core.title_cleaning import normalize_technical_title_level
+from job_update.company_job_update.core.title_cleaning import (
+    LLMTitleCleaner,
+    RuleBasedTitleCleaner,
+    normalize_technical_title_level,
+)
 
 
 def test_normalize_technical_title_level_to_engineer() -> None:
@@ -13,3 +17,15 @@ def test_normalize_technical_title_level_to_engineer() -> None:
 def test_normalize_technical_title_level_keeps_non_engineer_roles() -> None:
     assert normalize_technical_title_level("AI产品经理") == "AI产品经理"
     assert normalize_technical_title_level("算法研究员") == "算法研究员"
+
+
+def test_rule_based_title_cleaner_is_conservative() -> None:
+    cleaner = RuleBasedTitleCleaner()
+    assert cleaner.clean("大模型算法实习生") == "大模型算法工程师"
+    assert cleaner.clean("AI产品经理") == "AI产品经理"
+
+
+def test_llm_title_cleaner_falls_back_without_api_key(monkeypatch) -> None:
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+    cleaner = LLMTitleCleaner(provider="deepseek")
+    assert cleaner.clean("大模型算法实习生") == "大模型算法工程师"

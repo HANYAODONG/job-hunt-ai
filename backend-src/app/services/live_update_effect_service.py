@@ -46,6 +46,8 @@ def build_live_update_effect(*, standard_job: str, standard_category: str, month
         old, new = before.get(skill), after.get(skill)
         old_frequency = _number(old, "monthly_skill_frequency")
         new_frequency = _number(new, "monthly_skill_frequency")
+        old_count = _number(old, "monthly_skill_count")
+        new_count = _number(new, "monthly_skill_count")
         row = dict(new or old or {})
         row.update({"skill": skill, "from_monthly_skill_frequency": old_frequency if old else None,
                     "to_monthly_skill_frequency": new_frequency if new else None,
@@ -54,9 +56,12 @@ def build_live_update_effect(*, standard_job: str, standard_category: str, month
             changes["added"].append(row)
         elif new is None:
             changes["removed"].append(row)
-        elif new_frequency > old_frequency:
+        # A monthly JD batch can grow while a stable skill keeps the same
+        # mention count. Its relative frequency then falls mechanically; that
+        # is not evidence of declining market demand.
+        elif new_count > old_count:
             changes["increased"].append(row)
-        elif new_frequency < old_frequency:
+        elif new_count < old_count:
             changes["decreased"].append(row)
         elif _truthy(old.get("is_core_skill")) and _truthy(new.get("is_core_skill")):
             changes["stable_core"].append(row)
@@ -103,7 +108,31 @@ def get_live_update_effect(domain: str, effect_id: str) -> dict[str, Any]:
         ).fetchone()
     if row is None:
         raise KeyError(f"Live update effect not found: {effect_id}")
-    return json.loads(row[0])
+    return _refresh_effect_summary(json.loads(row[0]))
+
+
+def get_latest_live_update_effect(domain: str) -> dict[str, Any] | None:
+    """Return the most recent confirmed update, never a pending routing suggestion."""
+    database_path = GOVERNMENT_BASE_DATABASE if resolve_domain(domain) == "government" else BASE_DATABASE
+    with sqlite3.connect(database_path) as connection:
+        row = connection.execute(
+            "SELECT effect_json FROM job_update_effect_log WHERE domain = ? ORDER BY created_at DESC LIMIT 1",
+            (resolve_domain(domain),),
+        ).fetchone()
+    return _refresh_effect_summary(json.loads(row[0])) if row else None
+
+
+def _refresh_effect_summary(effect: dict[str, Any]) -> dict[str, Any]:
+    """Apply current effect semantics when reading older persisted records."""
+    refreshed = build_live_update_effect(
+        standard_job=str(effect.get("standard_job", "")),
+        standard_category=str(effect.get("standard_category", "")),
+        month=str(effect.get("month", "")),
+        before_profile=list(effect.get("before_profile") or []),
+        after_profile=list(effect.get("after_profile") or []),
+        submitted_skills=list(effect.get("signal_skills") or []),
+    )
+    return {**effect, "changes": refreshed["changes"], "summary": refreshed["summary"]}
 
 
 def _number(row: dict[str, Any] | None, key: str) -> float:

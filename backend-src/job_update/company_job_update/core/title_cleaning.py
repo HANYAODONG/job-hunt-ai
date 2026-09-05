@@ -14,6 +14,16 @@ class TitleCleaner(Protocol):
         ...
 
 
+class RuleBasedTitleCleaner:
+    """Conservative local fallback used when LLM cleaning is unavailable."""
+
+    def clean(self, job_title: str) -> str:
+        raw_title = clean_text(job_title)
+        if not raw_title:
+            raise ValueError("job_title is required before title cleaning")
+        return normalize_technical_title_level(raw_title)
+
+
 TITLE_CLEANING_PROMPT = """
 你是招聘岗位名称清洗器。你的任务是从原始招聘标题中抽取“主岗位名称”，用于岗位语义匹配。
 
@@ -72,7 +82,8 @@ class LLMTitleCleaner:
 
         api_key = os.getenv(self.api_key_env)
         if not api_key:
-            raise RuntimeError(f"Missing API key. Set ${self.api_key_env} before title cleaning.")
+            # LLM cleaning is optional for monthly/manual ingestion.
+            return RuleBasedTitleCleaner().clean(raw_title)
 
         result = self._api.call_chat_api(
             api_key=api_key,

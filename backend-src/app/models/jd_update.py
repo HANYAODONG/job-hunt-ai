@@ -44,6 +44,12 @@ class NewJobReviewInput(BaseModel):
     standard_job_title: str
     match_keywords: str = ""
     skills: list[dict[str, Any]] = Field(default_factory=list)
+    core_responsibilities: list[str] = Field(default_factory=list)
+    required_skills: list[str] = Field(default_factory=list)
+    bonus_skills: list[str] = Field(default_factory=list)
+    application_scenarios: list[str] = Field(default_factory=list)
+    evidence_note: str = ""
+    source_review_ids: list[str] = Field(default_factory=list)
 
 
 class SkillReviewInput(BaseModel):

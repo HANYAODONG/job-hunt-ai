@@ -179,10 +179,31 @@ def submit_one_dry_run(payload: dict[str, str]) -> dict[str, Any]:
     return item
 
 
-def import_csv(frame: pd.DataFrame) -> dict[str, Any]:
+def import_csv(frame: pd.DataFrame, processing_mode: str = "manual") -> dict[str, Any]:
     normalized = _normalize_import_frame(frame)
-    items = [submit_one_dry_run(row) for row in normalized.to_dict(orient="records")]
-    return {"count": len(items), "items": items}
+    mode = clean_text(processing_mode).lower() or "manual"
+    if mode not in {"auto", "manual"}:
+        raise ValueError("processing_mode must be auto or manual")
+    # A batch identifier lets the discovery workbench remove an unpublished
+    # test import without guessing from a title or touching formal role data.
+    import_batch_id = f"monthly-csv-{uuid4().hex}"
+    rows = normalized.to_dict(orient="records")
+    items = [
+        submit_one_dry_run({
+            **row,
+            "processing_mode": mode,
+            "source": "monthly_csv_import",
+            "import_kind": "monthly_csv",
+            "import_batch_id": import_batch_id,
+        })
+        for row in rows
+    ]
+    return {
+        "count": len(items),
+        "items": items,
+        "import_batch_id": import_batch_id,
+        "months": sorted({clean_text(row.get("month")) for row in rows if clean_text(row.get("month"))}),
+    }
 
 
 def get_review_items() -> list[dict[str, Any]]:
@@ -277,6 +298,8 @@ def confirm_new_job(
     match_keywords: str,
     merge_database: bool,
     skills: list[dict[str, Any]] | None = None,
+    definition: dict[str, Any] | None = None,
+    source_review_ids: list[str] | None = None,
 ) -> dict[str, Any]:
     store = SQLiteJobUpdateStore(BASE_DATABASE)
     item = store.get_review_item(item_id)
@@ -289,6 +312,14 @@ def confirm_new_job(
     }
     if not manual_review["standard_category"] or not manual_review["standard_job_title"]:
         raise ValueError("standard_category and standard_job_title are required")
+    review_ids = list(dict.fromkeys([
+        str(review_id).strip()
+        for review_id in [item_id, *(source_review_ids or [])]
+        if str(review_id).strip()
+    ]))
+    source_items = [store.get_review_item(review_id) for review_id in review_ids]
+    if any(source_item["review_type"] != "job" for source_item in source_items):
+        raise ValueError("A new-job proposal can only contain job review records")
     maintenance = store.create_review_item(
         review_id=str(uuid4()),
         review_type="dictionary_maintenance",
@@ -299,19 +330,31 @@ def confirm_new_job(
         result_payload={
             "proposal_type": "new_standard_job",
             "proposal": manual_review,
+            "definition": definition or {},
             "skills": skills or item["result"].get("skills") or [],
             "source_job_review_id": item_id,
+            "source_job_review_ids": review_ids,
         },
     )
-    result_payload = dict(item["result"])
-    result_payload["manual_review"] = manual_review
-    result_payload["dictionary_maintenance_review_id"] = maintenance["item_id"]
-    return store.update_review_item(
-        item_id,
-        status="submitted_dictionary_maintenance",
-        decision_payload={"action": "submit_new_job_maintenance", **manual_review},
-        result_payload=result_payload,
-    )
+    first_updated = None
+    for source_item in source_items:
+        result_payload = dict(source_item["result"])
+        result_payload["manual_review"] = manual_review
+        result_payload["dictionary_maintenance_review_id"] = maintenance["item_id"]
+        updated = store.update_review_item(
+            source_item["item_id"],
+            status="submitted_dictionary_maintenance",
+            decision_payload={
+                "action": "submit_new_job_maintenance",
+                **manual_review,
+                "definition": definition or {},
+                "evidence_cluster_size": len(review_ids),
+            },
+            result_payload=result_payload,
+        )
+        if source_item["item_id"] == item_id:
+            first_updated = updated
+    return first_updated or store.get_review_item(item_id)
 
 
 def review_skill(
@@ -416,6 +459,8 @@ def _input_payload(payload: dict[str, Any], posting: JobPosting) -> dict[str, st
         "responsibility": posting.job_responsibility,
         "requirement": posting.job_requirement,
         "source": clean_text(payload.get("source")) or str(posting.metadata.get("source") or ""),
+        "import_kind": clean_text(payload.get("import_kind")),
+        "import_batch_id": clean_text(payload.get("import_batch_id")),
     }
 
 

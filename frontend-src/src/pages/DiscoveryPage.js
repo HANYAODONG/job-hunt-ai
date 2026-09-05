@@ -14,12 +14,15 @@ import {
 
 const { TextArea } = Input;
 
-const statusClass = { '待审核': 'review', '补充证据': 'evidence', '已发布': 'published' };
+const statusClass = { '待审核': 'review', '补充证据': 'evidence', '待正式发布': 'evidence', '已发布': 'published' };
 
 const buildEvidence = (item, liveTrend, trendSkill) => [
-  { source: '企业招聘官网', confidence: '可信度 0.94', excerpt: item.signals[0], collectedAt: item.updatedAt },
-  { source: '主流招聘平台', confidence: '交叉验证', excerpt: `与“${item.skills.slice(0, 2).join('、')}”相关的能力组合连续四周高频共现。`, collectedAt: '2026-07-25 08:30' },
-  { source: '行业报告与白皮书', confidence: '专家复核', excerpt: `${item.name}的职责边界与应用场景正在形成稳定表达。`, collectedAt: '2026-07-24 18:40' },
+  ...(item.sources || [{
+    source: '原始 JD 审核记录',
+    confidence: '待人工核验',
+    excerpt: item.signals?.[0] || '未提供证据摘要',
+    collectedAt: item.updatedAt || '本地记录',
+  }]),
   ...(liveTrend && trendSkill ? [{
     source: '市场趋势接口',
     confidence: '后端实时查询',
@@ -51,18 +54,22 @@ const DiscoveryPage = () => {
   const [activeTab, setActiveTab] = useState('new');
   const [selectedId, setSelectedId] = useState(null);
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState({ name: '', summary: '' });
+  const [draft, setDraft] = useState({
+    name: '', summary: '', category: '', keywords: '',
+    coreResponsibilities: [], requiredSkills: [], bonusSkills: [], scenarios: [], evidenceNote: '',
+  });
   const [runtime, setRuntime] = useState(null);
   const [liveTrend, setLiveTrend] = useState(null);
   const [trendLoading, setTrendLoading] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([getDiscoveryCandidates(), getMarketChangeCandidates()]).then(([roles, updates]) => {
       setNewRoles(roles);
       setChanges(updates);
       setSelectedId(roles[0]?.id);
-    });
+    }).finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
@@ -75,16 +82,27 @@ const DiscoveryPage = () => {
     return () => { active = false; };
   }, []);
 
-  const visibleItems = activeTab === 'new' ? newRoles : activeTab === 'change' ? changes : [...newRoles, ...changes].filter((item) => item.status === '已发布');
+  const visibleItems = activeTab === 'new' ? newRoles : activeTab === 'change' ? changes : [...newRoles, ...changes].filter((item) => ['待正式发布', '已发布'].includes(item.status));
   const selected = useMemo(() => visibleItems.find((item) => item.id === selectedId) || visibleItems[0], [visibleItems, selectedId]);
 
   useEffect(() => {
     if (!selected) return;
     setDraft({
-      name: selected.name,
+      name: selected.definition?.name || selected.name,
       summary: activeTab === 'change'
         ? '根据最新市场证据调整岗位能力要求，并保留完整版本差异。'
         : `负责${selected.skills.slice(0, 2).join('、')}相关系统的设计、开发、评估与持续优化。`,
+      category: selected.domain || '',
+      keywords: selected.name || '',
+      coreResponsibilities: selected.definition?.coreResponsibilities || [
+        '分析业务场景并定义系统能力边界',
+        '设计、实现并验证核心技术链路',
+        '建立质量评测、监控与持续改进机制',
+      ],
+      requiredSkills: selected.definition?.requiredSkills || selected.skills || [],
+      bonusSkills: selected.definition?.bonusSkills || [],
+      scenarios: selected.definition?.scenarios || [],
+      evidenceNote: selected.definition?.evidenceNote || '由原始 JD 证据生成，发布前需人工核验。',
     });
     setEditing(false);
   }, [selected, activeTab]);
@@ -128,20 +146,45 @@ const DiscoveryPage = () => {
 
   const switchTab = (tab) => {
     setActiveTab(tab);
-    const items = tab === 'new' ? newRoles : tab === 'change' ? changes : [...newRoles, ...changes].filter((item) => item.status === '已发布');
+    const items = tab === 'new' ? newRoles : tab === 'change' ? changes : [...newRoles, ...changes].filter((item) => ['待正式发布', '已发布'].includes(item.status));
     setSelectedId(items[0]?.id || null);
   };
 
   const review = async (decision) => {
     if (!selected) return;
-    await reviewDiscoveryCandidate(selected.id, decision);
-    const updater = (items) => items.map((item) => item.id === selected.id ? { ...item, status: decision === 'publish' ? '已发布' : '补充证据' } : item);
+    const definition = selected.raw || selected.definition
+      ? {
+        ...draft,
+        skills: selected.raw?.result?.skills || selected.raw?.skills || [],
+        maintenanceId: selected.maintenanceId || selected.raw?.maintenance_id || '',
+      }
+      : null;
+    const response = definition
+      ? await reviewDiscoveryCandidate(selected.id, decision, definition)
+      : await reviewDiscoveryCandidate(selected.id, decision);
+    const published = response?.status === 'published_new_job' || response?.result?.published_result;
+    const nextStatus = decision === 'publish' ? (published ? '已发布' : '待正式发布') : '补充证据';
+    const nextStage = published ? 'published' : (decision === 'publish' ? 'awaiting_publish' : 'candidate');
+    const maintenanceId = !published
+      ? (response?.result?.dictionary_maintenance_review_id || response?.item_id || selected.maintenanceId)
+      : selected.maintenanceId;
+    const updater = (items) => items.map((item) => item.id === selected.id
+      ? { ...item, status: nextStatus, stage: nextStage, maintenanceId: maintenanceId || item.maintenanceId }
+      : item);
     if (activeTab === 'new') setNewRoles(updater);
     else setChanges(updater);
-    message.success(decision === 'publish' ? `${selected.name} 已发布，图谱同步任务已创建` : '已退回补充证据');
+    message.success(decision === 'publish'
+      ? (published ? `${selected.name} 已正式发布并写入岗位池` : `${selected.name} 已进入正式发布审核`)
+      : '已退回补充证据');
   };
 
-  if (!newRoles.length && !changes.length) return <div className="page-loading"><Skeleton active paragraph={{ rows: 12 }} /></div>;
+  if (loading) return <div className="page-loading"><Skeleton active paragraph={{ rows: 12 }} /></div>;
+  if (!newRoles.length && !changes.length) return (
+    <div className="workflow-empty">
+      <h2>暂无待审核的新岗位信号</h2>
+      <p>导入市场 JD 后，系统会保留原始证据并生成岗位定义草稿，待人工审核后才能进入正式岗位池。</p>
+    </div>
+  );
 
   return (
     <div className="workbench-page signal-center-page">
@@ -175,7 +218,7 @@ const DiscoveryPage = () => {
           <div className="signal-scoreline">
             <div><span>综合置信度</span><strong>{selected.confidence}%</strong></div>
             <Progress percent={selected.confidence} showInfo={false} strokeColor="#4059c7" />
-            <small>基于 {selected.evidence} 条有效证据，覆盖 3 类数据源</small>
+            <small>基于 {selected.evidence} 条可追溯证据，来源数：{selected.sourceCount || selected.evidence}</small>
           </div>
 
           <section className="live-market-snapshot">
@@ -199,13 +242,14 @@ const DiscoveryPage = () => {
           </section>
           <section className="definition-section">
             <span className="definition-label">核心职责</span>
-            <ol><li>分析业务场景并定义系统能力边界</li><li>设计、实现并验证核心技术链路</li><li>建立质量评测、监控与持续改进机制</li></ol>
+            {editing ? <TextArea rows={4} value={draft.coreResponsibilities.join('\n')} onChange={(event) => setDraft((current) => ({ ...current, coreResponsibilities: event.target.value.split(/\r?\n/).map((value) => value.trim()).filter(Boolean) }))} /> : <ol>{draft.coreResponsibilities.map((item) => <li key={item}>{item}</li>)}</ol>}
           </section>
           <div className="definition-two-column">
-            <section className="definition-section"><span className="definition-label">必备技能</span><div>{selected.skills.map((skill) => <SkillToken key={skill}>{skill}</SkillToken>)}</div></section>
-            <section className="definition-section"><span className="definition-label">加分技能</span><div><SkillToken tone="bonus">行业知识</SkillToken><SkillToken tone="bonus">工程化交付</SkillToken><SkillToken tone="bonus">技术评测</SkillToken></div></section>
+            <section className="definition-section"><span className="definition-label">必备技能</span>{editing ? <TextArea rows={3} value={draft.requiredSkills.join('\n')} onChange={(event) => setDraft((current) => ({ ...current, requiredSkills: event.target.value.split(/\r?\n/).map((value) => value.trim()).filter(Boolean) }))} /> : <div>{draft.requiredSkills.map((skill) => <SkillToken key={skill}>{skill}</SkillToken>)}</div>}</section>
+            <section className="definition-section"><span className="definition-label">加分技能</span>{editing ? <TextArea rows={3} value={draft.bonusSkills.join('\n')} onChange={(event) => setDraft((current) => ({ ...current, bonusSkills: event.target.value.split(/\r?\n/).map((value) => value.trim()).filter(Boolean) }))} /> : <div>{draft.bonusSkills.map((skill) => <SkillToken tone="bonus" key={skill}>{skill}</SkillToken>)}</div>}</section>
           </div>
-          <section className="definition-section"><span className="definition-label">典型行业应用场景</span><div className="scenario-row"><span>企业服务</span><span>智能制造</span><span>研发效能</span></div></section>
+          <section className="definition-section"><span className="definition-label">典型行业应用场景</span>{editing ? <TextArea rows={2} value={draft.scenarios.join('\n')} onChange={(event) => setDraft((current) => ({ ...current, scenarios: event.target.value.split(/\r?\n/).map((value) => value.trim()).filter(Boolean) }))} /> : <div className="scenario-row">{draft.scenarios.map((scenario) => <span key={scenario}>{scenario}</span>)}</div>}</section>
+          <section className="definition-section"><span className="definition-label">证据说明</span>{editing ? <TextArea rows={2} value={draft.evidenceNote} onChange={(event) => setDraft((current) => ({ ...current, evidenceNote: event.target.value }))} /> : <p className="role-evolution-muted">{draft.evidenceNote}</p>}</section>
 
           <footer className="definition-actions">
             <Button icon={<SendOutlined />} onClick={() => review('return')}>退回补证</Button>

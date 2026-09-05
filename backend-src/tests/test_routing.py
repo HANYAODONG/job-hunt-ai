@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from job_update.company_job_update.core.frequency_store import FrequencyStore
 from job_update.company_job_update.core.models import JobPosting, SkillMention
-from job_update.company_job_update.core.route_adjudication import RouteAdjudicationDecision
+from job_update.company_job_update.core.route_adjudication import (
+    LLMRouteAdjudicator,
+    RouteAdjudicationDecision,
+)
 from job_update.company_job_update.core.service import JobUpdateSystem
 from job_update.company_job_update.core.taxonomy import JobTaxonomy, StandardJob
 from job_update.company_job_update.core.taxonomy_gap_guard import detect_taxonomy_gap
@@ -127,6 +130,18 @@ def test_process_uses_direct_high_confidence_route_without_llm(tmp_path) -> None
     assert result.route.best_job is not None
     assert result.route.best_job.name == "AI App Engineer"
     assert adjudicator.called is False
+
+
+def test_route_adjudication_defers_without_api_key(monkeypatch) -> None:
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+    adjudicator = LLMRouteAdjudicator(provider="deepseek")
+    result = adjudicator.adjudicate(
+        posting=JobPosting(job_id="no-key", month="2026-09", job_title="未知岗位"),
+        routing_job_title="未知岗位",
+        text2vec_summary={},
+        candidate_jobs=[],
+    )
+    assert result.route_status == "potential_new_job"
 
 
 def test_process_accepts_middle_zone_llm_top1_decision(tmp_path) -> None:

@@ -98,7 +98,7 @@ class JobUpdateSystem:
         else:
             route = None
         if route is None and self.title_cleaner is not None and not posting.routing_job_title.strip():
-            self._progress("title_cleaning: calling configured LLM title cleaner")
+            self._progress("title_cleaning: using configured cleaner (LLM with local fallback)")
             routing_job_title = self._run_with_heartbeat(
                 "title_cleaning",
                 lambda: self.title_cleaner.clean(posting.job_title),
@@ -145,13 +145,21 @@ class JobUpdateSystem:
                 if self.skill_extractor is None:
                     raise ValueError("process-one requires skill_extract output; no skill_extractor was configured")
                 self._progress("skills: calling configured skill provider")
-                posting.skills.extend(
-                    self._run_with_heartbeat(
-                        "skills",
-                        lambda: self.skill_extractor.extract(posting),
+                try:
+                    posting.skills.extend(
+                        self._run_with_heartbeat(
+                            "skills",
+                            lambda: self.skill_extractor.extract(posting),
+                        )
                     )
-                )
-                self._progress(f"skills: extracted {len(posting.skills)} final normalized skills")
+                    self._progress(f"skills: extracted {len(posting.skills)} final normalized skills")
+                except RuntimeError as exc:
+                    # Manual/monthly review can be queued before optional LLM
+                    # skill extraction is configured. Automatic writes remain
+                    # strict and still surface the original error.
+                    if not collect_skills_for_review or "Missing API key" not in str(exc):
+                        raise
+                    self._progress("skills: provider unavailable; deferred to review")
             else:
                 self._progress(f"skills: using {len(posting.skills)} supplied final normalized skills")
 
@@ -482,7 +490,14 @@ class JobUpdateSystem:
             )
 
         if self.route_adjudicator is None:
-            raise RuntimeError("route adjudication is required for middle-zone routing, but no route_adjudicator was configured")
+            return JobRoute(
+                status="potential_new_job",
+                selected_categories=selected_categories,
+                selected_jobs=selected_jobs,
+                best_category=best_category,
+                best_job=best_job,
+                reason="LLM route adjudication is unavailable; deferred to manual review",
+            )
 
         self._progress(
             "routing: middle-zone candidate, calling LLM adjudicator "
